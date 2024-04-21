@@ -22,6 +22,16 @@ def test_resolve_dependency():
     assert isinstance(redis, Redis)
 
 
+def test_can_pass_dependency():
+    @inject
+    def my_service(redis: Redis | str = Depends(get_redis)):
+        return redis
+
+    redis = my_service(redis="override")
+
+    assert redis == "override"
+
+
 def test_dependencies_in_single_call_must_use_cache():
     @inject
     def my_service(
