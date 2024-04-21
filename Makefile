@@ -1,6 +1,6 @@
 SHELL:=/usr/bin/env bash
 
-RUN=docker compose exec -it devtools
+RUN=
 
 .PHONY: all
 all: help
