@@ -26,38 +26,30 @@ _resources_result_cache: WeakKeyDictionary[Dependency, Any] = WeakKeyDictionary(
 def Provide(dependency: Dependency, /, use_cache: bool = True) -> Any:  # noqa: N802
     if dependency in _resources and not use_cache:
         raise ValueError("use_cache=False is not supported for resources")
-    return _Depends(dependency, use_cache)
+    return Depends.from_dependency(dependency, use_cache)
 
 
 @dataclass(frozen=True)
-class _Depends:
+class Depends:
     dependency: Dependency
     use_cache: bool
+    context_manager: ContextManager | AsyncContextManager | None = field(compare=False)
+    is_async: bool = field(compare=False)
+
+    @classmethod
+    def from_dependency(cls, dependency: Dependency, use_cache: bool) -> Depends:
+        context_manager: ContextManager | AsyncContextManager | None = None
+        is_async = False
+        if inspect.isasyncgenfunction(dependency):
+            context_manager = asynccontextmanager(dependency)()
+            is_async = True
+        elif inspect.isgeneratorfunction(dependency):
+            context_manager = contextmanager(dependency)()
+        return cls(dependency, use_cache, context_manager, is_async)
 
 
 T = TypeVar("T")
 P = ParamSpec("P")
-
-
-@dataclass(frozen=True)
-class ResolvedDependency:
-    original: Dependency
-    context_manager: ContextManager | AsyncContextManager | None = field(compare=False)
-    is_async: bool = field(default=False, compare=False)
-    use_cache: bool = True
-
-    @classmethod
-    def resolve(cls, depends: _Depends) -> ResolvedDependency:
-        context_manager: ContextManager | AsyncContextManager | None = None
-        is_async = False
-        if inspect.isasyncgenfunction(depends.dependency):
-            context_manager = asynccontextmanager(depends.dependency)()
-            is_async = True
-        elif inspect.isgeneratorfunction(depends.dependency):
-            context_manager = contextmanager(depends.dependency)()
-        return cls(depends.dependency, context_manager, is_async, depends.use_cache)
-
-
 TC = TypeVar("TC", bound=Callable)
 
 
@@ -83,12 +75,10 @@ def inject(fn: Callable[P, T]) -> Callable[P, T | Coroutine[Any, Any, T]]:
         bound = signature.bind(*args, **kwargs)
         bound.apply_defaults()
 
-        dependencies: dict[ResolvedDependency, list[str]] = {}
+        dependencies: dict[Depends, list[str]] = {}
         for name, value in bound.arguments.items():
-            if isinstance(value, _Depends):
-                dependencies.setdefault(ResolvedDependency.resolve(value), []).append(
-                    name
-                )
+            if isinstance(value, Depends):
+                dependencies.setdefault(value, []).append(name)
 
         with _call_dependencies(dependencies) as arguments:
             bound.arguments.update(arguments)
@@ -103,31 +93,31 @@ def shutdown_resources() -> None:
 
 @contextmanager
 def _call_dependencies(
-    dependencies: dict[ResolvedDependency, list[str]],
+    depends_items: dict[Depends, list[str]],
 ) -> Generator[dict[str, Any], None, None]:
     managers: list[tuple[AbstractContextManager, list[str]]] = []
     async_managers: list[tuple[AbstractAsyncContextManager, list[str]]] = []
     results = {}
-    for dependency, names in dependencies.items():
-        if context_manager := _resources.get(dependency.original):
+    for depends, names in depends_items.items():
+        if context_manager := _resources.get(depends.dependency):
             if isinstance(context_manager, AbstractContextManager):
-                if _resources_result_cache.get(dependency.original) is _unset:
+                if _resources_result_cache.get(depends.dependency) is _unset:
                     result = _resources_exit_stack.enter_context(context_manager)
-                    _resources_result_cache[dependency.original] = result
+                    _resources_result_cache[depends.dependency] = result
 
-                result = _resources_result_cache[dependency.original]
+                result = _resources_result_cache[depends.dependency]
                 results.update({name: result for name in names})
-        elif dependency.context_manager:
-            if isinstance(dependency.context_manager, AbstractAsyncContextManager):
-                async_managers.append((dependency.context_manager, names))
+        elif depends.context_manager:
+            if isinstance(depends.context_manager, AbstractAsyncContextManager):
+                async_managers.append((depends.context_manager, names))
             else:
-                managers.append((dependency.context_manager, names))
+                managers.append((depends.context_manager, names))
         else:
-            if dependency.use_cache:
-                result = dependency.original()
+            if depends.use_cache:
+                result = depends.dependency()
                 results.update({name: result for name in names})
             else:
-                results.update({name: dependency.original() for name in names})
+                results.update({name: depends.dependency() for name in names})
 
     with ExitStack() as stack:
         values = {manager: stack.enter_context(manager) for manager, _ in managers}
