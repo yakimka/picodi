@@ -12,6 +12,7 @@ from contextlib import (
 )
 from dataclasses import dataclass, field
 from typing import Any, AsyncContextManager, ContextManager, ParamSpec, TypeVar
+from weakref import WeakKeyDictionary
 
 Dependency = Callable[..., Any]
 
@@ -19,7 +20,7 @@ Dependency = Callable[..., Any]
 _unset = object()
 _resources_exit_stack = ExitStack()
 _resources: dict[Dependency, AsyncContextManager | ContextManager] = {}
-_resources_result_cache: dict[Dependency, Any] = {}
+_resources_result_cache: WeakKeyDictionary[Dependency, Any] = WeakKeyDictionary()
 
 
 def Provide(dependency: Dependency, /, use_cache: bool = True) -> Any:  # noqa: N802
