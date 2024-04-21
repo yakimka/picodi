@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from nanodi import Depends, inject
+from nanodi import Provide, inject
 
 
 @dataclass
@@ -14,7 +14,7 @@ def get_redis() -> Redis:
 
 def test_resolve_dependency():
     @inject
-    def my_service(redis: Redis = Depends(get_redis)):
+    def my_service(redis: Redis = Provide(get_redis)):
         return redis
 
     redis = my_service()
@@ -24,7 +24,7 @@ def test_resolve_dependency():
 
 def test_can_pass_dependency():
     @inject
-    def my_service(redis: Redis | str = Depends(get_redis)):
+    def my_service(redis: Redis | str = Provide(get_redis)):
         return redis
 
     redis = my_service(redis="override")
@@ -35,7 +35,7 @@ def test_can_pass_dependency():
 def test_dependencies_in_single_call_must_use_cache():
     @inject
     def my_service(
-        redis1: Redis = Depends(get_redis), redis2: Redis = Depends(get_redis)
+        redis1: Redis = Provide(get_redis), redis2: Redis = Provide(get_redis)
     ):
         return redis1, redis2
 
@@ -47,7 +47,7 @@ def test_dependencies_in_single_call_must_use_cache():
 
 def test_dependencies_dont_share_cache_between_calls():
     @inject
-    def my_service(redis: Redis = Depends(get_redis)):
+    def my_service(redis: Redis = Provide(get_redis)):
         return redis
 
     redis1 = my_service()
@@ -61,8 +61,8 @@ def test_dependencies_dont_share_cache_between_calls():
 def test_dependencies_in_single_call_dont_use_cache_if_specified():
     @inject
     def my_service(
-        redis1: Redis = Depends(get_redis, use_cache=False),
-        redis2: Redis = Depends(get_redis, use_cache=False),
+        redis1: Redis = Provide(get_redis, use_cache=False),
+        redis2: Redis = Provide(get_redis, use_cache=False),
     ):
         return redis1, redis2
 
@@ -75,11 +75,11 @@ def test_dependencies_in_single_call_dont_use_cache_if_specified():
 
 def test_nested_dependencies():
     @inject
-    def my_service_inner(redis: Redis = Depends(get_redis)):
+    def my_service_inner(redis: Redis = Provide(get_redis)):
         return redis
 
     @inject
-    def my_service_outer(inner_service: Redis = Depends(my_service_inner)):
+    def my_service_outer(inner_service: Redis = Provide(my_service_inner)):
         return inner_service
 
     inner_service = my_service_outer()

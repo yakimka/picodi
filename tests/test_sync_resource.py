@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from nanodi import Depends, inject, resource, shutdown_resources
+from nanodi import Provide, inject, resource, shutdown_resources
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -38,7 +38,7 @@ def redis_dependency():
 
 def test_resources_dont_close_automatically(redis_dependency):
     @inject
-    def my_service(redis: Redis = Depends(redis_dependency)):
+    def my_service(redis: Redis = Provide(redis_dependency)):
         redis.make_request()
         return redis
 
@@ -49,7 +49,7 @@ def test_resources_dont_close_automatically(redis_dependency):
 
 def test_resources_can_be_closed_manually(redis_dependency):
     @inject
-    def my_service(redis: Redis = Depends(redis_dependency)):
+    def my_service(redis: Redis = Provide(redis_dependency)):
         redis.make_request()
         return redis
 
@@ -65,5 +65,5 @@ def test_resources_cant_be_used_if_specified_without_cache(redis_dependency):
     ):
 
         @inject
-        def my_service(redis1: Redis = Depends(redis_dependency, use_cache=False)):
+        def my_service(redis1: Redis = Provide(redis_dependency, use_cache=False)):
             return redis1

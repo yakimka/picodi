@@ -22,7 +22,7 @@ _resources: dict[Dependency, AsyncContextManager | ContextManager] = {}
 _resources_result_cache: dict[Dependency, Any] = {}
 
 
-def Depends(dependency: Dependency, /, use_cache: bool = True) -> Any:  # noqa: N802
+def Provide(dependency: Dependency, /, use_cache: bool = True) -> Any:  # noqa: N802
     if dependency in _resources and not use_cache:
         raise ValueError("use_cache=False is not supported for resources")
     return _Depends(dependency, use_cache)

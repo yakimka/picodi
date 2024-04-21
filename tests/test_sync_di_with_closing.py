@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from nanodi import Depends, inject
+from nanodi import Provide, inject
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -33,7 +33,7 @@ def get_redis() -> Generator[Redis, None, None]:
 
 def test_resolve_dependency():
     @inject
-    def my_service(redis: Redis = Depends(get_redis)):
+    def my_service(redis: Redis = Provide(get_redis)):
         return redis
 
     redis = my_service()
@@ -44,7 +44,7 @@ def test_resolve_dependency():
 @pytest.mark.parametrize("use_cache", [True, False])
 def test_close_dependency_after_call(use_cache):
     @inject
-    def my_service(redis: Redis = Depends(get_redis, use_cache=use_cache)):
+    def my_service(redis: Redis = Provide(get_redis, use_cache=use_cache)):
         redis.make_request()
         return redis
 
