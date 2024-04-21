@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from nanodi import Depends, inject
+from nanodi import Depends, inject, resource, shutdown_resources
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -25,29 +25,35 @@ class Redis:
         self.closed = True
 
 
-def get_redis() -> Generator[Redis, None, None]:
-    redis = Redis(host="localhost")
-    yield redis
-    redis.close()
+@pytest.fixture()
+def redis_dependency():
+    @resource
+    def get_redis() -> Generator[Redis, None, None]:
+        redis = Redis(host="localhost")
+        yield redis
+        redis.close()
+
+    return get_redis
 
 
-def test_resolve_dependency():
+def test_resources_dont_close_automatically(redis_dependency):
     @inject
-    def my_service(redis: Redis = Depends(get_redis)):
-        return redis
-
-    redis = my_service()
-
-    assert isinstance(redis, Redis)
-
-
-@pytest.mark.parametrize("use_cache", [True, False])
-def test_close_dependency_after_call(use_cache):
-    @inject
-    def my_service(redis: Redis = Depends(get_redis, use_cache=use_cache)):
+    def my_service(redis: Redis = Depends(redis_dependency)):
         redis.make_request()
         return redis
 
     redis = my_service()
 
+    assert redis.closed is False
+
+
+def test_resources_can_be_closed_manually(redis_dependency):
+    @inject
+    def my_service(redis: Redis = Depends(redis_dependency)):
+        redis.make_request()
+        return redis
+
+    redis = my_service()
+
+    shutdown_resources()
     assert redis.closed is True
