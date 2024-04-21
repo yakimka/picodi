@@ -12,7 +12,6 @@ from contextlib import (
 )
 from dataclasses import dataclass, field
 from typing import Any, AsyncContextManager, ContextManager, ParamSpec, TypeVar
-from weakref import WeakKeyDictionary
 
 Dependency = Callable[..., Any]
 
@@ -20,54 +19,61 @@ Dependency = Callable[..., Any]
 _unset = object()
 _resources_exit_stack = ExitStack()
 _resources: dict[Dependency, AsyncContextManager | ContextManager] = {}
-_resources_result_cache: WeakKeyDictionary[Dependency, Any] = WeakKeyDictionary()
-
-
-def Provide(dependency: Dependency, /, use_cache: bool = True) -> Any:  # noqa: N802
-    if dependency in _resources and not use_cache:
-        raise ValueError("use_cache=False is not supported for resources")
-    return Depends.from_dependency(dependency, use_cache)
-
-
-@dataclass(frozen=True)
-class Depends:
-    dependency: Dependency
-    use_cache: bool
-    context_manager: ContextManager | AsyncContextManager | None = field(compare=False)
-    is_async: bool = field(compare=False)
-
-    @classmethod
-    def from_dependency(cls, dependency: Dependency, use_cache: bool) -> Depends:
-        context_manager: ContextManager | AsyncContextManager | None = None
-        is_async = False
-        if inspect.isasyncgenfunction(dependency):
-            context_manager = asynccontextmanager(dependency)()
-            is_async = True
-        elif inspect.isgeneratorfunction(dependency):
-            context_manager = contextmanager(dependency)()
-        return cls(dependency, use_cache, context_manager, is_async)
-
-
+_resources_result_cache: dict[Dependency, Any] = {}
 T = TypeVar("T")
 P = ParamSpec("P")
 TC = TypeVar("TC", bound=Callable)
 
 
-def resource(fn: TC) -> TC:
-    manager: ContextManager | AsyncContextManager
-    if inspect.isasyncgenfunction(fn):
-        manager = asynccontextmanager(fn)()
-    elif inspect.isgeneratorfunction(fn):
-        manager = contextmanager(fn)()
-    else:
-        raise ValueError("Resource must be a generator or async generator function")
-    _resources[fn] = manager
-    _resources_result_cache[fn] = _unset
+def Provide(dependency: Dependency, /, use_cache: bool = True) -> Any:  # noqa: N802
+    """
+    Declare a provider.
+    It takes a single "dependency" callable (like a function).
+    Don't call it directly, nanodi will call it for you.
+    Dependency can be a regular function or a generator with one yield.
+    If the dependency is a generator, it will be used as a context manager.
+    Any generator that is valid for `contextlib.contextmanager`
+    can be used as a dependency.
 
-    return fn
+    Example:
+    ```
+    from functools import lru_cache
+    from nanodi import Provide, inject
+    from my_conf import Settings
+
+    def get_db():
+        yield "db connection"
+        print("closing db connection")
+
+    @lru_cache # for calling the dependency only once
+    def get_settings():
+        return Settings()
+
+    @inject
+    def my_service(db=Provide(get_db), settings=Provide(get_settings)):
+        assert db == "db connection"
+        assert isinstance(settings, Settings)
+    ```
+    """
+    if dependency in _resources and not use_cache:
+        raise ValueError("use_cache=False is not supported for resources")
+    return Depends.from_dependency(dependency, use_cache)
 
 
 def inject(fn: Callable[P, T]) -> Callable[P, T | Coroutine[Any, Any, T]]:
+    """
+    Decorator to inject dependencies into a function.
+    Use it in combination with `Provide` to declare dependencies.
+
+    Example:
+    ```
+    from nanodi import inject, Provide
+
+    @inject
+    def my_service(db=Provide(some_dependency_func)):
+        ...
+    ```
+    """
     signature = inspect.signature(fn)
 
     @functools.wraps(fn)
@@ -87,8 +93,63 @@ def inject(fn: Callable[P, T]) -> Callable[P, T | Coroutine[Any, Any, T]]:
     return wrapper
 
 
+def resource(fn: TC) -> TC:
+    """
+    Decorator to declare a resource. Resource is a dependency that should be
+    called only once, cached and shared across the application.
+    On shutdown, all resources will be closed
+    (you need to call `shutdown_resources` manually).
+    Use it with a dependency generator function to declare a resource.
+
+    Example:
+    ```
+    from nanodi import resource
+
+    # will be called only once
+    @resource
+    def get_db():
+        yield "db connection"
+        print("closing db connection")
+    ```
+    """
+    manager: ContextManager | AsyncContextManager
+    if inspect.isasyncgenfunction(fn):
+        manager = asynccontextmanager(fn)()
+    elif inspect.isgeneratorfunction(fn):
+        manager = contextmanager(fn)()
+    else:
+        raise ValueError("Resource must be a generator or async generator function")
+    _resources[fn] = manager
+    _resources_result_cache[fn] = _unset
+
+    return fn
+
+
 def shutdown_resources() -> None:
+    """
+    Call this function to close all resources. Usually, it should be called
+    when your application is shutting down.
+    """
     _resources_exit_stack.close()
+
+
+@dataclass(frozen=True)
+class Depends:
+    dependency: Dependency
+    use_cache: bool
+    context_manager: ContextManager | AsyncContextManager | None = field(compare=False)
+    is_async: bool = field(compare=False)
+
+    @classmethod
+    def from_dependency(cls, dependency: Dependency, use_cache: bool) -> Depends:
+        context_manager: ContextManager | AsyncContextManager | None = None
+        is_async = False
+        if inspect.isasyncgenfunction(dependency):
+            context_manager = asynccontextmanager(dependency)()
+            is_async = True
+        elif inspect.isgeneratorfunction(dependency):
+            context_manager = contextmanager(dependency)()
+        return cls(dependency, use_cache, context_manager, is_async)
 
 
 @contextmanager
