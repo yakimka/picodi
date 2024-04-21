@@ -1,0 +1,24 @@
+---
+
+x-common: &common
+  build:
+    target: development
+    context: .
+    dockerfile: Dockerfile-dev
+    args:
+      - PYTHON_VERSION=${PYTHON_VERSION:-3.11}
+  image: "nanodi:dev"
+#  env_file: .env
+  volumes:
+    - .:/opt/code
+
+services:
+  devtools:
+    <<: *common
+    command: sleep infinity
+
+  app:
+    <<: *common
+    restart: "no"
+    ports:
+      - "8000:8000"

@@ -1,0 +1,9 @@
+.venv
+.pre-commit
+.mypy_cache
+.pytest_cache
+dist
+docs/_build
+*.sqlite3
+*.db
+docker-compose.override.yml

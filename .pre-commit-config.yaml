@@ -1,0 +1,52 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-added-large-files
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.28.1
+    hooks:
+      - id: check-github-workflows
+      - id: check-dependabot
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.15.2
+    hooks:
+      - id: pyupgrade
+        args: [--py310-plus]
+  - repo: https://github.com/psf/black
+    rev: 24.3.0
+    hooks:
+      - id: black
+        args: [--preview]
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        additional_dependencies: [
+          # "flake8-assertive~=2.1.0"
+          # "flake8-future-annotations~=1.1.0",
+          "dlint~=0.14.1",
+          "flake8-async~=24.3.6",
+          "flake8-bandit~=4.1.1",
+          "flake8-bugbear~=24.2.6",
+          "flake8-comprehensions~=3.14.0",
+          "flake8-eradicate~=1.5.0",
+          "flake8-noqa~=1.4.0",
+          "flake8-pie~=0.16.0",
+          "flake8-pytest-style~=2.0.0",
+          "flake8-self~=0.2.2",
+          "flake8-simplify~=0.21.0",
+          "flake8-type-checking~=2.9.0",
+          "flake8-typing-imports~=1.15.0",
+          "flake8-unused-arguments~=0.0.13",
+          "flake8-warnings~=0.4.1",
+          "pep8-naming~=0.13.3",
+        ]
