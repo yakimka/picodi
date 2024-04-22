@@ -80,9 +80,9 @@ def inject(fn: Callable[P, T]) -> Callable[P, T | Coroutine[Any, Any, T]]:
     ```
     """
     signature = inspect.signature(fn)
+    is_async_function = inspect.iscoroutinefunction(fn)
 
-    @functools.wraps(fn)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+    def func_wrapper_with_exit_stack(*args: P.args, **kwargs: P.kwargs) -> T:
         bound = signature.bind(*args, **kwargs)
         bound.apply_defaults()
 
@@ -91,9 +91,34 @@ def inject(fn: Callable[P, T]) -> Callable[P, T | Coroutine[Any, Any, T]]:
             if isinstance(value, Depends):
                 dependencies.setdefault(value, []).append(name)
 
-        with _call_dependencies(dependencies) as arguments:
-            bound.arguments.update(arguments)
-            return fn(*bound.args, **bound.kwargs)
+        if is_async_function:
+            exit_stack = AsyncExitStack()
+        else:
+            exit_stack = ExitStack()
+        for depends, names in dependencies.items():
+            get_value = functools.partial(_get_value_from_depends, depends, exit_stack)
+            if depends.use_cache:
+                value = get_value()
+                get_value = functools.partial(lambda v: v, value)
+            bound.arguments.update({name: get_value() for name in names})
+
+        return fn(*bound.args, **bound.kwargs), exit_stack
+
+    if is_async_function:
+
+        @functools.wraps(fn)
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            result, exit_stack = func_wrapper_with_exit_stack(*args, **kwargs)
+            async with exit_stack:
+                return await result
+
+    else:
+
+        @functools.wraps(fn)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            result, exit_stack = func_wrapper_with_exit_stack(*args, **kwargs)
+            with exit_stack:
+                return result
 
     return wrapper
 
@@ -159,34 +184,9 @@ class Depends:
         return cls(dependency, use_cache, context_manager, is_async)
 
 
-@contextmanager
-def _call_dependencies(
-    depends_items: dict[Depends, list[str]],
-) -> Generator[dict[str, Any], None, None]:
-    local_exit_stack = ExitStack()
-    local_async_exit_stack = AsyncExitStack()
-    results = {}
-    for depends, names in depends_items.items():
-        if depends.use_cache:
-            value = _get_value_from_depends(
-                depends, local_exit_stack, local_async_exit_stack
-            )
-            results.update({name: value for name in names})
-        else:
-            for name in names:
-                value = _get_value_from_depends(
-                    depends, local_exit_stack, local_async_exit_stack
-                )
-                results[name] = value
-
-    with local_exit_stack:
-        yield results
-
-
 def _get_value_from_depends(
     depends: Depends,
-    local_exit_stack: ExitStack,
-    local_async_exit_stack: AsyncExitStack,
+    local_exit_stack: ExitStack | AsyncExitStack,
 ) -> Any:
     scope_name = depends.get_scope_name()
     scope = _scopes[scope_name]
@@ -195,12 +195,13 @@ def _get_value_from_depends(
     except KeyError:
         context_manager = depends.value_as_context_manager()
         exit_stack = local_exit_stack
-        async_exit_stack = local_async_exit_stack
         if scope_name == "singleton":
-            exit_stack = _exit_stack
-            async_exit_stack = _async_exit_stack
+            if isinstance(exit_stack, AsyncExitStack):
+                exit_stack = _async_exit_stack
+            else:
+                exit_stack = _exit_stack
         if depends.is_async:
-            value = async_exit_stack.enter_context(context_manager)
+            value = exit_stack.enter_async_context(context_manager)
         else:
             value = exit_stack.enter_context(context_manager)
         scope.set(depends.dependency, value)
