@@ -19,7 +19,7 @@ def test_resolve_dependency():
 
     redis = my_service()
 
-    assert isinstance(redis, Redis)
+    assert isinstance(redis, Redis), redis
 
 
 def test_can_pass_dependency():

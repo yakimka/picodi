@@ -4,24 +4,30 @@ import functools
 import inspect
 from collections.abc import Callable, Coroutine, Generator
 from contextlib import (
-    AbstractAsyncContextManager,
-    AbstractContextManager,
+    AsyncExitStack,
     ExitStack,
     asynccontextmanager,
     contextmanager,
+    nullcontext,
 )
 from dataclasses import dataclass, field
 from typing import Any, AsyncContextManager, ContextManager, ParamSpec, TypeVar
 
+from nanodi.scopes import NullScope, Scope, SingletonScope
+
 Dependency = Callable[..., Any]
-
-
-_unset = object()
-_resources_exit_stack = ExitStack()
-_resources_result_cache: dict[Dependency, Any] = {}
 T = TypeVar("T")
 P = ParamSpec("P")
 TC = TypeVar("TC", bound=Callable)
+
+_unset = object()
+_exit_stack = ExitStack()
+_async_exit_stack = AsyncExitStack()
+_resources_result_cache: dict[Dependency, Any] = {}
+_scopes: dict[str, Scope] = {
+    "null": NullScope(),
+    "singleton": SingletonScope(),
+}
 
 
 def Provide(dependency: Dependency, /, use_cache: bool = True) -> Any:  # noqa: N802
@@ -54,8 +60,8 @@ def Provide(dependency: Dependency, /, use_cache: bool = True) -> Any:  # noqa: 
         assert isinstance(settings, Settings)
     ```
     """
-    if getattr(dependency, "_scope_", None) and not use_cache:
-        raise ValueError("use_cache=False is not supported for resources")
+    if not getattr(dependency, "_scope_", None):
+        dependency._scope_ = "null"  # type: ignore[attr-defined] # noqa: SF01
     return Depends.from_dependency(dependency, use_cache)
 
 
@@ -120,7 +126,7 @@ def shutdown_resources() -> None:
     Call this function to close all resources. Usually, it should be called
     when your application is shutting down.
     """
-    _resources_exit_stack.close()
+    _exit_stack.close()
 
 
 @dataclass(frozen=True)
@@ -129,6 +135,14 @@ class Depends:
     use_cache: bool
     context_manager: ContextManager | AsyncContextManager | None = field(compare=False)
     is_async: bool = field(compare=False)
+
+    def get_scope_name(self) -> str:
+        return self.dependency._scope_  # type: ignore[attr-defined] # noqa: SF01
+
+    def value_as_context_manager(self) -> Any:
+        if self.context_manager:
+            return self.context_manager
+        return nullcontext(self.dependency())
 
     @classmethod
     def from_dependency(cls, dependency: Dependency, use_cache: bool) -> Depends:
@@ -140,7 +154,7 @@ class Depends:
         elif inspect.isgeneratorfunction(dependency):
             context_manager = contextmanager(dependency)()
 
-        if getattr(dependency, "_scope_", None):
+        if getattr(dependency, "_scope_", None) == "singleton":
             _resources_result_cache[dependency] = _unset
         return cls(dependency, use_cache, context_manager, is_async)
 
@@ -149,35 +163,45 @@ class Depends:
 def _call_dependencies(
     depends_items: dict[Depends, list[str]],
 ) -> Generator[dict[str, Any], None, None]:
-    managers: list[tuple[AbstractContextManager, list[str]]] = []
-    async_managers: list[tuple[AbstractAsyncContextManager, list[str]]] = []
+    local_exit_stack = ExitStack()
+    local_async_exit_stack = AsyncExitStack()
     results = {}
     for depends, names in depends_items.items():
-        if getattr(depends.dependency, "_scope_", None):
-            if isinstance(depends.context_manager, AbstractContextManager):
-                if _resources_result_cache.get(depends.dependency) is _unset:
-                    result = _resources_exit_stack.enter_context(
-                        depends.context_manager
-                    )
-                    _resources_result_cache[depends.dependency] = result
-
-                result = _resources_result_cache[depends.dependency]
-                results.update({name: result for name in names})
-        elif depends.context_manager:
-            if isinstance(depends.context_manager, AbstractAsyncContextManager):
-                async_managers.append((depends.context_manager, names))
-            else:
-                managers.append((depends.context_manager, names))
+        if depends.use_cache:
+            value = _get_value_from_depends(
+                depends, local_exit_stack, local_async_exit_stack
+            )
+            results.update({name: value for name in names})
         else:
-            if depends.use_cache:
-                result = depends.dependency()
-                results.update({name: result for name in names})
-            else:
-                results.update({name: depends.dependency() for name in names})
-
-    with ExitStack() as stack:
-        values = {manager: stack.enter_context(manager) for manager, _ in managers}
-        for manager, names in managers:
             for name in names:
-                results[name] = values[manager]
+                value = _get_value_from_depends(
+                    depends, local_exit_stack, local_async_exit_stack
+                )
+                results[name] = value
+
+    with local_exit_stack:
         yield results
+
+
+def _get_value_from_depends(
+    depends: Depends,
+    local_exit_stack: ExitStack,
+    local_async_exit_stack: AsyncExitStack,
+) -> Any:
+    scope_name = depends.get_scope_name()
+    scope = _scopes[scope_name]
+    try:
+        value = scope.get(depends.dependency)
+    except KeyError:
+        context_manager = depends.value_as_context_manager()
+        exit_stack = local_exit_stack
+        async_exit_stack = local_async_exit_stack
+        if scope_name == "singleton":
+            exit_stack = _exit_stack
+            async_exit_stack = _async_exit_stack
+        if depends.is_async:
+            value = async_exit_stack.enter_context(context_manager)
+        else:
+            value = exit_stack.enter_context(context_manager)
+        scope.set(depends.dependency, value)
+    return value
