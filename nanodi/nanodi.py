@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import functools
 import inspect
-from collections.abc import Callable, Coroutine
+from collections.abc import Awaitable, Callable, Coroutine
 from contextlib import (
     AsyncExitStack,
     ExitStack,
@@ -23,6 +24,7 @@ TC = TypeVar("TC", bound=Callable)
 _unset = object()
 _exit_stack = ExitStack()
 _async_exit_stack = AsyncExitStack()
+_resources: list[Depends] = []
 _scopes: dict[str, Scope] = {
     "null": NullScope(),
     "singleton": SingletonScope(),
@@ -156,23 +158,34 @@ def resource(fn: TC) -> TC:
     if not inspect.isgeneratorfunction(fn) and not inspect.isasyncgenfunction(fn):
         raise TypeError("Resource should be a generator function")
     fn._scope_ = "singleton"  # type: ignore[attr-defined] # noqa: SF01
+    _resources.append(Depends.from_dependency(fn, use_cache=True))
     return fn
 
 
-def init_resources() -> None:
+def init_resources() -> Awaitable:
+    """
+    Call this function to close all resources. Usually, it should be called
+    when your application is shutting down.
+    """
+    async_resources = []
+    for depends in _resources:
+        if depends.is_async:
+            async_resources.append(
+                _get_value_from_depends_async(depends, _async_exit_stack)
+            )
+        else:
+            _get_value_from_depends_sync(depends, _exit_stack)
+
+    return asyncio.gather(*async_resources)
+
+
+def shutdown_resources() -> Awaitable:
     """
     Call this function to close all resources. Usually, it should be called
     when your application is shutting down.
     """
     _exit_stack.close()
-
-
-def shutdown_resources() -> None:
-    """
-    Call this function to close all resources. Usually, it should be called
-    when your application is shutting down.
-    """
-    _exit_stack.close()
+    return _async_exit_stack.aclose()
 
 
 @dataclass(frozen=True)
