@@ -18,7 +18,6 @@ Dependency = Callable[..., Any]
 
 _unset = object()
 _resources_exit_stack = ExitStack()
-_resources: dict[Dependency, AsyncContextManager | ContextManager] = {}
 _resources_result_cache: dict[Dependency, Any] = {}
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -55,7 +54,7 @@ def Provide(dependency: Dependency, /, use_cache: bool = True) -> Any:  # noqa: 
         assert isinstance(settings, Settings)
     ```
     """
-    if dependency in _resources and not use_cache:
+    if getattr(dependency, "_scope_", None) and not use_cache:
         raise ValueError("use_cache=False is not supported for resources")
     return Depends.from_dependency(dependency, use_cache)
 
@@ -112,16 +111,7 @@ def resource(fn: TC) -> TC:
         print("closing db connection")
     ```
     """
-    manager: ContextManager | AsyncContextManager
-    if inspect.isasyncgenfunction(fn):
-        manager = asynccontextmanager(fn)()
-    elif inspect.isgeneratorfunction(fn):
-        manager = contextmanager(fn)()
-    else:
-        raise ValueError("Resource must be a generator or async generator function")
-    _resources[fn] = manager
-    _resources_result_cache[fn] = _unset
-
+    fn._scope_ = "singleton"  # type: ignore[attr-defined] # noqa: SF01
     return fn
 
 
@@ -149,6 +139,9 @@ class Depends:
             is_async = True
         elif inspect.isgeneratorfunction(dependency):
             context_manager = contextmanager(dependency)()
+
+        if getattr(dependency, "_scope_", None):
+            _resources_result_cache[dependency] = _unset
         return cls(dependency, use_cache, context_manager, is_async)
 
 
@@ -160,10 +153,12 @@ def _call_dependencies(
     async_managers: list[tuple[AbstractAsyncContextManager, list[str]]] = []
     results = {}
     for depends, names in depends_items.items():
-        if context_manager := _resources.get(depends.dependency):
-            if isinstance(context_manager, AbstractContextManager):
+        if getattr(depends.dependency, "_scope_", None):
+            if isinstance(depends.context_manager, AbstractContextManager):
                 if _resources_result_cache.get(depends.dependency) is _unset:
-                    result = _resources_exit_stack.enter_context(context_manager)
+                    result = _resources_exit_stack.enter_context(
+                        depends.context_manager
+                    )
                     _resources_result_cache[depends.dependency] = result
 
                 result = _resources_result_cache[depends.dependency]
