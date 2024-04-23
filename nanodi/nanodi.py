@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import functools
 import inspect
+import threading
 from collections.abc import Awaitable, Callable, Coroutine, Generator
 from contextlib import (
     AsyncExitStack,
@@ -35,6 +36,7 @@ _unset = object()
 _exit_stack = ExitStack()
 _async_exit_stack = AsyncExitStack()
 _resources: list[Depends] = []
+_lock = threading.RLock()
 _scopes: dict[str, Scope] = {
     "null": NullScope(),
     "singleton": SingletonScope(),
@@ -156,7 +158,8 @@ def resource(fn: TC) -> TC:
     if not inspect.isgeneratorfunction(fn) and not inspect.isasyncgenfunction(fn):
         raise TypeError("Resource should be a generator function")
     fn._scope_ = "singleton"  # type: ignore[attr-defined] # noqa: SF01
-    _resources.append(Depends.from_dependency(fn, use_cache=True))
+    with _lock:
+        _resources.append(Depends.from_dependency(fn, use_cache=True))
     return fn
 
 
@@ -245,8 +248,12 @@ def _get_value_from_depends(
         if depends.is_async:
             value = depends.dependency
         else:
-            value = exit_stack.enter_context(context_manager)
-            scope.set(depends.dependency, value)
+            with _lock:
+                try:
+                    value = scope.get(depends.dependency)
+                except KeyError:
+                    value = exit_stack.enter_context(context_manager)
+                    scope.set(depends.dependency, value)
     return value
 
 
@@ -263,9 +270,13 @@ async def _get_value_from_depends_async(
         exit_stack = local_exit_stack
         if scope_name == "singleton":
             exit_stack = _async_exit_stack
-        if depends.is_async:
-            value = await exit_stack.enter_async_context(context_manager)
-        else:
-            value = exit_stack.enter_context(context_manager)
-        scope.set(depends.dependency, value)
+        with _lock:
+            try:
+                value = scope.get(depends.dependency)
+            except KeyError:
+                if depends.is_async:
+                    value = await exit_stack.enter_async_context(context_manager)
+                else:
+                    value = exit_stack.enter_context(context_manager)
+                scope.set(depends.dependency, value)
     return value
