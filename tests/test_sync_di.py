@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from nanodi import Provide, inject
+from picodi import Provide, inject
 
 
 @dataclass

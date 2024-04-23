@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from nanodi import Provide, inject
+from picodi import Provide, inject
 
 if TYPE_CHECKING:
     from collections.abc import Generator

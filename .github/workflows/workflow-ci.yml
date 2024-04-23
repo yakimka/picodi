@@ -19,7 +19,7 @@ env:
   DOCKER_BUILDKIT: "1"
   COMPOSE_DOCKER_CLI_BUILD: "1"
 
-  PROJECT_NAME: "nanodi"
+  PROJECT_NAME: "picodi"
   REGISTRY: "docker.io"
   REGISTRY_USERNAME: "yakimka"
   REGISTRY_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}

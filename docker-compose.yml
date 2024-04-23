@@ -7,7 +7,7 @@ x-common: &common
     dockerfile: Dockerfile-dev
     args:
       - PYTHON_VERSION=${PYTHON_VERSION:-3.11}
-  image: "nanodi:dev"
+  image: "picodi:dev"
 #  env_file: .env
   volumes:
     - .:/opt/code

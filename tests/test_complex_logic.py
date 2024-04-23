@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from nanodi import Provide, inject
+from picodi import Provide, inject
 
 
 def get_redis() -> str:

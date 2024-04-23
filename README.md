@@ -1,9 +1,9 @@
-# nanodi
+# picodi
 
-[![Build Status](https://github.com/yakimka/nanodi/actions/workflows/workflow-ci.yml/badge.svg?branch=main&event=push)](https://github.com/yakimka/nanodi/actions/workflows/workflow-ci.yml)
-[![Codecov](https://codecov.io/gh/yakimka/nanodi/branch/main/graph/badge.svg)](https://codecov.io/gh/yakimka/nanodi)
-[![PyPI - Version](https://img.shields.io/pypi/v/nanodi.svg)](https://pypi.org/project/nanodi/)
-![PyPI - Downloads](https://img.shields.io/pypi/dm/nanodi)
+[![Build Status](https://github.com/yakimka/picodi/actions/workflows/workflow-ci.yml/badge.svg?branch=main&event=push)](https://github.com/yakimka/picodi/actions/workflows/workflow-ci.yml)
+[![Codecov](https://codecov.io/gh/yakimka/picodi/branch/main/graph/badge.svg)](https://codecov.io/gh/yakimka/picodi)
+[![PyPI - Version](https://img.shields.io/pypi/v/picodi.svg)](https://pypi.org/project/picodi/)
+![PyPI - Downloads](https://img.shields.io/pypi/dm/picodi)
 
 Simple Dependency Injection for Python
 
@@ -12,13 +12,13 @@ Experimental dependency injection library for Python. Use it at your own risk.
 ## Installation
 
 ```bash
-pip install nanodi
+pip install picodi
 ```
 
 ## Example
 
 ```python
-from nanodi import inject, Provide
+from picodi import inject, Provide
 
 
 def get_redis() -> str:
@@ -36,7 +36,7 @@ assert get_storage_service() == "storage_service(redis)"
 
 ## License
 
-[MIT](https://github.com/yakimka/nanodi/blob/main/LICENSE)
+[MIT](https://github.com/yakimka/picodi/blob/main/LICENSE)
 
 
 ## Credits

@@ -22,7 +22,7 @@ from typing import (
     TypeVar,
 )
 
-from nanodi.scopes import NullScope, Scope, SingletonScope
+from picodi.scopes import NullScope, Scope, SingletonScope
 
 if TYPE_CHECKING:
     from inspect import BoundArguments
@@ -47,7 +47,7 @@ def Provide(dependency: Dependency, /, use_cache: bool = True) -> Any:  # noqa: 
     """
     Declare a provider.
     It takes a single "dependency" callable (like a function).
-    Don't call it directly, nanodi will call it for you.
+    Don't call it directly, picodi will call it for you.
     Dependency can be a regular function or a generator with one yield.
     If the dependency is a generator, it will be used as a context manager.
     Any generator that is valid for `contextlib.contextmanager`
@@ -56,7 +56,7 @@ def Provide(dependency: Dependency, /, use_cache: bool = True) -> Any:  # noqa: 
     Example:
     ```
     from functools import lru_cache
-    from nanodi import Provide, inject
+    from picodi import Provide, inject
     from my_conf import Settings
 
     def get_db():
@@ -85,7 +85,7 @@ def inject(fn: Callable[P, T]) -> Callable[P, T | Coroutine[Any, Any, T]]:
 
     Example:
     ```
-    from nanodi import inject, Provide
+    from picodi import inject, Provide
 
     @inject
     def my_service(db=Provide(some_dependency_func)):
@@ -146,7 +146,7 @@ def resource(fn: TC) -> TC:
 
     Example:
     ```
-    from nanodi import resource
+    from picodi import resource
 
     # will be called only once
     @resource
