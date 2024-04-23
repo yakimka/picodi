@@ -163,7 +163,7 @@ def resource(fn: TC) -> TC:
     return fn
 
 
-def init_resources() -> Awaitable:
+def init_resources() -> Awaitable | None:
     """
     Call this function to close all resources. Usually, it should be called
     when your application is shutting down.
@@ -177,23 +177,30 @@ def init_resources() -> Awaitable:
         else:
             _get_value_from_depends(depends, _exit_stack)
 
-    return asyncio.gather(*async_resources)
+    if _is_async_environment():
+        return asyncio.gather(*async_resources)
+    return None
 
 
-def shutdown_resources() -> Awaitable:
+def shutdown_resources() -> Awaitable | None:
     """
     Call this function to close all resources. Usually, it should be called
     when your application is shutting down.
     """
     _exit_stack.close()
-    return _async_exit_stack.aclose()
+    if _is_async_environment():
+        return _async_exit_stack.aclose()
+    return None
+
+
+CallableManager = Callable[..., AsyncContextManager | ContextManager]
 
 
 @dataclass(frozen=True)
 class Depends:
     dependency: Dependency
     use_cache: bool
-    context_manager: ContextManager | AsyncContextManager | None = field(compare=False)
+    context_manager: CallableManager | None = field(compare=False)
     is_async: bool = field(compare=False)
 
     def get_scope_name(self) -> str:
@@ -201,18 +208,18 @@ class Depends:
 
     def value_as_context_manager(self) -> Any:
         if self.context_manager:
-            return self.context_manager
+            return self.context_manager()
         return nullcontext(self.dependency())
 
     @classmethod
     def from_dependency(cls, dependency: Dependency, use_cache: bool) -> Depends:
-        context_manager: ContextManager | AsyncContextManager | None = None
+        context_manager: Callable | None = None
         is_async = False
         if inspect.isasyncgenfunction(dependency):
-            context_manager = asynccontextmanager(dependency)()
+            context_manager = asynccontextmanager(dependency)
             is_async = True
         elif inspect.isgeneratorfunction(dependency):
-            context_manager = contextmanager(dependency)()
+            context_manager = contextmanager(dependency)
 
         return cls(dependency, use_cache, context_manager, is_async)
 
@@ -280,3 +287,11 @@ async def _get_value_from_depends_async(
                     value = exit_stack.enter_context(context_manager)
                 scope.set(depends.dependency, value)
     return value
+
+
+def _is_async_environment() -> bool:
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return False
+    return True
