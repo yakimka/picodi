@@ -43,7 +43,7 @@ _scopes: dict[str, Scope] = {
 }
 
 
-def Provide(dependency: Dependency, /, use_cache: bool = True) -> Any:  # noqa: N802
+def Provide(dependency: Dependency, /) -> Any:  # noqa: N802
     """
     Declare a provider.
     It takes a single "dependency" callable (like a function).
@@ -75,7 +75,7 @@ def Provide(dependency: Dependency, /, use_cache: bool = True) -> Any:  # noqa: 
     """
     if not getattr(dependency, "_scope_", None):
         dependency._scope_ = "null"  # type: ignore[attr-defined] # noqa: SF01
-    return Depends.from_dependency(dependency, use_cache)
+    return Depends.from_dependency(dependency)
 
 
 def inject(fn: Callable[P, T]) -> Callable[P, T | Coroutine[Any, Any, T]]:
@@ -100,14 +100,10 @@ def inject(fn: Callable[P, T]) -> Callable[P, T | Coroutine[Any, Any, T]]:
             bound = signature.bind(*args, **kwargs)
             bound.apply_defaults()
             exit_stack = AsyncExitStack()
-            for depends, names, get_value in _resolve_depends(
+            for names, get_value in _arguments_to_getter(
                 bound, exit_stack, is_async=True
             ):
-                if depends.use_cache:
-                    value = await get_value()
-                    bound.arguments.update({name: value for name in names})
-                else:
-                    bound.arguments.update({name: await get_value() for name in names})
+                bound.arguments.update({name: await get_value() for name in names})
 
             async with exit_stack:
                 result = await fn(*bound.args, **bound.kwargs)
@@ -120,14 +116,10 @@ def inject(fn: Callable[P, T]) -> Callable[P, T | Coroutine[Any, Any, T]]:
             bound = signature.bind(*args, **kwargs)
             bound.apply_defaults()
             exit_stack = ExitStack()
-            for depends, names, get_value in _resolve_depends(
+            for names, get_value in _arguments_to_getter(
                 bound, exit_stack, is_async=False
             ):
-                if depends.use_cache:
-                    value = get_value()
-                    bound.arguments.update({name: value for name in names})
-                else:
-                    bound.arguments.update({name: get_value() for name in names})
+                bound.arguments.update({name: get_value() for name in names})
 
             with exit_stack:
                 result = fn(*bound.args, **bound.kwargs)
@@ -159,7 +151,7 @@ def resource(fn: TC) -> TC:
         raise TypeError("Resource should be a generator function")
     fn._scope_ = "singleton"  # type: ignore[attr-defined] # noqa: SF01
     with _lock:
-        _resources.append(Depends.from_dependency(fn, use_cache=True))
+        _resources.append(Depends.from_dependency(fn))
     return fn
 
 
@@ -199,7 +191,6 @@ CallableManager = Callable[..., AsyncContextManager | ContextManager]
 @dataclass(frozen=True)
 class Depends:
     dependency: Dependency
-    use_cache: bool
     context_manager: CallableManager | None = field(compare=False)
     is_async: bool = field(compare=False)
 
@@ -212,7 +203,7 @@ class Depends:
         return nullcontext(self.dependency())
 
     @classmethod
-    def from_dependency(cls, dependency: Dependency, use_cache: bool) -> Depends:
+    def from_dependency(cls, dependency: Dependency) -> Depends:
         context_manager: Callable | None = None
         is_async = False
         if inspect.isasyncgenfunction(dependency):
@@ -221,12 +212,12 @@ class Depends:
         elif inspect.isgeneratorfunction(dependency):
             context_manager = contextmanager(dependency)
 
-        return cls(dependency, use_cache, context_manager, is_async)
+        return cls(dependency, context_manager, is_async)
 
 
-def _resolve_depends(
+def _arguments_to_getter(
     bound: BoundArguments, exit_stack: AsyncExitStack | ExitStack, is_async: bool
-) -> Generator[tuple[Depends, list[str], Callable[[], Any]], None, None]:
+) -> Generator[tuple[list[str], Callable[[], Any]], None, None]:
     dependencies: dict[Depends, list[str]] = {}
     for name, value in bound.arguments.items():
         if isinstance(value, Depends):
@@ -236,7 +227,7 @@ def _resolve_depends(
 
     for depends, names in dependencies.items():
         get_value = functools.partial(get_val, depends, exit_stack)  # type: ignore
-        yield depends, names, get_value
+        yield names, get_value
 
 
 def _get_value_from_depends(

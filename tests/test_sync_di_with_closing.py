@@ -3,8 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-import pytest
-
 from picodi import Provide, inject
 
 if TYPE_CHECKING:
@@ -41,10 +39,9 @@ def test_resolve_dependency():
     assert isinstance(redis, Redis)
 
 
-@pytest.mark.parametrize("use_cache", [True, False])
-def test_close_dependency_after_call(use_cache):
+def test_close_dependency_after_call():
     @inject
-    def my_service(redis: Redis = Provide(get_redis, use_cache=use_cache)):
+    def my_service(redis: Redis = Provide(get_redis)):
         redis.make_request()
         return redis
 

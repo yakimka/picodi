@@ -32,37 +32,10 @@ def test_can_pass_dependency():
     assert redis == "override"
 
 
-def test_dependencies_in_single_call_must_use_cache():
+def test_same_dependencies_in_single_call_is_different_instances():
     @inject
     def my_service(
         redis1: Redis = Provide(get_redis), redis2: Redis = Provide(get_redis)
-    ):
-        return redis1, redis2
-
-    redis1, redis2 = my_service()
-
-    assert isinstance(redis1, Redis)
-    assert redis1 is redis2
-
-
-def test_dependencies_dont_share_cache_between_calls():
-    @inject
-    def my_service(redis: Redis = Provide(get_redis)):
-        return redis
-
-    redis1 = my_service()
-    redis2 = my_service()
-
-    assert isinstance(redis1, Redis)
-    assert isinstance(redis2, Redis)
-    assert redis1 is not redis2
-
-
-def test_dependencies_in_single_call_dont_use_cache_if_specified():
-    @inject
-    def my_service(
-        redis1: Redis = Provide(get_redis, use_cache=False),
-        redis2: Redis = Provide(get_redis, use_cache=False),
     ):
         return redis1, redis2
 
