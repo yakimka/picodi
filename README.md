@@ -7,11 +7,7 @@
 
 Simple Dependency Injection for Python
 
-
-## Features
-
-- Add yours!
-
+Experimental dependency injection library for Python. Use it at your own risk.
 
 ## Installation
 
@@ -19,16 +15,23 @@ Simple Dependency Injection for Python
 pip install nanodi
 ```
 
-
 ## Example
 
-Showcase how your project can be used:
-
 ```python
-from nanodi.example import some_function
+from nanodi import inject, Provide
 
-print(some_function(3, 4))
-# => 7
+
+def get_redis() -> str:
+    yield "redis"
+    print("closing redis")
+
+
+@inject
+def get_storage_service(redis: str = Provide(get_redis)) -> str:
+    return f"storage_service({redis})"
+
+
+assert get_storage_service() == "storage_service(redis)"
 ```
 
 ## License
