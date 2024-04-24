@@ -48,22 +48,15 @@ def Provide(dependency: Dependency, /) -> Any:  # noqa: N802
 
     Example:
     ```
-    from functools import lru_cache
     from picodi import Provide, inject
-    from my_conf import Settings
 
     def get_db():
         yield "db connection"
         print("closing db connection")
 
-    @lru_cache # for calling the dependency only once
-    def get_settings():
-        return Settings()
-
     @inject
-    def my_service(db=Provide(get_db), settings=Provide(get_settings)):
+    def my_service(db: str = Provide(get_db)):
         assert db == "db connection"
-        assert isinstance(settings, Settings)
     ```
     """
     if not getattr(dependency, "_scope_", None):
@@ -126,17 +119,6 @@ def resource(fn: TC) -> TC:
     On shutdown, all resources will be closed
     (you need to call `shutdown_resources` manually).
     Use it with a dependency generator function to declare a resource.
-
-    Example:
-    ```
-    from picodi import resource
-
-    # will be called only once
-    @resource
-    def get_db():
-        yield "db connection"
-        print("closing db connection")
-    ```
     """
     if not inspect.isgeneratorfunction(fn) and not inspect.isasyncgenfunction(fn):
         raise TypeError("Resource should be a generator function")
@@ -154,9 +136,9 @@ def init_resources() -> Awaitable | None:
     async_resources = []
     for depends in _resources:
         if depends.is_async:
-            async_resources.append(_get_value_from_depends_async(depends))
+            async_resources.append(_resolve_value_async(depends))
         else:
-            _get_value_from_depends(depends)
+            _resolve_value(depends)
 
     if _is_async_environment():
         return asyncio.gather(*async_resources)
@@ -185,10 +167,6 @@ class Depends:
     context_manager: CallableManager | None = field(compare=False)
     is_async: bool = field(compare=False)
 
-    def get_scope(self) -> Scope:
-        scope_name = self.dependency._scope_  # type: ignore[attr-defined] # noqa: SF01
-        return _scopes[scope_name]
-
     @classmethod
     def from_dependency(cls, dependency: Dependency) -> Depends:
         context_manager: Callable | None = None
@@ -201,6 +179,16 @@ class Depends:
 
         return cls(dependency, context_manager, is_async)
 
+    def get_scope(self) -> Scope:
+        scope_name = self.dependency._scope_  # type: ignore[attr-defined] # noqa: SF01
+        return _scopes[scope_name]
+
+    def resolve_value(self) -> Any:
+        scope = self.get_scope()
+        if self.context_manager:
+            return scope.exit_stack.enter_context(self.context_manager())
+        return self.dependency()
+
 
 def _arguments_to_getter(
     bound: BoundArguments, is_async: bool
@@ -210,16 +198,14 @@ def _arguments_to_getter(
         if isinstance(value, Depends):
             dependencies.setdefault(value, []).append(name)
 
-    get_val = _get_value_from_depends_async if is_async else _get_value_from_depends
+    get_val = _resolve_value_async if is_async else _resolve_value
 
     for depends, names in dependencies.items():
         get_value = functools.partial(get_val, depends)  # type: ignore
         yield names, get_value
 
 
-def _get_value_from_depends(
-    depends: Depends,
-) -> Any:
+def _resolve_value(depends: Depends) -> Any:
     scope = depends.get_scope()
     try:
         value = scope.get(depends.dependency)
@@ -231,14 +217,12 @@ def _get_value_from_depends(
                 try:
                     value = scope.get(depends.dependency)
                 except KeyError:
-                    value = _call_value(depends, scope.exit_stack)
+                    value = depends.resolve_value()
                     scope.set(depends.dependency, value)
     return value
 
 
-async def _get_value_from_depends_async(
-    depends: Depends,
-) -> Any:
+async def _resolve_value_async(depends: Depends) -> Any:
     scope = depends.get_scope()
     try:
         value = scope.get(depends.dependency)
@@ -247,17 +231,11 @@ async def _get_value_from_depends_async(
             try:
                 value = scope.get(depends.dependency)
             except KeyError:
-                value = _call_value(depends, scope.exit_stack)
+                value = depends.resolve_value()
                 if depends.is_async:
                     value = await value
                 scope.set(depends.dependency, value)
     return value
-
-
-def _call_value(depends: Depends, exit_stack: ExitStack) -> Any:
-    if depends.context_manager:
-        return exit_stack.enter_context(depends.context_manager())
-    return depends.dependency()
 
 
 def _is_async_environment() -> bool:
