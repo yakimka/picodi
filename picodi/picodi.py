@@ -4,8 +4,8 @@ import asyncio
 import functools
 import inspect
 import threading
-from collections.abc import Awaitable, Callable, Coroutine, Generator
-from contextlib import AsyncExitStack, ExitStack, asynccontextmanager, contextmanager
+from collections.abc import Awaitable, Callable, Coroutine
+from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass, field
 from typing import (
     TYPE_CHECKING,
@@ -16,19 +16,18 @@ from typing import (
     TypeVar,
 )
 
-from picodi.scopes import NullScope, Scope, SingletonScope
+from picodi.scopes import ExitStack, NullScope, Scope, SingletonScope
 
 if TYPE_CHECKING:
-    from inspect import BoundArguments
+    from inspect import BoundArguments, Signature
 
 Dependency = Callable[..., Any]
 T = TypeVar("T")
 P = ParamSpec("P")
 TC = TypeVar("TC", bound=Callable)
 
+
 _unset = object()
-_exit_stack = ExitStack()
-_async_exit_stack = AsyncExitStack()
 _resources: list[Depends] = []
 _lock = threading.RLock()
 _scopes: dict[str, Scope] = {
@@ -49,22 +48,15 @@ def Provide(dependency: Dependency, /) -> Any:  # noqa: N802
 
     Example:
     ```
-    from functools import lru_cache
     from picodi import Provide, inject
-    from my_conf import Settings
 
     def get_db():
         yield "db connection"
         print("closing db connection")
 
-    @lru_cache # for calling the dependency only once
-    def get_settings():
-        return Settings()
-
     @inject
-    def my_service(db=Provide(get_db), settings=Provide(get_settings)):
+    def my_service(db: str = Provide(get_db)):
         assert db == "db connection"
-        assert isinstance(settings, Settings)
     ```
     """
     if not getattr(dependency, "_scope_", None):
@@ -91,15 +83,15 @@ def inject(fn: Callable[P, T]) -> Callable[P, T | Coroutine[Any, Any, T]]:
 
         @functools.wraps(fn)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-            bound = signature.bind(*args, **kwargs)
-            bound.apply_defaults()
-            exit_stack = AsyncExitStack()
-            for names, get_value in _arguments_to_getter(
-                bound, exit_stack, is_async=True
-            ):
-                bound.arguments.update({name: await get_value() for name in names})
+            bound, dep_arguments = _arguments_to_getters(
+                args, kwargs, signature, is_async=True
+            )
+            for name, get_value in dep_arguments.items():
+                bound.arguments[name] = await get_value()
 
-            async with exit_stack:
+            async with ExitStack() as stack:
+                for scope in _scopes.values():
+                    await stack.enter_context(scope)
                 result = await fn(*bound.args, **bound.kwargs)
             return result
 
@@ -107,15 +99,15 @@ def inject(fn: Callable[P, T]) -> Callable[P, T | Coroutine[Any, Any, T]]:
 
         @functools.wraps(fn)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-            bound = signature.bind(*args, **kwargs)
-            bound.apply_defaults()
-            exit_stack = ExitStack()
-            for names, get_value in _arguments_to_getter(
-                bound, exit_stack, is_async=False
-            ):
-                bound.arguments.update({name: get_value() for name in names})
+            bound, dep_arguments = _arguments_to_getters(
+                args, kwargs, signature, is_async=False
+            )
+            for name, get_value in dep_arguments.items():
+                bound.arguments[name] = get_value()
 
-            with exit_stack:
+            with ExitStack() as stack:
+                for scope in _scopes.values():
+                    stack.enter_context(scope, sync_first=True)
                 result = fn(*bound.args, **bound.kwargs)
             return result
 
@@ -129,17 +121,6 @@ def resource(fn: TC) -> TC:
     On shutdown, all resources will be closed
     (you need to call `shutdown_resources` manually).
     Use it with a dependency generator function to declare a resource.
-
-    Example:
-    ```
-    from picodi import resource
-
-    # will be called only once
-    @resource
-    def get_db():
-        yield "db connection"
-        print("closing db connection")
-    ```
     """
     if not inspect.isgeneratorfunction(fn) and not inspect.isasyncgenfunction(fn):
         raise TypeError("Resource should be a generator function")
@@ -157,11 +138,9 @@ def init_resources() -> Awaitable | None:
     async_resources = []
     for depends in _resources:
         if depends.is_async:
-            async_resources.append(
-                _get_value_from_depends_async(depends, _async_exit_stack)
-            )
+            async_resources.append(_resolve_value_async(depends))
         else:
-            _get_value_from_depends(depends, _exit_stack)
+            _resolve_value(depends)
 
     if _is_async_environment():
         return asyncio.gather(*async_resources)
@@ -171,11 +150,14 @@ def init_resources() -> Awaitable | None:
 def shutdown_resources() -> Awaitable | None:
     """
     Call this function to close all resources. Usually, it should be called
-    when your application is shutting down.
+    when your application is shut down.
     """
-    _exit_stack.close()
     if _is_async_environment():
-        return _async_exit_stack.aclose()
+        tasks = [scope.exit_stack.close() for scope in _scopes.values()]
+        return asyncio.gather(*tasks)  # type: ignore[arg-type]
+
+    for scope in _scopes.values():
+        scope.exit_stack.close(only_sync=True)
     return None
 
 
@@ -187,9 +169,6 @@ class Depends:
     dependency: Dependency
     context_manager: CallableManager | None = field(compare=False)
     is_async: bool = field(compare=False)
-
-    def get_scope_name(self) -> str:
-        return self.dependency._scope_  # type: ignore[attr-defined] # noqa: SF01
 
     @classmethod
     def from_dependency(cls, dependency: Dependency) -> Depends:
@@ -203,34 +182,43 @@ class Depends:
 
         return cls(dependency, context_manager, is_async)
 
+    def get_scope(self) -> Scope:
+        scope_name = self.dependency._scope_  # type: ignore[attr-defined] # noqa: SF01
+        return _scopes[scope_name]
 
-def _arguments_to_getter(
-    bound: BoundArguments, exit_stack: AsyncExitStack | ExitStack, is_async: bool
-) -> Generator[tuple[list[str], Callable[[], Any]], None, None]:
+    def resolve_value(self) -> Any:
+        scope = self.get_scope()
+        if self.context_manager:
+            return scope.exit_stack.enter_context(self.context_manager())
+        return self.dependency()
+
+
+def _arguments_to_getters(
+    args: P.args, kwargs: P.kwargs, signature: Signature, is_async: bool
+) -> tuple[BoundArguments, dict[str, Callable[[], Any]]]:
+    bound = signature.bind(*args, **kwargs)
+    bound.apply_defaults()
     dependencies: dict[Depends, list[str]] = {}
     for name, value in bound.arguments.items():
         if isinstance(value, Depends):
             dependencies.setdefault(value, []).append(name)
 
-    get_val = _get_value_from_depends_async if is_async else _get_value_from_depends
+    get_val = _resolve_value_async if is_async else _resolve_value
 
+    dep_arguments = {}
     for depends, names in dependencies.items():
-        get_value = functools.partial(get_val, depends, exit_stack)  # type: ignore
-        yield names, get_value
+        get_value: Callable = functools.partial(get_val, depends)
+        for name in names:
+            dep_arguments[name] = get_value
+
+    return bound, dep_arguments
 
 
-def _get_value_from_depends(
-    depends: Depends,
-    local_exit_stack: ExitStack,
-) -> Any:
-    scope_name = depends.get_scope_name()
-    scope = _scopes[scope_name]
+def _resolve_value(depends: Depends) -> Any:
+    scope = depends.get_scope()
     try:
         value = scope.get(depends.dependency)
     except KeyError:
-        exit_stack = local_exit_stack
-        if scope_name == "singleton":
-            exit_stack = _exit_stack
         if depends.is_async:
             value = depends.dependency()
         else:
@@ -238,47 +226,25 @@ def _get_value_from_depends(
                 try:
                     value = scope.get(depends.dependency)
                 except KeyError:
-                    value = _call_value(depends, exit_stack)
+                    value = depends.resolve_value()
                     scope.set(depends.dependency, value)
     return value
 
 
-async def _get_value_from_depends_async(
-    depends: Depends,
-    local_exit_stack: AsyncExitStack,
-) -> Any:
-    scope_name = depends.get_scope_name()
-    scope = _scopes[scope_name]
+async def _resolve_value_async(depends: Depends) -> Any:
+    scope = depends.get_scope()
     try:
         value = scope.get(depends.dependency)
     except KeyError:
-        exit_stack = local_exit_stack
-        if scope_name == "singleton":
-            exit_stack = _async_exit_stack
         with _lock:
             try:
                 value = scope.get(depends.dependency)
             except KeyError:
-                value = _call_value(depends, exit_stack)
+                value = depends.resolve_value()
                 if depends.is_async:
                     value = await value
                 scope.set(depends.dependency, value)
     return value
-
-
-def _call_value(depends: Depends, exit_stack: ExitStack | AsyncExitStack) -> Any:
-    if depends.is_async:
-        if depends.context_manager:
-            return exit_stack.enter_async_context(  # type: ignore[union-attr]
-                depends.context_manager()  # type: ignore[arg-type]
-            )
-        return depends.dependency()
-    else:
-        if depends.context_manager:
-            return exit_stack.enter_context(
-                depends.context_manager()  # type: ignore[arg-type]
-            )
-        return depends.dependency()
 
 
 def _is_async_environment() -> bool:
