@@ -5,13 +5,7 @@ import functools
 import inspect
 import threading
 from collections.abc import Awaitable, Callable, Coroutine, Generator
-from contextlib import (
-    AsyncExitStack,
-    ExitStack,
-    asynccontextmanager,
-    contextmanager,
-    nullcontext,
-)
+from contextlib import AsyncExitStack, ExitStack, asynccontextmanager, contextmanager
 from dataclasses import dataclass, field
 from typing import (
     TYPE_CHECKING,
@@ -43,7 +37,7 @@ _scopes: dict[str, Scope] = {
 }
 
 
-def Provide(dependency: Dependency, /, use_cache: bool = True) -> Any:  # noqa: N802
+def Provide(dependency: Dependency, /) -> Any:  # noqa: N802
     """
     Declare a provider.
     It takes a single "dependency" callable (like a function).
@@ -75,7 +69,7 @@ def Provide(dependency: Dependency, /, use_cache: bool = True) -> Any:  # noqa: 
     """
     if not getattr(dependency, "_scope_", None):
         dependency._scope_ = "null"  # type: ignore[attr-defined] # noqa: SF01
-    return Depends.from_dependency(dependency, use_cache)
+    return Depends.from_dependency(dependency)
 
 
 def inject(fn: Callable[P, T]) -> Callable[P, T | Coroutine[Any, Any, T]]:
@@ -100,14 +94,10 @@ def inject(fn: Callable[P, T]) -> Callable[P, T | Coroutine[Any, Any, T]]:
             bound = signature.bind(*args, **kwargs)
             bound.apply_defaults()
             exit_stack = AsyncExitStack()
-            for depends, names, get_value in _resolve_depends(
+            for names, get_value in _arguments_to_getter(
                 bound, exit_stack, is_async=True
             ):
-                if depends.use_cache:
-                    value = await get_value()
-                    bound.arguments.update({name: value for name in names})
-                else:
-                    bound.arguments.update({name: await get_value() for name in names})
+                bound.arguments.update({name: await get_value() for name in names})
 
             async with exit_stack:
                 result = await fn(*bound.args, **bound.kwargs)
@@ -120,14 +110,10 @@ def inject(fn: Callable[P, T]) -> Callable[P, T | Coroutine[Any, Any, T]]:
             bound = signature.bind(*args, **kwargs)
             bound.apply_defaults()
             exit_stack = ExitStack()
-            for depends, names, get_value in _resolve_depends(
+            for names, get_value in _arguments_to_getter(
                 bound, exit_stack, is_async=False
             ):
-                if depends.use_cache:
-                    value = get_value()
-                    bound.arguments.update({name: value for name in names})
-                else:
-                    bound.arguments.update({name: get_value() for name in names})
+                bound.arguments.update({name: get_value() for name in names})
 
             with exit_stack:
                 result = fn(*bound.args, **bound.kwargs)
@@ -159,7 +145,7 @@ def resource(fn: TC) -> TC:
         raise TypeError("Resource should be a generator function")
     fn._scope_ = "singleton"  # type: ignore[attr-defined] # noqa: SF01
     with _lock:
-        _resources.append(Depends.from_dependency(fn, use_cache=True))
+        _resources.append(Depends.from_dependency(fn))
     return fn
 
 
@@ -199,34 +185,28 @@ CallableManager = Callable[..., AsyncContextManager | ContextManager]
 @dataclass(frozen=True)
 class Depends:
     dependency: Dependency
-    use_cache: bool
     context_manager: CallableManager | None = field(compare=False)
     is_async: bool = field(compare=False)
 
     def get_scope_name(self) -> str:
         return self.dependency._scope_  # type: ignore[attr-defined] # noqa: SF01
 
-    def value_as_context_manager(self) -> Any:
-        if self.context_manager:
-            return self.context_manager()
-        return nullcontext(self.dependency())
-
     @classmethod
-    def from_dependency(cls, dependency: Dependency, use_cache: bool) -> Depends:
+    def from_dependency(cls, dependency: Dependency) -> Depends:
         context_manager: Callable | None = None
-        is_async = False
+        is_async = inspect.iscoroutinefunction(dependency)
         if inspect.isasyncgenfunction(dependency):
             context_manager = asynccontextmanager(dependency)
             is_async = True
         elif inspect.isgeneratorfunction(dependency):
             context_manager = contextmanager(dependency)
 
-        return cls(dependency, use_cache, context_manager, is_async)
+        return cls(dependency, context_manager, is_async)
 
 
-def _resolve_depends(
+def _arguments_to_getter(
     bound: BoundArguments, exit_stack: AsyncExitStack | ExitStack, is_async: bool
-) -> Generator[tuple[Depends, list[str], Callable[[], Any]], None, None]:
+) -> Generator[tuple[list[str], Callable[[], Any]], None, None]:
     dependencies: dict[Depends, list[str]] = {}
     for name, value in bound.arguments.items():
         if isinstance(value, Depends):
@@ -236,7 +216,7 @@ def _resolve_depends(
 
     for depends, names in dependencies.items():
         get_value = functools.partial(get_val, depends, exit_stack)  # type: ignore
-        yield depends, names, get_value
+        yield names, get_value
 
 
 def _get_value_from_depends(
@@ -248,18 +228,17 @@ def _get_value_from_depends(
     try:
         value = scope.get(depends.dependency)
     except KeyError:
-        context_manager = depends.value_as_context_manager()
         exit_stack = local_exit_stack
         if scope_name == "singleton":
             exit_stack = _exit_stack
         if depends.is_async:
-            value = depends.dependency
+            value = depends.dependency()
         else:
             with _lock:
                 try:
                     value = scope.get(depends.dependency)
                 except KeyError:
-                    value = exit_stack.enter_context(context_manager)
+                    value = _call_value(depends, exit_stack)
                     scope.set(depends.dependency, value)
     return value
 
@@ -273,7 +252,6 @@ async def _get_value_from_depends_async(
     try:
         value = scope.get(depends.dependency)
     except KeyError:
-        context_manager = depends.value_as_context_manager()
         exit_stack = local_exit_stack
         if scope_name == "singleton":
             exit_stack = _async_exit_stack
@@ -281,12 +259,26 @@ async def _get_value_from_depends_async(
             try:
                 value = scope.get(depends.dependency)
             except KeyError:
+                value = _call_value(depends, exit_stack)
                 if depends.is_async:
-                    value = await exit_stack.enter_async_context(context_manager)
-                else:
-                    value = exit_stack.enter_context(context_manager)
+                    value = await value
                 scope.set(depends.dependency, value)
     return value
+
+
+def _call_value(depends: Depends, exit_stack: ExitStack | AsyncExitStack) -> Any:
+    if depends.is_async:
+        if depends.context_manager:
+            return exit_stack.enter_async_context(  # type: ignore[union-attr]
+                depends.context_manager()  # type: ignore[arg-type]
+            )
+        return depends.dependency()
+    else:
+        if depends.context_manager:
+            return exit_stack.enter_context(
+                depends.context_manager()  # type: ignore[arg-type]
+            )
+        return depends.dependency()
 
 
 def _is_async_environment() -> bool:

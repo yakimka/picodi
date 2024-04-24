@@ -1,6 +1,6 @@
 FROM python:3.11-slim-bullseye as builder
 
-ARG WHEEL=picodi-0.1.1-py3-none-any.whl
+ARG WHEEL=picodi-0.2.0-py3-none-any.whl
 ENV VENV=/venv
 ENV PATH="$VENV/bin:$PATH"
 
