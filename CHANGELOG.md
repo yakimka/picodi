@@ -15,3 +15,8 @@ We follow [Semantic Versions](https://semver.org/).
 
 - Removed `use_cache` parameter
 - Added tests
+
+## Version 0.3.0
+
+- Internal refactoring
+- Updated README.md
