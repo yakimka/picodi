@@ -5,13 +5,7 @@ import functools
 import inspect
 import threading
 from collections.abc import Awaitable, Callable, Coroutine, Generator
-from contextlib import (
-    AsyncExitStack,
-    ExitStack,
-    asynccontextmanager,
-    contextmanager,
-    nullcontext,
-)
+from contextlib import AsyncExitStack, ExitStack, asynccontextmanager, contextmanager
 from dataclasses import dataclass, field
 from typing import (
     TYPE_CHECKING,
@@ -197,15 +191,10 @@ class Depends:
     def get_scope_name(self) -> str:
         return self.dependency._scope_  # type: ignore[attr-defined] # noqa: SF01
 
-    def value_as_context_manager(self) -> Any:
-        if self.context_manager:
-            return self.context_manager()
-        return nullcontext(self.dependency())
-
     @classmethod
     def from_dependency(cls, dependency: Dependency) -> Depends:
         context_manager: Callable | None = None
-        is_async = False
+        is_async = inspect.iscoroutinefunction(dependency)
         if inspect.isasyncgenfunction(dependency):
             context_manager = asynccontextmanager(dependency)
             is_async = True
@@ -239,18 +228,17 @@ def _get_value_from_depends(
     try:
         value = scope.get(depends.dependency)
     except KeyError:
-        context_manager = depends.value_as_context_manager()
         exit_stack = local_exit_stack
         if scope_name == "singleton":
             exit_stack = _exit_stack
         if depends.is_async:
-            value = depends.dependency
+            value = depends.dependency()
         else:
             with _lock:
                 try:
                     value = scope.get(depends.dependency)
                 except KeyError:
-                    value = exit_stack.enter_context(context_manager)
+                    value = _call_value(depends, exit_stack)
                     scope.set(depends.dependency, value)
     return value
 
@@ -264,7 +252,6 @@ async def _get_value_from_depends_async(
     try:
         value = scope.get(depends.dependency)
     except KeyError:
-        context_manager = depends.value_as_context_manager()
         exit_stack = local_exit_stack
         if scope_name == "singleton":
             exit_stack = _async_exit_stack
@@ -272,12 +259,26 @@ async def _get_value_from_depends_async(
             try:
                 value = scope.get(depends.dependency)
             except KeyError:
+                value = _call_value(depends, exit_stack)
                 if depends.is_async:
-                    value = await exit_stack.enter_async_context(context_manager)
-                else:
-                    value = exit_stack.enter_context(context_manager)
+                    value = await value
                 scope.set(depends.dependency, value)
     return value
+
+
+def _call_value(depends: Depends, exit_stack: ExitStack | AsyncExitStack) -> Any:
+    if depends.is_async:
+        if depends.context_manager:
+            return exit_stack.enter_async_context(  # type: ignore[union-attr]
+                depends.context_manager()  # type: ignore[arg-type]
+            )
+        return depends.dependency()
+    else:
+        if depends.context_manager:
+            return exit_stack.enter_context(
+                depends.context_manager()  # type: ignore[arg-type]
+            )
+        return depends.dependency()
 
 
 def _is_async_environment() -> bool:
