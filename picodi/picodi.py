@@ -4,7 +4,7 @@ import asyncio
 import functools
 import inspect
 import threading
-from collections.abc import Awaitable, Callable, Coroutine, Generator
+from collections.abc import Awaitable, Callable, Coroutine
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass, field
 from typing import (
@@ -19,7 +19,7 @@ from typing import (
 from picodi.scopes import ExitStack, NullScope, Scope, SingletonScope
 
 if TYPE_CHECKING:
-    from inspect import BoundArguments
+    from inspect import BoundArguments, Signature
 
 Dependency = Callable[..., Any]
 T = TypeVar("T")
@@ -83,10 +83,11 @@ def inject(fn: Callable[P, T]) -> Callable[P, T | Coroutine[Any, Any, T]]:
 
         @functools.wraps(fn)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-            bound = signature.bind(*args, **kwargs)
-            bound.apply_defaults()
-            for names, get_value in _arguments_to_getter(bound, is_async=True):
-                bound.arguments.update({name: await get_value() for name in names})
+            bound, dep_arguments = _arguments_to_getters(
+                args, kwargs, signature, is_async=True
+            )
+            for name, get_value in dep_arguments.items():
+                bound.arguments[name] = await get_value()
 
             async with ExitStack() as stack:
                 for scope in _scopes.values():
@@ -98,14 +99,15 @@ def inject(fn: Callable[P, T]) -> Callable[P, T | Coroutine[Any, Any, T]]:
 
         @functools.wraps(fn)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-            bound = signature.bind(*args, **kwargs)
-            bound.apply_defaults()
-            for names, get_value in _arguments_to_getter(bound, is_async=False):
-                bound.arguments.update({name: get_value() for name in names})
+            bound, dep_arguments = _arguments_to_getters(
+                args, kwargs, signature, is_async=False
+            )
+            for name, get_value in dep_arguments.items():
+                bound.arguments[name] = get_value()
 
             with ExitStack() as stack:
                 for scope in _scopes.values():
-                    stack.enter_context(scope, only_sync=True)
+                    stack.enter_context(scope, sync_first=True)
                 result = fn(*bound.args, **bound.kwargs)
             return result
 
@@ -148,10 +150,11 @@ def init_resources() -> Awaitable | None:
 def shutdown_resources() -> Awaitable | None:
     """
     Call this function to close all resources. Usually, it should be called
-    when your application is shutting down.
+    when your application is shut down.
     """
     if _is_async_environment():
-        return asyncio.gather(*[scope.exit_stack.close() for scope in _scopes.values()])
+        tasks = [scope.exit_stack.close() for scope in _scopes.values()]
+        return asyncio.gather(*tasks)  # type: ignore[arg-type]
 
     for scope in _scopes.values():
         scope.exit_stack.close(only_sync=True)
@@ -190,9 +193,11 @@ class Depends:
         return self.dependency()
 
 
-def _arguments_to_getter(
-    bound: BoundArguments, is_async: bool
-) -> Generator[tuple[list[str], Callable[[], Any]], None, None]:
+def _arguments_to_getters(
+    args: P.args, kwargs: P.kwargs, signature: Signature, is_async: bool
+) -> tuple[BoundArguments, dict[str, Callable[[], Any]]]:
+    bound = signature.bind(*args, **kwargs)
+    bound.apply_defaults()
     dependencies: dict[Depends, list[str]] = {}
     for name, value in bound.arguments.items():
         if isinstance(value, Depends):
@@ -200,9 +205,13 @@ def _arguments_to_getter(
 
     get_val = _resolve_value_async if is_async else _resolve_value
 
+    dep_arguments = {}
     for depends, names in dependencies.items():
-        get_value = functools.partial(get_val, depends)  # type: ignore
-        yield names, get_value
+        get_value: Callable = functools.partial(get_val, depends)
+        for name in names:
+            dep_arguments[name] = get_value
+
+    return bound, dep_arguments
 
 
 def _resolve_value(depends: Depends) -> Any:
