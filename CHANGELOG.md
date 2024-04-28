@@ -20,3 +20,7 @@ We follow [Semantic Versions](https://semver.org/).
 
 - Internal refactoring
 - Updated README.md
+
+## Version 0.4.0
+
+- Added `make_dependency` function (experimental)
