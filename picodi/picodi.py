@@ -4,9 +4,10 @@ import asyncio
 import functools
 import inspect
 import threading
-from collections.abc import Awaitable, Callable, Coroutine
+from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass, field
+from functools import wraps
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -59,12 +60,12 @@ def Provide(dependency: Dependency, /) -> Any:  # noqa: N802
         assert db == "db connection"
     ```
     """
-    if not getattr(dependency, "_scope_", None):
-        dependency._scope_ = "null"  # type: ignore[attr-defined] # noqa: SF01
+    if not getattr(dependency, "_picodi_scope_", None):
+        dependency._picodi_scope_ = "null"  # type: ignore[attr-defined] # noqa: SF01
     return Depends.from_dependency(dependency)
 
 
-def inject(fn: Callable[P, T]) -> Callable[P, T | Coroutine[Any, Any, T]]:
+def inject(fn: Callable[P, T]) -> Callable[P, T]:
     """
     Decorator to inject dependencies into a function.
     Use it in combination with `Provide` to declare dependencies.
@@ -111,7 +112,8 @@ def inject(fn: Callable[P, T]) -> Callable[P, T | Coroutine[Any, Any, T]]:
                 result = fn(*bound.args, **bound.kwargs)
             return result
 
-    return wrapper
+    wrapper._picodi_inject_ = True  # type: ignore[attr-defined] # noqa: SF01
+    return wrapper  # type: ignore[return-value]
 
 
 def resource(fn: TC) -> TC:
@@ -124,7 +126,7 @@ def resource(fn: TC) -> TC:
     """
     if not inspect.isgeneratorfunction(fn) and not inspect.isasyncgenfunction(fn):
         raise TypeError("Resource should be a generator function")
-    fn._scope_ = "singleton"  # type: ignore[attr-defined] # noqa: SF01
+    fn._picodi_scope_ = "singleton"  # type: ignore[attr-defined] # noqa: SF01
     with _lock:
         _resources.append(Depends.from_dependency(fn))
     return fn
@@ -161,6 +163,24 @@ def shutdown_resources() -> Awaitable | None:
     return None
 
 
+def make_dependency(fn: Callable[P, T], *args: Any, **kwargs: Any) -> Callable[..., T]:
+    signature = inspect.signature(fn)
+    bound = signature.bind(*args, **kwargs)
+    bound.apply_defaults()
+
+    has_deps = any(isinstance(value, Depends) for value in bound.arguments.values())
+    if not getattr(fn, "_picodi_inject_", None) and has_deps:
+        fn = inject(fn)
+
+    @wraps(fn)
+    def wrapper(*args_in: P.args, **kwargs_in: P.kwargs) -> T:
+        bound_inner = signature.bind_partial(*args_in, **kwargs_in)
+        bound.arguments.update(bound_inner.arguments)
+        return fn(*bound.args, **bound.kwargs)
+
+    return wrapper
+
+
 CallableManager = Callable[..., AsyncContextManager | ContextManager]
 
 
@@ -183,7 +203,9 @@ class Depends:
         return cls(dependency, context_manager, is_async)
 
     def get_scope(self) -> Scope:
-        scope_name = self.dependency._scope_  # type: ignore[attr-defined] # noqa: SF01
+        scope_name = (
+            self.dependency._picodi_scope_  # type: ignore[attr-defined] # noqa: SF01
+        )
         return _scopes[scope_name]
 
     def resolve_value(self) -> Any:
