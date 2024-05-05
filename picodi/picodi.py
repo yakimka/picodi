@@ -21,6 +21,15 @@ from picodi.scopes import ExitStack, NullScope, Scope, SingletonScope
 
 if TYPE_CHECKING:
     from inspect import BoundArguments, Signature
+    from types import ModuleType
+
+fastapi: ModuleType | None = None
+
+try:
+    import fastapi.params
+except ImportError:
+    fastapi = None
+
 
 try:
     import fastapi.params
