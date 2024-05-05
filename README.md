@@ -207,7 +207,7 @@ Picodi can be used with web frameworks like FastAPI or Django.
 ```python
 import random
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from picodi import Provide, inject
 
 app = FastAPI()
@@ -224,7 +224,7 @@ async def get_redis_connection(port: int = Provide(get_random_int)) -> str:
 
 @app.get("/")
 @inject
-async def read_root(redis: str = Provide(get_redis_connection)):
+async def read_root(redis: str = Depends(Provide(get_redis_connection))):
     return {"redis": redis}
 
 

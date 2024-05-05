@@ -24,3 +24,7 @@ We follow [Semantic Versions](https://semver.org/).
 ## Version 0.4.0
 
 - Added `make_dependency` function (experimental)
+
+## Version 0.4.1
+
+- Fix FastAPI support

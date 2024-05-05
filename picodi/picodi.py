@@ -22,6 +22,12 @@ from picodi.scopes import ExitStack, NullScope, Scope, SingletonScope
 if TYPE_CHECKING:
     from inspect import BoundArguments, Signature
 
+try:
+    import fastapi.params
+except ImportError:
+    fastapi = None
+
+
 Dependency = Callable[..., Any]
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -35,6 +41,10 @@ _scopes: dict[str, Scope] = {
     "null": NullScope(),
     "singleton": SingletonScope(),
 }
+
+
+def _is_fastapi_dependency(value: Any) -> bool:
+    return bool(fastapi and isinstance(value, fastapi.params.Depends))
 
 
 def Provide(dependency: Dependency, /) -> Any:  # noqa: N802
@@ -168,8 +178,7 @@ def make_dependency(fn: Callable[P, T], *args: Any, **kwargs: Any) -> Callable[.
     bound = signature.bind(*args, **kwargs)
     bound.apply_defaults()
 
-    has_deps = any(isinstance(value, Depends) for value in bound.arguments.values())
-    if not getattr(fn, "_picodi_inject_", None) and has_deps:
+    if not getattr(fn, "_picodi_inject_", None):
         fn = inject(fn)
 
     @wraps(fn)
@@ -214,6 +223,9 @@ class Depends:
             return scope.exit_stack.enter_context(self.context_manager())
         return self.dependency()
 
+    def __call__(self) -> Depends:
+        return self
+
 
 def _arguments_to_getters(
     args: P.args, kwargs: P.kwargs, signature: Signature, is_async: bool
@@ -222,6 +234,8 @@ def _arguments_to_getters(
     bound.apply_defaults()
     dependencies: dict[Depends, list[str]] = {}
     for name, value in bound.arguments.items():
+        if _is_fastapi_dependency(value):
+            value = value.dependency
         if isinstance(value, Depends):
             dependencies.setdefault(value, []).append(name)
 
