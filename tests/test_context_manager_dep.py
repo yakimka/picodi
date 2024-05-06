@@ -253,3 +253,54 @@ async def test_resource_can_be_closed_manually_async():
     await shutdown_resources()
 
     assert result.closed is True
+
+
+async def test_can_resolve_injected_generator():
+    @inject
+    def get_int_service():
+        int_service = IntService.create()
+        yield int_service
+        int_service.close()
+
+    @inject
+    def get_int(service: IntService = Provide(get_int_service)) -> IntService:
+        return service
+
+    result = get_int()
+
+    assert isinstance(result, IntService)
+    assert result.closed is True
+
+
+async def test_can_resolve_injected_generator_async():
+    @inject
+    async def get_int_service():
+        int_service = IntService.create()
+        yield int_service
+        await int_service.aclose()
+
+    @inject
+    async def get_int(service: IntService = Provide(get_int_service)) -> IntService:
+        return service
+
+    result = await get_int()
+
+    assert isinstance(result, IntService)
+    assert result.closed is True
+
+
+async def test_can_resolve_sync_injected_generator_in_async_context():
+    @inject
+    def get_int_service():
+        int_service = IntService.create()
+        yield int_service
+        int_service.close()
+
+    @inject
+    async def get_int(service: IntService = Provide(get_int_service)) -> IntService:
+        return service
+
+    result = await get_int()
+
+    assert isinstance(result, IntService)
+    assert result.closed is True

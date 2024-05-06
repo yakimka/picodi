@@ -140,6 +140,8 @@ class ExitStack:
         elif isinstance(cm, AsyncContextManager):
             return self._async_stack.enter_async_context(cm)
 
+        raise TypeError(f"Unsupported context manager: {cm}")
+
     def close(self, only_sync: bool = False) -> Awaitable | None:
         self.__exit__(None, None, None)
         if not only_sync:
