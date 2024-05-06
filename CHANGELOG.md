@@ -28,3 +28,7 @@ We follow [Semantic Versions](https://semver.org/).
 ## Version 0.4.1
 
 - Fix FastAPI support
+
+## Version 0.4.2
+
+- Fix injected generator dependencies resolving
