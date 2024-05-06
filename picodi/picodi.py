@@ -15,12 +15,19 @@ from typing import (
     ContextManager,
     ParamSpec,
     TypeVar,
+    cast,
 )
 
 from picodi.scopes import ExitStack, NullScope, Scope, SingletonScope
 
 if TYPE_CHECKING:
     from inspect import BoundArguments, Signature
+
+try:
+    import fastapi.params
+except ImportError:
+    fastapi = None
+
 
 try:
     import fastapi.params
@@ -90,7 +97,7 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
     ```
     """
     signature = inspect.signature(fn)
-    if inspect.iscoroutinefunction(fn):
+    if inspect.iscoroutinefunction(fn) or inspect.isasyncgenfunction(fn):
 
         @functools.wraps(fn)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
@@ -103,8 +110,12 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
             async with ExitStack() as stack:
                 for scope in _scopes.values():
                     await stack.enter_context(scope)
-                result = await fn(*bound.args, **bound.kwargs)
-            return result
+                result_or_gen = fn(*bound.args, **bound.kwargs)
+                if inspect.isasyncgen(result_or_gen):
+                    result = result_or_gen
+                else:
+                    result = await result_or_gen  # type: ignore[misc]
+            return cast("T", result)
 
     else:
 
@@ -196,20 +207,15 @@ CallableManager = Callable[..., AsyncContextManager | ContextManager]
 @dataclass(frozen=True)
 class Depends:
     dependency: Dependency
-    context_manager: CallableManager | None = field(compare=False)
     is_async: bool = field(compare=False)
 
     @classmethod
     def from_dependency(cls, dependency: Dependency) -> Depends:
-        context_manager: Callable | None = None
-        is_async = inspect.iscoroutinefunction(dependency)
-        if inspect.isasyncgenfunction(dependency):
-            context_manager = asynccontextmanager(dependency)
-            is_async = True
-        elif inspect.isgeneratorfunction(dependency):
-            context_manager = contextmanager(dependency)
-
-        return cls(dependency, context_manager, is_async)
+        return cls(
+            dependency,
+            inspect.iscoroutinefunction(dependency)
+            or inspect.isasyncgenfunction(dependency),
+        )
 
     def get_scope(self) -> Scope:
         scope_name = (
@@ -219,9 +225,26 @@ class Depends:
 
     def resolve_value(self) -> Any:
         scope = self.get_scope()
-        if self.context_manager:
-            return scope.exit_stack.enter_context(self.context_manager())
-        return self.dependency()
+        value_or_gen = self.dependency()
+        if self.is_async:
+
+            async def resolve_value_inner() -> Any:
+                value_or_gen_ = value_or_gen
+                if inspect.iscoroutine(value_or_gen):
+                    value_or_gen_ = await value_or_gen_
+                if inspect.isasyncgen(value_or_gen_):
+                    context_manager = asynccontextmanager(
+                        lambda *args, **kwargs: value_or_gen_
+                    )
+                    return await scope.exit_stack.enter_context(context_manager())
+                return value_or_gen_
+
+            return resolve_value_inner()
+
+        if inspect.isgenerator(value_or_gen):
+            context_manager = contextmanager(lambda *args, **kwargs: value_or_gen)
+            return scope.exit_stack.enter_context(context_manager())
+        return value_or_gen
 
     def __call__(self) -> Depends:
         return self
