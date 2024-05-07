@@ -304,3 +304,41 @@ async def test_can_resolve_sync_injected_generator_in_async_context():
 
     assert isinstance(result, IntService)
     assert result.closed is True
+
+
+def test_can_init_injected_resource():
+    called = 0
+
+    def get_42():
+        return 42
+
+    @resource
+    @inject
+    def my_resource(number: int = Provide(get_42)):
+        assert number == 42
+        nonlocal called
+        called += 1
+        return number
+
+    init_resources()
+
+    assert called == 1
+
+
+async def test_can_init_injected_resource_async():
+    called = 0
+
+    def get_42():
+        return 42
+
+    @resource
+    @inject
+    async def my_async_resource(number: int = Provide(get_42)):
+        assert number == 42
+        nonlocal called
+        called += 1
+        return number
+
+    await init_resources()
+
+    assert called == 1

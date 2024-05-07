@@ -246,6 +246,8 @@ including initialization and teardown if the dependency is a generator.
 
 Decorator to automatically inject dependencies declared by `Provide` into a function.
 
+Should be placed first in the decorator chain (on bottom).
+
 - **Parameters**:
   - `fn`: The function into which dependencies will be injected.
 
@@ -254,6 +256,8 @@ Decorator to automatically inject dependencies declared by `Provide` into a func
 Decorator to declare a resource,
 which ensures that the provided function is treated as a singleton
 and that its lifecycle is managed across the application.
+
+Should be placed first in the decorator chain (on top).
 
 - **Parameters**:
   - `fn`: A generator function that yields a resource.

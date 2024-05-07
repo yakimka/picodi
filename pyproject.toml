@@ -5,7 +5,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 name = "picodi"
 description = "Simple Dependency Injection for Python"
-version = "0.4.2"
+version = "0.4.3"
 license = "MIT"
 authors = [
   "yakimka"

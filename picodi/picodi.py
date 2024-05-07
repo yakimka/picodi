@@ -29,12 +29,6 @@ except ImportError:
     fastapi = None
 
 
-try:
-    import fastapi.params
-except ImportError:
-    fastapi = None
-
-
 Dependency = Callable[..., Any]
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -77,8 +71,6 @@ def Provide(dependency: Dependency, /) -> Any:  # noqa: N802
         assert db == "db connection"
     ```
     """
-    if not getattr(dependency, "_picodi_scope_", None):
-        dependency._picodi_scope_ = "null"  # type: ignore[attr-defined] # noqa: SF01
     return Depends.from_dependency(dependency)
 
 
@@ -86,6 +78,7 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
     """
     Decorator to inject dependencies into a function.
     Use it in combination with `Provide` to declare dependencies.
+    Should be placed first in the decorator chain (on bottom).
 
     Example:
     ```
@@ -144,9 +137,8 @@ def resource(fn: TC) -> TC:
     On shutdown, all resources will be closed
     (you need to call `shutdown_resources` manually).
     Use it with a dependency generator function to declare a resource.
+    Should be placed last in the decorator chain (on top).
     """
-    if not inspect.isgeneratorfunction(fn) and not inspect.isasyncgenfunction(fn):
-        raise TypeError("Resource should be a generator function")
     fn._picodi_scope_ = "singleton"  # type: ignore[attr-defined] # noqa: SF01
     with _lock:
         _resources.append(Depends.from_dependency(fn))
@@ -218,9 +210,7 @@ class Depends:
         )
 
     def get_scope(self) -> Scope:
-        scope_name = (
-            self.dependency._picodi_scope_  # type: ignore[attr-defined] # noqa: SF01
-        )
+        scope_name = getattr(self.dependency, "_picodi_scope_", "null")
         return _scopes[scope_name]
 
     def resolve_value(self) -> Any:
