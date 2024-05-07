@@ -145,7 +145,7 @@ def resource(fn: TC) -> TC:
     return fn
 
 
-def init_resources() -> Awaitable | None:
+def init_resources() -> Awaitable:
     """
     Call this function to close all resources. Usually, it should be called
     when your application is shutting down.
@@ -157,12 +157,10 @@ def init_resources() -> Awaitable | None:
         else:
             _resolve_value(depends)
 
-    if _is_async_environment():
-        return asyncio.gather(*async_resources)
-    return None
+    return asyncio.gather(*async_resources)
 
 
-def shutdown_resources() -> Awaitable | None:
+def shutdown_resources() -> Awaitable:
     """
     Call this function to close all resources. Usually, it should be called
     when your application is shut down.
@@ -173,7 +171,7 @@ def shutdown_resources() -> Awaitable | None:
 
     for scope in _scopes.values():
         scope.exit_stack.close(only_sync=True)
-    return None
+    return asyncio.gather(*[])
 
 
 def make_dependency(fn: Callable[P, T], *args: Any, **kwargs: Any) -> Callable[..., T]:
