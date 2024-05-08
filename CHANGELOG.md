@@ -37,3 +37,4 @@ We follow [Semantic Versions](https://semver.org/).
 
 - Fix resource placement bug
 - Change typings for `init_resources` and `shutdown_resources`. Now they always return `Awaitable`.
+- Add tests for FastAPI integration

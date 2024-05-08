@@ -37,6 +37,7 @@ pytest-asyncio = "^0.23.6"
 pytest-cov = "^5.0.0"
 pytest-deadfixtures = "^2.2.1"
 pytest-randomly = "^3.12"
+fastapi = "^0.111.0"
 
 [tool.isort]
 # isort configuration:
