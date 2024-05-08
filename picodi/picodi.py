@@ -29,15 +29,15 @@ except ImportError:
     fastapi = None  # type: ignore[assignment]
 
 
-Dependency = Callable[..., Any]
+DependencyCallable = Callable[..., Any]
 T = TypeVar("T")
 P = ParamSpec("P")
 TC = TypeVar("TC", bound=Callable)
 
 
 _unset = object()
-_resources: list[Depends] = []
 _lock = threading.RLock()
+_registry: dict[DependencyCallable, Provider] = {}
 _scopes: dict[str, Scope] = {
     "null": NullScope(),
     "singleton": SingletonScope(),
@@ -48,12 +48,12 @@ def _is_fastapi_dependency(value: Any) -> bool:
     return bool(fastapi and isinstance(value, fastapi.params.Depends))
 
 
-def Provide(dependency: Dependency, /) -> Any:  # noqa: N802
+def Provide(dependency: DependencyCallable, /) -> Any:  # noqa: N802
     """
     Declare a provider.
     It takes a single "dependency" callable (like a function).
     Don't call it directly, picodi will call it for you.
-    Dependency can be a regular function or a generator with one yield.
+    DependencyCallable can be a regular function or a generator with one yield.
     If the dependency is a generator, it will be used as a context manager.
     Any generator that is valid for `contextlib.contextmanager`
     can be used as a dependency.
@@ -71,7 +71,11 @@ def Provide(dependency: Dependency, /) -> Any:  # noqa: N802
         assert db == "db connection"
     ```
     """
-    return Depends.from_dependency(dependency)
+    with _lock:
+        if dependency not in _registry:
+            _registry[dependency] = Provider.from_dependency(dependency)
+
+    return Dependency(dependency)
 
 
 def inject(fn: Callable[P, T]) -> Callable[P, T]:
@@ -139,9 +143,10 @@ def resource(fn: TC) -> TC:
     Use it with a dependency generator function to declare a resource.
     Should be placed last in the decorator chain (on top).
     """
-    fn._picodi_scope_ = "singleton"  # type: ignore[attr-defined] # noqa: SF01
     with _lock:
-        _resources.append(Depends.from_dependency(fn))
+        if fn not in _registry:
+            Provide(fn)  # for saving in registry
+        _registry[fn] = _registry[fn].make_resource()
     return fn
 
 
@@ -151,11 +156,12 @@ def init_resources() -> Awaitable:
     when your application is shutting down.
     """
     async_resources = []
-    for depends in _resources:
-        if depends.is_async:
-            async_resources.append(_resolve_value_async(depends))
-        else:
-            _resolve_value(depends)
+    for provider in _registry.values():
+        if provider.is_resource:
+            if provider.is_async:
+                async_resources.append(_resolve_value_async(provider))
+            else:
+                _resolve_value(provider)
 
     return asyncio.gather(*async_resources)
 
@@ -195,20 +201,37 @@ CallableManager = Callable[..., AsyncContextManager | ContextManager]
 
 
 @dataclass(frozen=True)
-class Depends:
-    dependency: Dependency
+class Dependency:
+    original: DependencyCallable
+
+    def __call__(self) -> Dependency:
+        return self
+
+    def get_provider(self) -> Provider:
+        return _registry[self.original]
+
+
+@dataclass(frozen=True)
+class Provider:
+    dependency: DependencyCallable
     is_async: bool = field(compare=False)
+    is_resource: bool = field(default=False, compare=False)
 
     @classmethod
-    def from_dependency(cls, dependency: Dependency) -> Depends:
+    def from_dependency(cls, dependency: DependencyCallable) -> Provider:
         return cls(
             dependency,
-            inspect.iscoroutinefunction(dependency)
-            or inspect.isasyncgenfunction(dependency),
+            (
+                inspect.iscoroutinefunction(dependency)
+                or inspect.isasyncgenfunction(dependency)
+            ),
         )
 
+    def make_resource(self) -> Provider:
+        return Provider(self.dependency, self.is_async, True)
+
     def get_scope(self) -> Scope:
-        scope_name = getattr(self.dependency, "_picodi_scope_", "null")
+        scope_name = "singleton" if self.is_resource else "null"
         return _scopes[scope_name]
 
     def resolve_value(self) -> Any:
@@ -234,63 +257,60 @@ class Depends:
             return scope.exit_stack.enter_context(context_manager())
         return value_or_gen
 
-    def __call__(self) -> Depends:
-        return self
-
 
 def _arguments_to_getters(
     args: P.args, kwargs: P.kwargs, signature: Signature, is_async: bool
 ) -> tuple[BoundArguments, dict[str, Callable[[], Any]]]:
     bound = signature.bind(*args, **kwargs)
     bound.apply_defaults()
-    dependencies: dict[Depends, list[str]] = {}
+    dependencies: dict[Provider, list[str]] = {}
     for name, value in bound.arguments.items():
         if _is_fastapi_dependency(value):
             value = value.dependency
-        if isinstance(value, Depends):
-            dependencies.setdefault(value, []).append(name)
+        if isinstance(value, Dependency):
+            dependencies.setdefault(value.get_provider(), []).append(name)
 
     get_val = _resolve_value_async if is_async else _resolve_value
 
     dep_arguments = {}
-    for depends, names in dependencies.items():
-        get_value: Callable = functools.partial(get_val, depends)
+    for provider, names in dependencies.items():
+        get_value: Callable = functools.partial(get_val, provider)
         for name in names:
             dep_arguments[name] = get_value
 
     return bound, dep_arguments
 
 
-def _resolve_value(depends: Depends) -> Any:
-    scope = depends.get_scope()
+def _resolve_value(provider: Provider) -> Any:
+    scope = provider.get_scope()
     try:
-        value = scope.get(depends.dependency)
+        value = scope.get(provider.dependency)
     except KeyError:
-        if depends.is_async:
-            value = depends.dependency()
+        if provider.is_async:
+            value = provider.dependency()
         else:
             with _lock:
                 try:
-                    value = scope.get(depends.dependency)
+                    value = scope.get(provider.dependency)
                 except KeyError:
-                    value = depends.resolve_value()
-                    scope.set(depends.dependency, value)
+                    value = provider.resolve_value()
+                    scope.set(provider.dependency, value)
     return value
 
 
-async def _resolve_value_async(depends: Depends) -> Any:
-    scope = depends.get_scope()
+async def _resolve_value_async(provider: Provider) -> Any:
+    scope = provider.get_scope()
     try:
-        value = scope.get(depends.dependency)
+        value = scope.get(provider.dependency)
     except KeyError:
         with _lock:
             try:
-                value = scope.get(depends.dependency)
+                value = scope.get(provider.dependency)
             except KeyError:
-                value = depends.resolve_value()
-                if depends.is_async:
+                value = provider.resolve_value()
+                if provider.is_async:
                     value = await value
-                scope.set(depends.dependency, value)
+                scope.set(provider.dependency, value)
     return value
 
 
