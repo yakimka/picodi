@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 try:
     import fastapi.params
 except ImportError:
-    fastapi = None
+    fastapi = None  # type: ignore[assignment]
 
 
 Dependency = Callable[..., Any]
