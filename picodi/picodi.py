@@ -143,10 +143,7 @@ def resource(fn: TC) -> TC:
     Use it with a dependency generator function to declare a resource.
     Should be placed last in the decorator chain (on top).
     """
-    with _lock:
-        if fn not in _registry:
-            Provide(fn)  # for saving in registry
-        _registry[fn] = _registry[fn].make_resource()
+    fn._picodi_resource_ = True  # type: ignore[attr-defined] # noqa: SF01
     return fn
 
 
@@ -225,10 +222,8 @@ class Provider:
                 inspect.iscoroutinefunction(dependency)
                 or inspect.isasyncgenfunction(dependency)
             ),
+            getattr(dependency, "_picodi_resource_", False),
         )
-
-    def make_resource(self) -> Provider:
-        return Provider(self.dependency, self.is_async, True)
 
     def get_scope(self) -> Scope:
         scope_name = "singleton" if self.is_resource else "null"

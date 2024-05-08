@@ -320,6 +320,8 @@ def test_can_init_injected_resource():
         called += 1
         return number
 
+    Provide(my_resource)  # for register resource
+
     init_resources()
 
     assert called == 1
@@ -339,12 +341,13 @@ async def test_can_init_injected_resource_async():
         called += 1
         return number
 
+    Provide(my_async_resource)  # for register resource
+
     await init_resources()
 
     assert called == 1
 
 
-@pytest.mark.skip(reason="Not implemented yet")
 async def test_dont_init_not_used_resources():
     @resource
     async def not_used_resource():
