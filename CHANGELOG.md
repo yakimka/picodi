@@ -38,3 +38,9 @@ We follow [Semantic Versions](https://semver.org/).
 - Fix resource placement bug
 - Change typings for `init_resources` and `shutdown_resources`. Now they always return `Awaitable`.
 - Add tests for FastAPI integration
+
+## Version 0.5.0
+
+- Switch from storing only resource deps to storing all deps
+- Don't initialize unused resources
+- Refactor scope resource management
