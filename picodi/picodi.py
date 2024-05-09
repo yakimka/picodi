@@ -6,7 +6,7 @@ import inspect
 import threading
 from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager, contextmanager
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from functools import wraps
 from typing import (
     TYPE_CHECKING,
@@ -18,7 +18,7 @@ from typing import (
     cast,
 )
 
-from picodi.scopes import ExitStack, NullScope, Scope, SingletonScope
+from picodi.scopes import GlobalScope, NullScope, Scope, SingletonScope
 
 if TYPE_CHECKING:
     from inspect import BoundArguments, Signature
@@ -38,9 +38,9 @@ TC = TypeVar("TC", bound=Callable)
 _unset = object()
 _lock = threading.RLock()
 _registry: dict[DependencyCallable, Provider] = {}
-_scopes: dict[str, Scope] = {
-    "null": NullScope(),
-    "singleton": SingletonScope(),
+_scopes: dict[type[Scope], Scope] = {
+    NullScope: NullScope(),
+    SingletonScope: SingletonScope(),
 }
 
 
@@ -73,7 +73,9 @@ def Provide(dependency: DependencyCallable, /) -> Any:  # noqa: N802
     """
     with _lock:
         if dependency not in _registry:
-            _registry[dependency] = Provider.from_dependency(dependency)
+            _registry[dependency] = Provider.from_dependency(dependency, in_use=True)
+        elif not _registry[dependency].in_use:
+            _registry[dependency] = _registry[dependency].replace(in_use=True)
 
     return Dependency(dependency)
 
@@ -104,14 +106,14 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
             for name, get_value in dep_arguments.items():
                 bound.arguments[name] = await get_value()
 
-            async with ExitStack() as stack:
-                for scope in _scopes.values():
-                    await stack.enter_context(scope)
-                result_or_gen = fn(*bound.args, **bound.kwargs)
-                if inspect.isasyncgen(result_or_gen):
-                    result = result_or_gen
-                else:
-                    result = await result_or_gen  # type: ignore[misc]
+            result_or_gen = fn(*bound.args, **bound.kwargs)
+            if inspect.isasyncgen(result_or_gen):
+                result = result_or_gen
+            else:
+                result = await result_or_gen  # type: ignore[misc]
+
+            for scope in _scopes.values():
+                await scope.close_local()
             return cast("T", result)
 
     else:
@@ -124,10 +126,9 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
             for name, get_value in dep_arguments.items():
                 bound.arguments[name] = get_value()
 
-            with ExitStack() as stack:
-                for scope in _scopes.values():
-                    stack.enter_context(scope, sync_first=True)
-                result = fn(*bound.args, **bound.kwargs)
+            result = fn(*bound.args, **bound.kwargs)
+            for scope in _scopes.values():
+                scope.close_local()
             return result
 
     wrapper._picodi_inject_ = True  # type: ignore[attr-defined] # noqa: SF01
@@ -143,7 +144,13 @@ def resource(fn: TC) -> TC:
     Use it with a dependency generator function to declare a resource.
     Should be placed last in the decorator chain (on top).
     """
-    fn._picodi_resource_ = True  # type: ignore[attr-defined] # noqa: SF01
+    with _lock:
+        if fn not in _registry:
+            _registry[fn] = Provider.from_dependency(
+                fn, scope_class=SingletonScope, in_use=False
+            )
+        else:
+            _registry[fn] = _registry[fn].replace(scope_class=SingletonScope)
     return fn
 
 
@@ -154,7 +161,7 @@ def init_resources() -> Awaitable:
     """
     async_resources = []
     for provider in _registry.values():
-        if provider.is_resource:
+        if provider.in_use and issubclass(provider.scope_class, GlobalScope):
             if provider.is_async:
                 async_resources.append(_resolve_value_async(provider))
             else:
@@ -168,13 +175,8 @@ def shutdown_resources() -> Awaitable:
     Call this function to close all resources. Usually, it should be called
     when your application is shut down.
     """
-    if _is_async_environment():
-        tasks = [scope.exit_stack.close() for scope in _scopes.values()]
-        return asyncio.gather(*tasks)  # type: ignore[arg-type]
-
-    for scope in _scopes.values():
-        scope.exit_stack.close(only_sync=True)
-    return asyncio.gather(*[])
+    tasks = [scope.close_global() for scope in _scopes.values()]
+    return asyncio.gather(*tasks)
 
 
 def make_dependency(fn: Callable[P, T], *args: Any, **kwargs: Any) -> Callable[..., T]:
@@ -212,22 +214,38 @@ class Dependency:
 class Provider:
     dependency: DependencyCallable
     is_async: bool = field(compare=False)
-    is_resource: bool = field(default=False, compare=False)
+    scope_class: type[Scope] = field(compare=False)
+    in_use: bool = field(compare=False)
 
     @classmethod
-    def from_dependency(cls, dependency: DependencyCallable) -> Provider:
+    def from_dependency(
+        cls,
+        dependency: DependencyCallable,
+        scope_class: type[Scope] = NullScope,
+        in_use: bool = False,
+    ) -> Provider:
+        is_async = inspect.iscoroutinefunction(
+            dependency
+        ) or inspect.isasyncgenfunction(dependency)
         return cls(
-            dependency,
-            (
-                inspect.iscoroutinefunction(dependency)
-                or inspect.isasyncgenfunction(dependency)
-            ),
-            getattr(dependency, "_picodi_resource_", False),
+            dependency=dependency,
+            is_async=is_async,
+            scope_class=scope_class,
+            in_use=in_use,
         )
 
+    def replace(
+        self, scope_class: type[Scope] | None = None, in_use: bool | None = None
+    ) -> Provider:
+        kwargs = asdict(self)
+        if scope_class is not None:
+            kwargs["scope_class"] = scope_class
+        if in_use is not None:
+            kwargs["in_use"] = in_use
+        return Provider(**kwargs)
+
     def get_scope(self) -> Scope:
-        scope_name = "singleton" if self.is_resource else "null"
-        return _scopes[scope_name]
+        return _scopes[self.scope_class]
 
     def resolve_value(self) -> Any:
         scope = self.get_scope()
@@ -307,11 +325,3 @@ async def _resolve_value_async(provider: Provider) -> Any:
                     value = await value
                 scope.set(provider.dependency, value)
     return value
-
-
-def _is_async_environment() -> bool:
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        return False
-    return True
