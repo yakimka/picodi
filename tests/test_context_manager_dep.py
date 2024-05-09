@@ -320,6 +320,8 @@ def test_can_init_injected_resource():
         called += 1
         return number
 
+    Provide(my_resource)  # for register resource
+
     init_resources()
 
     assert called == 1
@@ -339,6 +341,27 @@ async def test_can_init_injected_resource_async():
         called += 1
         return number
 
+    Provide(my_async_resource)  # for register resource
+
     await init_resources()
 
     assert called == 1
+
+
+async def test_dont_init_not_used_resources():
+    @resource
+    async def not_used_resource():
+        yield 1 / 0
+
+    @resource
+    async def used_resource():
+        yield 42
+
+    @inject
+    def get_async_dep(num: int = Provide(used_resource)):
+        return num
+
+    await init_resources()
+    result = get_async_dep()
+
+    assert result == 42
