@@ -86,14 +86,7 @@ class ExitStack:
         res_async = await self._async_stack.__aexit__(exc_type, exc, traceback)
         return res_sync and res_async
 
-    def enter_context(
-        self, cm: AsyncContextManager | ContextManager, sync_first: bool = False
-    ) -> Any:
-        if isinstance(cm, ContextManager) and isinstance(cm, AsyncContextManager):
-            if sync_first:
-                return self._sync_stack.enter_context(cm)
-            else:
-                return self._async_stack.enter_async_context(cm)
+    def enter_context(self, cm: AsyncContextManager | ContextManager) -> Any:
         if isinstance(cm, ContextManager):
             return self._sync_stack.enter_context(cm)
         elif isinstance(cm, AsyncContextManager):

@@ -23,12 +23,6 @@ from picodi.scopes import GlobalScope, NullScope, Scope, SingletonScope
 if TYPE_CHECKING:
     from inspect import BoundArguments, Signature
 
-try:
-    import fastapi.params
-except ImportError:
-    fastapi = None  # type: ignore[assignment]
-
-
 DependencyCallable = Callable[..., Any]
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -42,10 +36,6 @@ _scopes: dict[type[Scope], Scope] = {
     NullScope: NullScope(),
     SingletonScope: SingletonScope(),
 }
-
-
-def _is_fastapi_dependency(value: Any) -> bool:
-    return bool(fastapi and isinstance(value, fastapi.params.Depends))
 
 
 def Provide(dependency: DependencyCallable, /) -> Any:  # noqa: N802
@@ -145,12 +135,13 @@ def resource(fn: TC) -> TC:
     Should be placed last in the decorator chain (on top).
     """
     with _lock:
-        if fn not in _registry:
-            _registry[fn] = Provider.from_dependency(
+        if fn in _registry:
+            provider = _registry[fn].replace(scope_class=SingletonScope)
+        else:
+            provider = Provider.from_dependency(
                 fn, scope_class=SingletonScope, in_use=False
             )
-        else:
-            _registry[fn] = _registry[fn].replace(scope_class=SingletonScope)
+        _registry[fn] = provider
     return fn
 
 
@@ -278,8 +269,6 @@ def _arguments_to_getters(
     bound.apply_defaults()
     dependencies: dict[Provider, list[str]] = {}
     for name, value in bound.arguments.items():
-        if _is_fastapi_dependency(value):
-            value = value.dependency
         if isinstance(value, Dependency):
             dependencies.setdefault(value.get_provider(), []).append(name)
 

@@ -73,7 +73,6 @@ def test_resolve_mixed_dependency_in_route(app, client):
         return {slug: number.value}
 
     @app.get("/")
-    @inject
     async def root(slug_result: dict[str, int] = Depends(get_by_slug)):
         return slug_result
 
@@ -82,7 +81,7 @@ def test_resolve_mixed_dependency_in_route(app, client):
     assert response.json() == {"meaning-of-life": 42}
 
 
-def test_need_to_use_depends_only_in_view_not_in_nested_deps(app, client):
+def test_can_use_depends_only_in_view_not_in_nested_deps(app, client):
     async def get_42() -> int:
         return 42
 

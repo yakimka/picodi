@@ -44,3 +44,4 @@ We follow [Semantic Versions](https://semver.org/).
 - Switch from storing only resource deps to storing all deps
 - Don't initialize unused resources
 - Refactor scope resource management
+- Removed dead code (detecting fastapi dependency)
