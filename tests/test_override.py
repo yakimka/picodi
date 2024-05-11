@@ -57,13 +57,35 @@ def test_can_override_dependency_with_call():
 
 def test_can_override_with_context_manager():
     def get_settings() -> dict:
+        return {"default": "settings"}
+
+    @inject
+    def my_service(settings: dict = Provide(get_settings)):
+        return settings
+
+    with registry.override(get_settings, lambda: {"overridden": "settings"}):
+        in_context_result = my_service()
+    after_context_result = my_service()
+
+    assert in_context_result == {"overridden": "settings"}
+    assert after_context_result == {"default": "settings"}
+
+
+def test_can_context_manager_return_state_to_previous_not_to_original():
+    def get_settings() -> dict:
         raise NotImplementedError
 
     @inject
     def my_service(settings: dict = Provide(get_settings)):
         return settings
 
-    with registry.override(get_settings, lambda: {"real": "settings"}):
-        result = my_service()
+    @registry.override(get_settings)
+    def first_override():
+        return {"first": "override"}
 
-    assert result == {"real": "settings"}
+    with registry.override(get_settings, lambda: {"second": "override"}):
+        in_context_result = my_service()
+    after_context_result = my_service()
+
+    assert in_context_result == {"second": "override"}
+    assert after_context_result == {"first": "override"}

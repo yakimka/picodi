@@ -4,7 +4,7 @@ import asyncio
 import functools
 import inspect
 import threading
-from collections.abc import Awaitable, Callable, Iterable, Iterator
+from collections.abc import Awaitable, Callable, Generator, Iterable, Iterator
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import asdict, dataclass, field
 from functools import wraps
@@ -92,18 +92,28 @@ class Registry:
     ) -> Callable[[DependencyCallable], DependencyCallable]:
         def decorator(override_to: DependencyCallable) -> DependencyCallable:
             self.add(override_to, in_use=False)
-            self._overrides[dependency] = override_to
+            if dependency is not override_to:
+                self._overrides[dependency] = override_to
             return override_to
 
         if new_dependency is unset:
             return decorator
 
         with self._lock:
+            original_dependency = self._overrides.get(dependency)
             if callable(new_dependency):
-                return decorator(new_dependency)
-            self._overrides.pop(dependency, None)
+                decorator(new_dependency)
+            else:
+                self._overrides.pop(dependency, None)
 
-        return dependency
+        @contextmanager
+        def manage_context() -> Generator[None, None, None]:
+            try:
+                yield
+            finally:
+                self.override(dependency, original_dependency)
+
+        return manage_context()
 
 
 _lock = threading.RLock()

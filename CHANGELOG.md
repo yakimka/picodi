@@ -50,3 +50,7 @@ We follow [Semantic Versions](https://semver.org/).
 
 - Add `helpers` module
 - Fix potential `RuntimeWarning`
+
+## Version 0.7.0
+
+- Now you can override dependencies. Useful for testing and "ABC" dependencies
