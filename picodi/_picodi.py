@@ -29,10 +29,13 @@ T = TypeVar("T")
 P = ParamSpec("P")
 TC = TypeVar("TC", bound=Callable)
 
+unset = object()
+
 
 class Registry:
     def __init__(self) -> None:
         self._deps: dict[DependencyCallable, Provider] = {}
+        self._overrides: dict[DependencyCallable, DependencyCallable] = {}
         self._lock = threading.RLock()
 
     def add(
@@ -40,6 +43,7 @@ class Registry:
         dependency: DependencyCallable,
         scope_class: type[Scope] = NullScope,
         in_use: bool = True,
+        override_scope: bool = False,
     ) -> None:
         """
         Add a dependency to the registry. If the dependency is already in the registry,
@@ -51,13 +55,14 @@ class Registry:
             if dependency in self._deps:
                 provider = self._deps[dependency]
                 to_replace = provider.replace(
+                    scope_class=(scope_class if override_scope else None),
                     # If the provider is already in use, keep it in use
                     # otherwise, use the new value. For example, if a provider
                     # is already in use and we want to replace it with a resource,
                     # we should keep it in use. If it's already a resource and we
                     # want to replace it with a regular dependency, we should set
                     # is_use to True.
-                    in_use=(provider.in_use or in_use)
+                    in_use=(provider.in_use or in_use),
                 )
                 if to_replace != provider:
                     self._deps[dependency] = to_replace
@@ -70,6 +75,8 @@ class Registry:
 
     def get(self, dependency: DependencyCallable) -> Provider:
         with self._lock:
+            if self._overrides.get(dependency):
+                dependency = self._overrides[dependency]
             return self._deps[dependency]
 
     def __iter__(self) -> Iterator[Provider]:
@@ -77,6 +84,26 @@ class Registry:
 
     def filter(self, predicate: Callable[[Provider], bool]) -> Iterable[Provider]:
         return filter(predicate, self._deps.values())
+
+    def override(
+        self,
+        dependency: DependencyCallable,
+        new_dependency: DependencyCallable | None | object = unset,
+    ) -> Callable[[DependencyCallable], DependencyCallable]:
+        def decorator(override_to: DependencyCallable) -> DependencyCallable:
+            self.add(override_to, in_use=False)
+            self._overrides[dependency] = override_to
+            return override_to
+
+        if new_dependency is unset:
+            return decorator
+
+        with self._lock:
+            if callable(new_dependency):
+                return decorator(new_dependency)
+            self._overrides.pop(dependency, None)
+
+        return dependency
 
 
 _lock = threading.RLock()
@@ -180,7 +207,7 @@ def resource(fn: TC) -> TC:
     Use it with a dependency generator function to declare a resource.
     Should be placed last in the decorator chain (on top).
     """
-    registry.add(fn, scope_class=SingletonScope, in_use=False)
+    registry.add(fn, scope_class=SingletonScope, in_use=False, override_scope=True)
     return fn
 
 
