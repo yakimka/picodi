@@ -4,7 +4,7 @@ import asyncio
 import functools
 import inspect
 import threading
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterable, Iterator
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import asdict, dataclass, field
 from functools import wraps
@@ -30,9 +30,57 @@ P = ParamSpec("P")
 TC = TypeVar("TC", bound=Callable)
 
 
-_unset = object()
+class Registry:
+    def __init__(self) -> None:
+        self._deps: dict[DependencyCallable, Provider] = {}
+        self._lock = threading.RLock()
+
+    def add(
+        self,
+        dependency: DependencyCallable,
+        scope_class: type[Scope] = NullScope,
+        in_use: bool = True,
+    ) -> None:
+        """
+        Add a dependency to the registry. If the dependency is already in the registry,
+        it `in_use` flag can be updated, but the scope class cannot be changed.
+        If the dependency is not in the registry, it will be added with the provided
+        scope class and `in_use` flag.
+        """
+        with self._lock:
+            if dependency in self._deps:
+                provider = self._deps[dependency]
+                to_replace = provider.replace(
+                    # If the provider is already in use, keep it in use
+                    # otherwise, use the new value. For example, if a provider
+                    # is already in use and we want to replace it with a resource,
+                    # we should keep it in use. If it's already a resource and we
+                    # want to replace it with a regular dependency, we should set
+                    # is_use to True.
+                    in_use=(provider.in_use or in_use)
+                )
+                if to_replace != provider:
+                    self._deps[dependency] = to_replace
+            else:
+                self._deps[dependency] = Provider.from_dependency(
+                    dependency=dependency,
+                    scope_class=scope_class,
+                    in_use=in_use,
+                )
+
+    def get(self, dependency: DependencyCallable) -> Provider:
+        with self._lock:
+            return self._deps[dependency]
+
+    def __iter__(self) -> Iterator[Provider]:
+        return iter(self._deps.values())
+
+    def filter(self, predicate: Callable[[Provider], bool]) -> Iterable[Provider]:
+        return filter(predicate, self._deps.values())
+
+
 _lock = threading.RLock()
-_registry: dict[DependencyCallable, Provider] = {}
+registry = Registry()
 _scopes: dict[type[Scope], Scope] = {
     NullScope: NullScope(),
     SingletonScope: SingletonScope(),
@@ -62,12 +110,7 @@ def Provide(dependency: DependencyCallable, /) -> Any:  # noqa: N802
         assert db == "db connection"
     ```
     """
-    with _lock:
-        if dependency not in _registry:
-            _registry[dependency] = Provider.from_dependency(dependency, in_use=True)
-        elif not _registry[dependency].in_use:
-            _registry[dependency] = _registry[dependency].replace(in_use=True)
-
+    registry.add(dependency)
     return Dependency(dependency)
 
 
@@ -137,14 +180,7 @@ def resource(fn: TC) -> TC:
     Use it with a dependency generator function to declare a resource.
     Should be placed last in the decorator chain (on top).
     """
-    with _lock:
-        if fn in _registry:
-            provider = _registry[fn].replace(scope_class=SingletonScope)
-        else:
-            provider = Provider.from_dependency(
-                fn, scope_class=SingletonScope, in_use=False
-            )
-        _registry[fn] = provider
+    registry.add(fn, scope_class=SingletonScope, in_use=False)
     return fn
 
 
@@ -154,12 +190,14 @@ def init_resources() -> Awaitable:
     when your application is shutting down.
     """
     async_resources = []
-    for provider in _registry.values():
-        if provider.in_use and issubclass(provider.scope_class, GlobalScope):
-            if provider.is_async:
-                async_resources.append(_resolve_value_async(provider))
-            else:
-                _resolve_value(provider)
+    global_providers = registry.filter(
+        lambda p: p.in_use and issubclass(p.scope_class, GlobalScope)
+    )
+    for provider in global_providers:
+        if provider.is_async:
+            async_resources.append(_resolve_value_async(provider))
+        else:
+            _resolve_value(provider)
 
     if async_resources:
         return asyncio.gather(*async_resources)
@@ -207,22 +245,22 @@ class Dependency:
         return self
 
     def get_provider(self) -> Provider:
-        return _registry[self.original]
+        return registry.get(self.original)
 
 
 @dataclass(frozen=True)
 class Provider:
     dependency: DependencyCallable
     is_async: bool = field(compare=False)
-    scope_class: type[Scope] = field(compare=False)
-    in_use: bool = field(compare=False)
+    scope_class: type[Scope]
+    in_use: bool
 
     @classmethod
     def from_dependency(
         cls,
         dependency: DependencyCallable,
-        scope_class: type[Scope] = NullScope,
-        in_use: bool = False,
+        scope_class: type[Scope],
+        in_use: bool,
     ) -> Provider:
         is_async = inspect.iscoroutinefunction(
             dependency
