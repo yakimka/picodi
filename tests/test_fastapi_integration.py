@@ -22,7 +22,6 @@ def client(app):
 
 
 def test_fastapi_cant_use_provide_as_is(app):
-    @inject
     def get_42() -> MyNumber:
         return MyNumber(42)
 

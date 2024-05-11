@@ -6,55 +6,14 @@ from contextlib import ExitStack as SyncExitStack
 from typing import TYPE_CHECKING, Any, AsyncContextManager, ContextManager
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable, Hashable
+    from collections.abc import Awaitable, Generator
     from types import TracebackType
 
 
-class Scope:
-    def __init__(self) -> None:
-        self.exit_stack = ExitStack()
-
-    def get(self, key: Hashable) -> Any:
-        raise NotImplementedError
-
-    def set(self, key: Hashable, value: Any) -> None:
-        raise NotImplementedError
-
-    def close_local(self) -> Awaitable:
-        return asyncio.sleep(0)
-
-    def close_global(self) -> Awaitable:
-        return asyncio.sleep(0)
-
-
-class GlobalScope(Scope):
-    def close_global(self) -> Awaitable:
-        return self.exit_stack.close()
-
-
-class LocalScope(Scope):
-    def close_local(self) -> Awaitable:
-        return self.exit_stack.close()
-
-
-class NullScope(LocalScope):
-    def get(self, key: Hashable) -> Any:
-        raise KeyError(key)
-
-    def set(self, key: Hashable, value: Any) -> None:
-        pass
-
-
-class SingletonScope(GlobalScope):
-    def __init__(self) -> None:
-        super().__init__()
-        self._store: dict[Hashable, Any] = {}
-
-    def get(self, key: Hashable) -> Any:
-        return self._store[key]
-
-    def set(self, key: Hashable, value: Any) -> None:
-        self._store[key] = value
+class DummyAwaitable:
+    def __await__(self) -> Generator[None, None, None]:
+        yield
+        return None
 
 
 class ExitStack:
@@ -98,7 +57,7 @@ class ExitStack:
         self.__exit__(None, None, None)
         if is_async_environment():
             return self.__aexit__(None, None, None)
-        return asyncio.sleep(0)
+        return DummyAwaitable()
 
 
 def is_async_environment() -> bool:

@@ -1,4 +1,4 @@
-from picodi.picodi import (
+from picodi._picodi import (
     Provide,
     init_resources,
     inject,

@@ -45,3 +45,8 @@ We follow [Semantic Versions](https://semver.org/).
 - Don't initialize unused resources
 - Refactor scope resource management
 - Removed dead code (detecting fastapi dependency)
+
+## Version 0.6.0
+
+- Add `helpers` module
+- Fix potential `RuntimeWarning`

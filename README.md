@@ -275,6 +275,20 @@ It should be called when the application is shutting down to ensure proper resou
 
 Can be called as `shutdown_resources()` in sync context and `await shutdown_resources()` in async context.
 
+### `helpers` module
+
+Module with helper functions for working with dependencies.
+
+#### `helpers.get_value(path, obj, default)`
+
+Function to get a value from a nested dictionary or object.
+Can deal with dictionary keys as well as object attributes.
+
+- **Parameters**:
+  - `path`: A string with keys separated by dots.
+  - `obj`: A dictionary or object from which to get the value.
+  - `default`: A default value to return if the key is not found.
+
 ## License
 
 [MIT](https://github.com/yakimka/picodi/blob/main/LICENSE)
