@@ -18,7 +18,7 @@ from typing import (
     cast,
 )
 
-from picodi.scopes import GlobalScope, NullScope, Scope, SingletonScope
+from picodi.scopes import DummyAwaitable, GlobalScope, NullScope, Scope, SingletonScope
 
 if TYPE_CHECKING:
     from inspect import BoundArguments, Signature
@@ -103,7 +103,9 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
                 result = await result_or_gen  # type: ignore[misc]
 
             for scope in _scopes.values():
-                await scope.close_local()
+                coro = scope.close_local()
+                if coro is not None:
+                    await coro
             return cast("T", result)
 
     else:
@@ -158,7 +160,9 @@ def init_resources() -> Awaitable:
             else:
                 _resolve_value(provider)
 
-    return asyncio.gather(*async_resources)
+    if async_resources:
+        return asyncio.gather(*async_resources)
+    return DummyAwaitable()
 
 
 def shutdown_resources() -> Awaitable:
@@ -166,7 +170,11 @@ def shutdown_resources() -> Awaitable:
     Call this function to close all resources. Usually, it should be called
     when your application is shut down.
     """
-    tasks = [scope.close_global() for scope in _scopes.values()]
+    tasks = []
+    for scope in _scopes.values():
+        coro = scope.close_global()
+        if coro is not None:
+            tasks.append(coro)
     return asyncio.gather(*tasks)
 
 

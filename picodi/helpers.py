@@ -10,9 +10,7 @@ class PathNotFoundError(Exception):
         super().__init__(f"Can't find path '{current_path}' in {type(obj)} object")
 
 
-def get_value(
-    path: str, obj: Any, *, default: Any = sentinel
-) -> Any:
+def get_value(path: str, obj: Any, *, default: Any = sentinel) -> Any:
     """
     Get attribute from nested objects.
     If the attribute is not found, raise an AttributeError if default is not provided.

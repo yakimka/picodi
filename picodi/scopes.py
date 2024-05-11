@@ -6,8 +6,14 @@ from contextlib import ExitStack as SyncExitStack
 from typing import TYPE_CHECKING, Any, AsyncContextManager, ContextManager
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable, Hashable
+    from collections.abc import Awaitable, Generator, Hashable
     from types import TracebackType
+
+
+class DummyAwaitable:
+    def __await__(self) -> Generator[None, None, None]:
+        yield
+        return None
 
 
 class Scope:
@@ -21,10 +27,10 @@ class Scope:
         raise NotImplementedError
 
     def close_local(self) -> Awaitable:
-        return asyncio.sleep(0)
+        return DummyAwaitable()
 
     def close_global(self) -> Awaitable:
-        return asyncio.sleep(0)
+        return DummyAwaitable()
 
 
 class GlobalScope(Scope):
@@ -98,7 +104,7 @@ class ExitStack:
         self.__exit__(None, None, None)
         if is_async_environment():
             return self.__aexit__(None, None, None)
-        return asyncio.sleep(0)
+        return DummyAwaitable()
 
 
 def is_async_environment() -> bool:
