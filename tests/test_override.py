@@ -111,3 +111,30 @@ def test_overriding_overridden_dependency_dont_apply_to_original_dep():
     result = my_service()
 
     assert result == {"first": "override"}
+
+
+def test_can_clear_overrides():
+    def original_func1() -> str:
+        return "original_func1"
+
+    def original_func2() -> str:
+        return "original_func2"
+
+    @inject
+    def my_service(
+        original1: str = Provide(original_func1),
+        original2: str = Provide(original_func2),
+    ):
+        return original1, original2
+
+    registry.override(original_func1, lambda: "overridden_func1")
+    registry.override(original_func2, lambda: "overridden_func2")
+
+    overriden_result = my_service()
+
+    registry.clear_overrides()
+
+    cleared_result = my_service()
+
+    assert overriden_result == ("overridden_func1", "overridden_func2")
+    assert cleared_result == ("original_func1", "original_func2")

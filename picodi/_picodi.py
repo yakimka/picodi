@@ -115,6 +115,10 @@ class Registry:
 
         return manage_context()
 
+    def clear_overrides(self) -> None:
+        with self._lock:
+            self._overrides.clear()
+
 
 registry = Registry()
 _scopes: dict[type[Scope], Scope] = {
