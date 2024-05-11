@@ -89,3 +89,25 @@ def test_can_context_manager_return_state_to_previous_not_to_original():
 
     assert in_context_result == {"second": "override"}
     assert after_context_result == {"first": "override"}
+
+
+def test_overriding_overridden_dependency_dont_apply_to_original_dep():
+    def get_settings() -> dict:
+        raise NotImplementedError
+
+    @inject
+    def my_service(settings: dict = Provide(get_settings)):
+        return settings
+
+    def first_override():
+        return {"first": "override"}
+
+    def second_override():
+        return {"second": "override"}
+
+    registry.override(get_settings, first_override)
+    registry.override(first_override, second_override)
+
+    result = my_service()
+
+    assert result == {"first": "override"}

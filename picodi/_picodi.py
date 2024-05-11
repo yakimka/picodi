@@ -116,12 +116,12 @@ class Registry:
         return manage_context()
 
 
-_lock = threading.RLock()
 registry = Registry()
 _scopes: dict[type[Scope], Scope] = {
     NullScope: NullScope(),
     SingletonScope: SingletonScope(),
 }
+_lock = threading.RLock()
 
 
 def Provide(dependency: DependencyCallable, /) -> Any:  # noqa: N802
