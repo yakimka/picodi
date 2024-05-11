@@ -1,3 +1,5 @@
+from typing import Annotated
+
 import pytest
 from fastapi import Depends, FastAPI
 from fastapi.exceptions import FastAPIError
@@ -108,3 +110,17 @@ def test_can_use_depends_only_in_view_not_in_nested_deps(app, client):
     response = client.get("/")
 
     assert response.json() == {"nested": "42"}
+
+
+def test_resolve_annotated_dependency(app, client):
+    def get_42() -> MyNumber:
+        return MyNumber(42)
+
+    @app.get("/")
+    @inject
+    def root(number: Annotated[MyNumber, Depends(Provide(get_42))]):
+        return {"number": number.value}
+
+    response = client.get("/")
+
+    assert response.json() == {"number": 42}
