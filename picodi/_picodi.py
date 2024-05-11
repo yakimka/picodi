@@ -18,7 +18,8 @@ from typing import (
     cast,
 )
 
-from picodi.scopes import DummyAwaitable, GlobalScope, NullScope, Scope, SingletonScope
+from picodi._internal import DummyAwaitable
+from picodi._scopes import GlobalScope, NullScope, Scope, SingletonScope
 
 if TYPE_CHECKING:
     from inspect import BoundArguments, Signature
