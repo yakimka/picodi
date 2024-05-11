@@ -1,9 +1,13 @@
-import operator
-from types import SimpleNamespace
 from typing import Any
 
-
 sentinel = object()
+
+
+class PathNotFoundError(Exception):
+    def __init__(self, current_path: str, obj: Any):
+        self.current_path = current_path
+        self.obj = obj
+        super().__init__(f"Can't find path '{current_path}' in {type(obj)} object")
 
 
 def get_value(
@@ -24,11 +28,34 @@ def get_value(
     """
     if not path:
         raise ValueError("Empty path")
+    if not isinstance(path, str):
+        raise TypeError("Path must be a string")
 
+    value = obj
+    current_path = []
+    for part in path.split("."):
+        current_path.append(part)
+        curr_val = _get_attr(value, part)
+        if curr_val is sentinel:
+            curr_val = _get_item(value, part)
+        if curr_val is sentinel:
+            if default is sentinel:
+                raise PathNotFoundError(".".join(current_path), obj)
+            return default
+        value = curr_val
+
+    return value
+
+
+def _get_attr(obj: Any, attr: str) -> Any:
     try:
-        result = operator.attrgetter(path)(obj)
+        return getattr(obj, attr)
     except AttributeError:
-        if default is sentinel:
-            raise
-        return default
-    return result
+        return sentinel
+
+
+def _get_item(obj: Any, key: str) -> Any:
+    try:
+        return obj[key]
+    except (KeyError, TypeError):
+        return sentinel

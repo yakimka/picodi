@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from picodi.helpers import get_value
+from picodi.helpers import PathNotFoundError, get_value
 
 SN = SimpleNamespace
 
@@ -12,9 +12,14 @@ SN = SimpleNamespace
     ("foo.bar", SN(foo=SN(bar=101)), 101),
     ("foo.bar.baz", SN(foo=SN(bar=SN(baz=12))), 12),
     #
-    # ("foo", dict(foo=42), 42),
-    # ("foo.bar", dict(foo=dict(bar=101)), 101),
-    # ("foo.bar.baz", dict(foo=dict(bar=dict(baz=12))), 12),
+    ("foo", {"foo": 42}, 42),
+    ("foo.bar", {"foo": {"bar": 101}}, 101),
+    ("foo.bar.baz", {"foo": {"bar": {"baz": 12}}}, 12),
+    #
+    ("foo.bar", SN(foo=dict(bar=101)), 101),
+    ("foo.bar", dict(foo=SN(bar=101)), 101),
+    ("foo.bar.baz", SN(foo=dict(bar=SN(baz=12))), 12),
+    ("foo.bar.baz", dict(foo=SN(bar=dict(baz=12))), 12),
 ])
 def test_get_simple_value(path, obj, expected):
     result = get_value(path, obj)
@@ -27,8 +32,19 @@ def test_get_simple_value(path, obj, expected):
     ("foo.bar", SN(foo=42)),
     ("foo.bar.baz", SN(foo=SN(bar=101))),
 ])
-def test_not_existing_path_raises_attribute_error(path, obj):
-    with pytest.raises(AttributeError):
+def test_not_existing_path_raises_error(path, obj):
+    with pytest.raises(PathNotFoundError):
+        get_value(path, obj)
+
+
+@pytest.mark.parametrize("path,obj,expected_path", [
+    ("oops", SN(foo=42), "oops"),
+    ("foo.bar", SN(foo=42), "foo.bar"),
+    ("foo.bar.baz", SN(foo=SN(bar=101)), "foo.bar.baz"),
+    ("foo.ban", SN(foo=SN(bar=101)), "foo.ban"),
+])
+def test_not_existing_path_raises_error_with_proper_message(path, obj, expected_path):
+    with pytest.raises(PathNotFoundError, match=f"Can't find path '{expected_path}'"):
         get_value(path, obj)
 
 
