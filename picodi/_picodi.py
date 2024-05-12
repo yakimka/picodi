@@ -7,7 +7,6 @@ import threading
 from collections.abc import Awaitable, Callable, Generator, Iterable, Iterator
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import asdict, dataclass
-from functools import wraps
 from typing import TYPE_CHECKING, Any, NamedTuple, ParamSpec, TypeVar, cast
 
 from picodi._internal import DummyAwaitable
@@ -278,22 +277,6 @@ def shutdown_resources() -> Awaitable:
         if coro is not None:
             tasks.append(coro)
     return asyncio.gather(*tasks)
-
-
-def make_dependency(fn: Callable[P, T], *args: Any, **kwargs: Any) -> Callable[..., T]:
-    signature = inspect.signature(fn)
-    bound = signature.bind(*args, **kwargs)
-    bound.apply_defaults()
-
-    fn = inject(fn)
-
-    @wraps(fn)
-    def wrapper(*args_in: P.args, **kwargs_in: P.kwargs) -> T:
-        bound_inner = signature.bind_partial(*args_in, **kwargs_in)
-        bound.arguments.update(bound_inner.arguments)
-        return fn(*bound.args, **bound.kwargs)
-
-    return wrapper
 
 
 class Dependency(NamedTuple):

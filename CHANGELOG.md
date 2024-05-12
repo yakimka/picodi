@@ -53,4 +53,7 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version 0.7.0
 
+- Added `registry` object for managing dependencies
 - Now you can override dependencies. Useful for testing and "ABC" dependencies
+- Removed `make_dependency` experimental function
+- Some code cleanups
