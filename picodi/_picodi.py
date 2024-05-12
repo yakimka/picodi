@@ -4,7 +4,7 @@ import asyncio
 import functools
 import inspect
 import threading
-from collections.abc import Awaitable, Callable, Generator, Iterable
+from collections.abc import Awaitable, Callable, Generator, Iterable, Iterator
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING, Any, NamedTuple, ParamSpec, TypeVar, cast
@@ -23,16 +23,21 @@ TC = TypeVar("TC", bound=Callable)
 unset = object()
 
 
-class Registry:
+class RegistryStorage:
     def __init__(self) -> None:
-        self._deps: dict[DependencyCallable, Provider] = {}
-        self._overrides: dict[DependencyCallable, DependencyCallable] = {}
-        self._lock = threading.RLock()
+        self.deps: dict[DependencyCallable, Provider] = {}
+        self.overrides: dict[DependencyCallable, DependencyCallable] = {}
+        self.lock = threading.RLock()
 
-    # Make `_add`, `_get`, `_filter` methods private to not expose them to public API.
-    # Using these methods in this module is intentional
-    # and should not be used outside this module.
-    def _add(
+    def __iter__(self) -> Iterator[Provider]:
+        return iter(self.deps.values())
+
+
+class InternalRegistry:
+    def __init__(self, storage: RegistryStorage) -> None:
+        self._storage = storage
+
+    def add(
         self,
         dependency: DependencyCallable,
         scope_class: type[Scope] = NullScope,
@@ -45,9 +50,9 @@ class Registry:
         If the dependency is not in the registry, it will be added with the provided
         scope class and `in_use` flag.
         """
-        with self._lock:
-            if dependency in self._deps:
-                provider = self._deps[dependency]
+        with self._storage.lock:
+            if dependency in self._storage.deps:
+                provider = self._storage.deps[dependency]
                 to_replace = provider.replace(
                     scope_class=(scope_class if override_scope else None),
                     # If the provider is already in use, keep it in use
@@ -59,22 +64,30 @@ class Registry:
                     in_use=(provider.in_use or in_use),
                 )
                 if to_replace != provider:
-                    self._deps[dependency] = to_replace
+                    self._storage.deps[dependency] = to_replace
             else:
-                self._deps[dependency] = Provider.from_dependency(
+                self._storage.deps[dependency] = Provider.from_dependency(
                     dependency=dependency,
                     scope_class=scope_class,
                     in_use=in_use,
                 )
 
-    def _get(self, dependency: DependencyCallable) -> Provider:
-        with self._lock:
-            if self._overrides.get(dependency):
-                dependency = self._overrides[dependency]
-            return self._deps[dependency]
+    def get(self, dependency: DependencyCallable) -> Provider:
+        with self._storage.lock:
+            if self._storage.overrides.get(dependency):
+                dependency = self._storage.overrides[dependency]
+            return self._storage.deps[dependency]
 
-    def _filter(self, predicate: Callable[[Provider], bool]) -> Iterable[Provider]:
-        return filter(predicate, self._deps.values())
+    def filter(self, predicate: Callable[[Provider], bool]) -> Iterable[Provider]:
+        return filter(predicate, self._storage)
+
+
+class Registry:
+    def __init__(
+        self, storage: RegistryStorage, internal_registry: InternalRegistry
+    ) -> None:
+        self._storage = storage
+        self._internal_registry = internal_registry
 
     def override(
         self,
@@ -99,21 +112,21 @@ class Registry:
         """
 
         def decorator(override_to: DependencyCallable) -> DependencyCallable:
-            self._add(override_to, in_use=True)
+            self._internal_registry.add(override_to, in_use=True)
             if dependency is override_to:
                 raise ValueError("Cannot override a dependency with itself")
-            self._overrides[dependency] = override_to
+            self._storage.overrides[dependency] = override_to
             return override_to
 
         if new_dependency is unset:
             return decorator
 
-        with self._lock:
-            original_dependency = self._overrides.get(dependency)
+        with self._storage.lock:
+            original_dependency = self._storage.overrides.get(dependency)
             if callable(new_dependency):
                 decorator(new_dependency)
             else:
-                self._overrides.pop(dependency, None)
+                self._storage.overrides.pop(dependency, None)
 
         @contextmanager
         def manage_context() -> Generator[None, None, None]:
@@ -130,19 +143,21 @@ class Registry:
         This method will not close any resources. So you need to manually call
         `shutdown_resources` before this method.
         """
-        with self._lock:
-            self._deps.clear()
-            self._overrides.clear()
+        with self._storage.lock:
+            self._storage.deps.clear()
+            self._storage.overrides.clear()
 
     def clear_overrides(self) -> None:
         """
         Clear all overrides. It will remove all overrides, but keep the dependencies.
         """
-        with self._lock:
-            self._overrides.clear()
+        with self._storage.lock:
+            self._storage.overrides.clear()
 
 
-registry = Registry()
+_registry_storage = RegistryStorage()
+_internal_registry = InternalRegistry(_registry_storage)
+registry = Registry(_registry_storage, _internal_registry)
 _scopes: dict[type[Scope], Scope] = {
     NullScope: NullScope(),
     SingletonScope: SingletonScope(),
@@ -173,7 +188,7 @@ def Provide(dependency: DependencyCallable, /) -> Any:  # noqa: N802
         assert db == "db connection"
     ```
     """
-    registry._add(dependency)  # noqa: SF01
+    _internal_registry.add(dependency)
     return Dependency(dependency)
 
 
@@ -242,7 +257,7 @@ def resource(fn: TC) -> TC:
     Use it with a dependency generator function to declare a resource.
     Should be placed last in the decorator chain (on top).
     """
-    registry._add(  # noqa: SF01
+    _internal_registry.add(
         fn,
         scope_class=SingletonScope,
         in_use=False,
@@ -257,7 +272,7 @@ def init_resources() -> Awaitable:
     when your application is shutting down.
     """
     async_resources = []
-    global_providers = registry._filter(  # noqa: SF01
+    global_providers = _internal_registry.filter(
         lambda p: p.in_use and issubclass(p.scope_class, GlobalScope)
     )
     for provider in global_providers:
@@ -291,7 +306,7 @@ class Dependency(NamedTuple):
         return self
 
     def get_provider(self) -> Provider:
-        return registry._get(self.original)  # noqa: SF01
+        return _internal_registry.get(self.original)
 
 
 @dataclass(frozen=True)
