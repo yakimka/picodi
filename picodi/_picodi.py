@@ -108,7 +108,7 @@ class Registry:
         """
 
         def decorator(override_to: DependencyCallable) -> DependencyCallable:
-            self.add(override_to, in_use=False)
+            self.add(override_to, in_use=True)
             if dependency is not override_to:
                 self._overrides[dependency] = override_to
             return override_to

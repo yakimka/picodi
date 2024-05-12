@@ -1,4 +1,19 @@
-from picodi import Provide, inject, registry
+from picodi import (
+    Provide,
+    init_resources,
+    inject,
+    registry,
+    resource,
+    shutdown_resources,
+)
+
+
+class Closeable:
+    def __init__(self, closed: bool = False) -> None:
+        self.is_closed = closed
+
+    def close(self) -> None:
+        self.is_closed = True
 
 
 def test_can_override_dependency_with_decorator():
@@ -138,3 +153,87 @@ def test_can_clear_overrides():
 
     assert overriden_result == ("overridden_func1", "overridden_func2")
     assert cleared_result == ("original_func1", "original_func2")
+
+
+def test_can_use_yield_dependency_in_override():
+    def get_settings() -> dict:
+        raise NotImplementedError
+
+    @inject
+    def my_service(settings: dict = Provide(get_settings)):
+        return settings
+
+    closeable = Closeable()
+
+    def real_settings():
+        yield {"real": "settings"}
+        closeable.close()
+
+    registry.override(get_settings, real_settings)
+
+    result = my_service()
+
+    assert result == {"real": "settings"}
+    assert closeable.is_closed is True
+
+
+def test_can_use_resource_in_override():
+    def get_settings() -> dict:
+        raise NotImplementedError
+
+    @inject
+    def my_service(settings: dict = Provide(get_settings)):
+        return settings
+
+    closeable = Closeable()
+
+    @resource
+    def real_settings():
+        yield {"real": "settings"}
+        closeable.close()
+
+    registry.override(get_settings, real_settings)
+
+    result = my_service()
+
+    assert result == {"real": "settings"}
+    assert closeable.is_closed is False
+    shutdown_resources()
+    assert closeable.is_closed is True
+
+
+async def test_can_use_async_dependency_in_override():
+    def get_settings() -> dict:
+        raise NotImplementedError
+
+    @inject
+    async def my_service(settings: dict = Provide(get_settings)):
+        return settings
+
+    @registry.override(get_settings)
+    async def real_settings():
+        return {"real": "settings"}
+
+    result = await my_service()
+
+    assert result == {"real": "settings"}
+
+
+async def test_can_use_async_resource_in_override_in_sync_context():
+    def get_settings() -> dict:
+        raise NotImplementedError
+
+    @inject
+    def my_service(settings: dict = Provide(get_settings)):
+        return settings
+
+    @resource
+    @registry.override(get_settings)
+    async def real_settings():
+        return {"real": "settings"}
+
+    await init_resources()
+
+    result = my_service()
+
+    assert result == {"real": "settings"}
