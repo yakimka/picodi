@@ -4,19 +4,10 @@ import asyncio
 import functools
 import inspect
 import threading
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Generator, Iterable, Iterator
 from contextlib import asynccontextmanager, contextmanager
-from dataclasses import asdict, dataclass, field
-from functools import wraps
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    AsyncContextManager,
-    ContextManager,
-    ParamSpec,
-    TypeVar,
-    cast,
-)
+from dataclasses import asdict, dataclass
+from typing import TYPE_CHECKING, Any, NamedTuple, ParamSpec, TypeVar, cast
 
 from picodi._internal import DummyAwaitable
 from picodi._scopes import GlobalScope, NullScope, Scope, SingletonScope
@@ -29,14 +20,149 @@ T = TypeVar("T")
 P = ParamSpec("P")
 TC = TypeVar("TC", bound=Callable)
 
+unset = object()
 
-_unset = object()
-_lock = threading.RLock()
-_registry: dict[DependencyCallable, Provider] = {}
+
+class RegistryStorage:
+    def __init__(self) -> None:
+        self.deps: dict[DependencyCallable, Provider] = {}
+        self.overrides: dict[DependencyCallable, DependencyCallable] = {}
+        self.lock = threading.RLock()
+
+    def __iter__(self) -> Iterator[Provider]:
+        return iter(self.deps.values())
+
+
+class InternalRegistry:
+    def __init__(self, storage: RegistryStorage) -> None:
+        self._storage = storage
+
+    def add(
+        self,
+        dependency: DependencyCallable,
+        scope_class: type[Scope] = NullScope,
+        in_use: bool = True,
+        override_scope: bool = False,
+    ) -> None:
+        """
+        Add a dependency to the registry. If the dependency is already in the registry,
+        it `in_use` flag can be updated, but the scope class cannot be changed.
+        If the dependency is not in the registry, it will be added with the provided
+        scope class and `in_use` flag.
+        """
+        with self._storage.lock:
+            if dependency in self._storage.deps:
+                provider = self._storage.deps[dependency]
+                to_replace = provider.replace(
+                    scope_class=(scope_class if override_scope else None),
+                    # If the provider is already in use, keep it in use
+                    # otherwise, use the new value. For example, if a provider
+                    # is already in use and we want to replace it with a resource,
+                    # we should keep it in use. If it's already a resource and we
+                    # want to replace it with a regular dependency, we should set
+                    # is_use to True.
+                    in_use=(provider.in_use or in_use),
+                )
+                if to_replace != provider:
+                    self._storage.deps[dependency] = to_replace
+            else:
+                self._storage.deps[dependency] = Provider.from_dependency(
+                    dependency=dependency,
+                    scope_class=scope_class,
+                    in_use=in_use,
+                )
+
+    def get(self, dependency: DependencyCallable) -> Provider:
+        with self._storage.lock:
+            if self._storage.overrides.get(dependency):
+                dependency = self._storage.overrides[dependency]
+            return self._storage.deps[dependency]
+
+    def filter(self, predicate: Callable[[Provider], bool]) -> Iterable[Provider]:
+        return filter(predicate, self._storage)
+
+
+class Registry:
+    def __init__(
+        self, storage: RegistryStorage, internal_registry: InternalRegistry
+    ) -> None:
+        self._storage = storage
+        self._internal_registry = internal_registry
+
+    def override(
+        self,
+        dependency: DependencyCallable,
+        new_dependency: DependencyCallable | None | object = unset,
+    ) -> Callable[[DependencyCallable], DependencyCallable]:
+        """
+        Override a dependency with a new one. It can be used as a decorator,
+        as a context manager or as a regular method call. New dependency will be
+        added to the registry.
+        Examples:
+        ```
+        @registry.override(get_settings)
+        def real_settings():
+            return {"real": "settings"}
+
+        with registry.override(get_settings, real_settings):
+            ...
+
+        registry.override(get_settings, real_settings)
+        registry.override(get_settings, None)  # clear override
+        """
+
+        def decorator(override_to: DependencyCallable) -> DependencyCallable:
+            self._internal_registry.add(override_to, in_use=True)
+            if dependency is override_to:
+                raise ValueError("Cannot override a dependency with itself")
+            self._storage.overrides[dependency] = override_to
+            return override_to
+
+        if new_dependency is unset:
+            return decorator
+
+        with self._storage.lock:
+            original_dependency = self._storage.overrides.get(dependency)
+            if callable(new_dependency):
+                decorator(new_dependency)
+            else:
+                self._storage.overrides.pop(dependency, None)
+
+        @contextmanager
+        def manage_context() -> Generator[None, None, None]:
+            try:
+                yield
+            finally:
+                self.override(dependency, original_dependency)
+
+        return manage_context()
+
+    def clear(self) -> None:
+        """
+        Clear the registry. It will remove all dependencies and overrides.
+        This method will not close any resources. So you need to manually call
+        `shutdown_resources` before this method.
+        """
+        with self._storage.lock:
+            self._storage.deps.clear()
+            self._storage.overrides.clear()
+
+    def clear_overrides(self) -> None:
+        """
+        Clear all overrides. It will remove all overrides, but keep the dependencies.
+        """
+        with self._storage.lock:
+            self._storage.overrides.clear()
+
+
+_registry_storage = RegistryStorage()
+_internal_registry = InternalRegistry(_registry_storage)
+registry = Registry(_registry_storage, _internal_registry)
 _scopes: dict[type[Scope], Scope] = {
     NullScope: NullScope(),
     SingletonScope: SingletonScope(),
 }
+_lock = threading.RLock()
 
 
 def Provide(dependency: DependencyCallable, /) -> Any:  # noqa: N802
@@ -62,12 +188,7 @@ def Provide(dependency: DependencyCallable, /) -> Any:  # noqa: N802
         assert db == "db connection"
     ```
     """
-    with _lock:
-        if dependency not in _registry:
-            _registry[dependency] = Provider.from_dependency(dependency, in_use=True)
-        elif not _registry[dependency].in_use:
-            _registry[dependency] = _registry[dependency].replace(in_use=True)
-
+    _internal_registry.add(dependency)
     return Dependency(dependency)
 
 
@@ -124,7 +245,6 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
                 scope.close_local()
             return result
 
-    wrapper._picodi_inject_ = True  # type: ignore[attr-defined] # noqa: SF01
     return wrapper  # type: ignore[return-value]
 
 
@@ -137,14 +257,12 @@ def resource(fn: TC) -> TC:
     Use it with a dependency generator function to declare a resource.
     Should be placed last in the decorator chain (on top).
     """
-    with _lock:
-        if fn in _registry:
-            provider = _registry[fn].replace(scope_class=SingletonScope)
-        else:
-            provider = Provider.from_dependency(
-                fn, scope_class=SingletonScope, in_use=False
-            )
-        _registry[fn] = provider
+    _internal_registry.add(
+        fn,
+        scope_class=SingletonScope,
+        in_use=False,
+        override_scope=True,
+    )
     return fn
 
 
@@ -154,12 +272,14 @@ def init_resources() -> Awaitable:
     when your application is shutting down.
     """
     async_resources = []
-    for provider in _registry.values():
-        if provider.in_use and issubclass(provider.scope_class, GlobalScope):
-            if provider.is_async:
-                async_resources.append(_resolve_value_async(provider))
-            else:
-                _resolve_value(provider)
+    global_providers = _internal_registry.filter(
+        lambda p: p.in_use and issubclass(p.scope_class, GlobalScope)
+    )
+    for provider in global_providers:
+        if provider.is_async:
+            async_resources.append(_resolve_value_async(provider))
+        else:
+            _resolve_value(provider)
 
     if async_resources:
         return asyncio.gather(*async_resources)
@@ -179,50 +299,29 @@ def shutdown_resources() -> Awaitable:
     return asyncio.gather(*tasks)
 
 
-def make_dependency(fn: Callable[P, T], *args: Any, **kwargs: Any) -> Callable[..., T]:
-    signature = inspect.signature(fn)
-    bound = signature.bind(*args, **kwargs)
-    bound.apply_defaults()
-
-    if not getattr(fn, "_picodi_inject_", None):
-        fn = inject(fn)
-
-    @wraps(fn)
-    def wrapper(*args_in: P.args, **kwargs_in: P.kwargs) -> T:
-        bound_inner = signature.bind_partial(*args_in, **kwargs_in)
-        bound.arguments.update(bound_inner.arguments)
-        return fn(*bound.args, **bound.kwargs)
-
-    return wrapper
-
-
-CallableManager = Callable[..., AsyncContextManager | ContextManager]
-
-
-@dataclass(frozen=True)
-class Dependency:
+class Dependency(NamedTuple):
     original: DependencyCallable
 
     def __call__(self) -> Dependency:
         return self
 
     def get_provider(self) -> Provider:
-        return _registry[self.original]
+        return _internal_registry.get(self.original)
 
 
 @dataclass(frozen=True)
 class Provider:
     dependency: DependencyCallable
-    is_async: bool = field(compare=False)
-    scope_class: type[Scope] = field(compare=False)
-    in_use: bool = field(compare=False)
+    is_async: bool
+    scope_class: type[Scope]
+    in_use: bool
 
     @classmethod
     def from_dependency(
         cls,
         dependency: DependencyCallable,
-        scope_class: type[Scope] = NullScope,
-        in_use: bool = False,
+        scope_class: type[Scope],
+        in_use: bool,
     ) -> Provider:
         is_async = inspect.iscoroutinefunction(
             dependency

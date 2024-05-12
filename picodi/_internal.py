@@ -21,9 +21,6 @@ class ExitStack:
         self._sync_stack = SyncExitStack()
         self._async_stack = AsyncExitStack()
 
-    def __enter__(self) -> ExitStack:
-        return self
-
     def __exit__(
         self,
         exc_type: type[BaseException] | None,
@@ -31,9 +28,6 @@ class ExitStack:
         traceback: TracebackType | None,
     ) -> bool | None:
         return self._sync_stack.__exit__(exc_type, exc, traceback)
-
-    async def __aenter__(self) -> ExitStack:
-        return self
 
     async def __aexit__(
         self,
@@ -51,7 +45,7 @@ class ExitStack:
         elif isinstance(cm, AsyncContextManager):
             return self._async_stack.enter_async_context(cm)
 
-        raise TypeError(f"Unsupported context manager: {cm}")
+        raise TypeError(f"Unsupported context manager: {cm}")  # pragma: no cover
 
     def close(self) -> Awaitable:
         self.__exit__(None, None, None)

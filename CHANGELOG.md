@@ -50,3 +50,11 @@ We follow [Semantic Versions](https://semver.org/).
 
 - Add `helpers` module
 - Fix potential `RuntimeWarning`
+
+## Version 0.7.0
+
+- Added `registry` object for managing dependencies
+- Now you can override dependencies. Useful for testing and "ABC" dependencies
+- Removed `make_dependency` experimental function
+- Some code cleanups
+- Fixed tests inconsistency (cleanup picodi resources after each test)

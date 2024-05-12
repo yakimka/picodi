@@ -18,10 +18,10 @@ def get_value(path: str, obj: Any, *, default: Any = sentinel) -> Any:
 
     Example:
     ```
-    obj = SimpleNamespace(foo=SimpleNamespace(bar=SimpleNamespace(baz=42)))
-    get_attribute("foo.bar.baz", obj)  # 42
-    get_attribute("foo.bar.baz2", obj)  # AttributeError
-    get_attribute("foo.bar.baz2", obj, default=12)  # 12
+    obj = SimpleNamespace(foo=SimpleNamespace(bar={"baz": 42}))
+    get_value("foo.bar.baz", obj)  # 42
+    get_value("foo.bar.baz2", obj)  # AttributeError
+    get_value("foo.bar.baz2", obj, default=12)  # 12
     ```
     """
     if not path:
