@@ -5,9 +5,28 @@
 [![PyPI - Version](https://img.shields.io/pypi/v/picodi.svg)](https://pypi.org/project/picodi/)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/picodi)
 
-Simple Dependency Injection for Python.
-This library supports both synchronous and asynchronous contexts
+Picodi simplifies Dependency Injection (DI) for Python applications.
+DI is a design pattern that allows objects to receive their dependencies from
+an external source rather than creating them internally.
+This library supports both synchronous and asynchronous contexts,
 and offers features like resource lifecycle management.
+
+## Table of Contents
+
+- [Status](#status)
+- [Installation](#installation)
+- [Features](#features)
+- [Basic Usage](#basic-usage)
+  - [Declaring dependencies](#declaring-dependencies)
+  - [Injecting dependencies](#injecting-dependencies)
+  - [Declaring dependencies that acts like a context manager](#declaring-dependencies-that-acts-like-a-context-manager)
+  - [Declaring resource dependencies](#declaring-resource-dependencies)
+  - [Resolving async dependencies in sync functions](#resolving-async-dependencies-in-sync-functions)
+  - [Using picodi with web frameworks](#using-picodi-with-web-frameworks)
+  - [Helper functions](#helper-functions)
+- [API Reference](#api-reference)
+- [License](#license)
+- [Credits](#credits)
 
 ## Status
 
@@ -39,20 +58,20 @@ Picodi uses decorators, functions and generators to provide and inject dependenc
 Dependencies can be simple functions or generators that act as context managers.
 
 ```python
-# this is a simple function that returns a number
+# A simple function returning a static number,
 #   and this function can be used as a dependency
 def get_meaning_of_life():
     return 42
 
 
-# generator function that acts like a context manager
+# A generator to manage database connections, cleaning up after usage
 def get_meaning_of_life():
     print("setup")
     yield 42
     print("teardown")
 
 
-# or async version
+# Or async version
 async def get_meaning_of_life():
     print("setup")
     yield 42
@@ -139,7 +158,8 @@ asyncio.run(main())
 
 ### Resolving async dependencies in sync functions
 
-If you try to resolve async dependencies in sync functions, you may get not what you expect.
+Attempting to resolve async dependencies in sync functions may not work as expected,
+resulting in unexpected behaviors like receiving a coroutine object instead of the actual value.
 
 ```python
 async def get_db_port() -> int:
