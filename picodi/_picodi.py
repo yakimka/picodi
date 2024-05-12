@@ -4,7 +4,7 @@ import asyncio
 import functools
 import inspect
 import threading
-from collections.abc import Awaitable, Callable, Generator, Iterable, Iterator
+from collections.abc import Awaitable, Callable, Generator, Iterable
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING, Any, NamedTuple, ParamSpec, TypeVar, cast
@@ -29,7 +29,10 @@ class Registry:
         self._overrides: dict[DependencyCallable, DependencyCallable] = {}
         self._lock = threading.RLock()
 
-    def add(
+    # Make `_add`, `_get`, `_filter` methods private to not expose them to public API.
+    # Using these methods in this module is intentional
+    # and should not be used outside this module.
+    def _add(
         self,
         dependency: DependencyCallable,
         scope_class: type[Scope] = NullScope,
@@ -64,17 +67,14 @@ class Registry:
                     in_use=in_use,
                 )
 
-    def get(self, dependency: DependencyCallable) -> Provider:
+    def _get(self, dependency: DependencyCallable) -> Provider:
         with self._lock:
             if self._overrides.get(dependency):
                 dependency = self._overrides[dependency]
             return self._deps[dependency]
 
-    def __iter__(self) -> Iterator[Provider]:
-        return iter(self._deps.values())
-
-    def filter(self, predicate: Callable[[Provider], bool]) -> Iterable[Provider]:
-        return filter(predicate, self)
+    def _filter(self, predicate: Callable[[Provider], bool]) -> Iterable[Provider]:
+        return filter(predicate, self._deps.values())
 
     def override(
         self,
@@ -99,7 +99,7 @@ class Registry:
         """
 
         def decorator(override_to: DependencyCallable) -> DependencyCallable:
-            self.add(override_to, in_use=True)
+            self._add(override_to, in_use=True)
             if dependency is override_to:
                 raise ValueError("Cannot override a dependency with itself")
             self._overrides[dependency] = override_to
@@ -173,7 +173,7 @@ def Provide(dependency: DependencyCallable, /) -> Any:  # noqa: N802
         assert db == "db connection"
     ```
     """
-    registry.add(dependency)
+    registry._add(dependency)  # noqa: SF01
     return Dependency(dependency)
 
 
@@ -242,7 +242,12 @@ def resource(fn: TC) -> TC:
     Use it with a dependency generator function to declare a resource.
     Should be placed last in the decorator chain (on top).
     """
-    registry.add(fn, scope_class=SingletonScope, in_use=False, override_scope=True)
+    registry._add(  # noqa: SF01
+        fn,
+        scope_class=SingletonScope,
+        in_use=False,
+        override_scope=True,
+    )
     return fn
 
 
@@ -252,7 +257,7 @@ def init_resources() -> Awaitable:
     when your application is shutting down.
     """
     async_resources = []
-    global_providers = registry.filter(
+    global_providers = registry._filter(  # noqa: SF01
         lambda p: p.in_use and issubclass(p.scope_class, GlobalScope)
     )
     for provider in global_providers:
@@ -286,7 +291,7 @@ class Dependency(NamedTuple):
         return self
 
     def get_provider(self) -> Provider:
-        return registry.get(self.original)
+        return registry._get(self.original)  # noqa: SF01
 
 
 @dataclass(frozen=True)

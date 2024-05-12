@@ -32,64 +32,60 @@ pip install picodi
 
 ## Basic Usage
 
-Picodi uses decorators, functions and generators to provide and inject dependencies:
+Picodi uses decorators, functions and generators to provide and inject dependencies.
 
 ### Declaring dependencies
 
 Dependencies can be simple functions or generators that act as context managers.
 
 ```python
-import asyncio
-import random
-
-
-# this is a simple function that returns a random port number
+# this is a simple function that returns a number
 #   and this function can be used as a dependency
-def get_random_db_port() -> int:
-    return random.randint(1024, 49151)
+def get_meaning_of_life():
+    return 42
+
+
+# generator function that acts like a context manager
+def get_meaning_of_life():
+    print("setup")
+    yield 42
+    print("teardown")
 
 
 # or async version
-async def get_random_db_port_async() -> int:
-    await asyncio.sleep(1)
-    return random.randint(1024, 49151)
+async def get_meaning_of_life():
+    print("setup")
+    yield 42
+    print("teardown")
 ```
 
 ### Injecting dependencies
 
 Declare dependencies in function arguments using the `Provide` function.
-Use the `inject` decorator if you want to resolve `Provide` dependencies on function call:
+Use the `inject` decorator to automatically inject dependencies into a function.
 
 ```python
-import random
-
 from picodi import inject, Provide
 
 
-def get_random_db_port() -> int:
-    return random.randint(1024, 49151)
+def get_db_port() -> int:
+    return 8000
 
 
 @inject
-def get_connection_settings(port: int = Provide(get_random_db_port)):
+def get_connection_settings(port: int = Provide(get_db_port)):
     return {"port": port}
-
-# get_connection_settings() will return
-# a dictionary with a random port number on every call
 ```
 
 ### Declaring dependencies that acts like a context manager
 
-You can also use a generator to declare dependencies that need to be cleaned up after use:
+You can use a generator to declare dependencies that need to be cleaned up after use.
 
 ```python
-from typing import Generator
-
 from picodi import Provide, inject
 
 
-# also can be async, just use `async def`
-def get_db() -> Generator[str, None, None]:
+def get_db():
     yield "db connection"
     print("closing db connection")
 
@@ -97,29 +93,26 @@ def get_db() -> Generator[str, None, None]:
 @inject
 def process_data(db: str = Provide(get_db)) -> None:
     print("processing data in db:", db)
-
-process_data()
-# -> processing data in db: db connection
-# -> closing db connection
 ```
+
+`get_db` and `process_data` also can be async, just add `async` keyword before `def`.
 
 ### Declaring resource dependencies
 
 Use the `resource` decorator to declare a resource,
 which ensures that the provided function is treated as a singleton
-and that its lifecycle is managed across the application:
+and that its lifecycle is managed across the application.
 
 ```python
 import asyncio
 import random
-from typing import AsyncGenerator
 
 from picodi import Provide, inject, resource, shutdown_resources
 
 
 # useful for managing resources like connections
 @resource
-async def get_db_port() -> AsyncGenerator[int, None]:
+async def get_db_port():
     yield random.randint(1024, 49151)
     print("closing db port")
 
@@ -149,11 +142,6 @@ asyncio.run(main())
 If you try to resolve async dependencies in sync functions, you may get not what you expect.
 
 ```python
-import asyncio
-
-from picodi import Provide, inject
-
-
 async def get_db_port() -> int:
     return 8080
 
@@ -161,43 +149,33 @@ async def get_db_port() -> int:
 @inject
 def print_port(port: int = Provide(get_db_port)) -> None:
     print("port is:", port)
-
-
-async def main() -> None:
-    print_port()
-
-
-asyncio.run(main())
-# -> port is: <coroutine object get_db_port at 0x1037741a0>
+    # port is: <coroutine object get_db_port at 0x1037741a0>
 ```
 
 But if your dependency is a resource,
 you can use `init_resources` on startup to resolve dependencies and then use cached values,
-even in sync functions:
+even in sync functions.
+But regular async functions will still need to be used only in async context.
 
 ```python
 import asyncio
-from typing import AsyncGenerator
 
 from picodi import Provide, init_resources, inject, resource
 
 @resource
-async def get_db_port() -> AsyncGenerator[int, None]:
+async def get_db_port():
     yield 8080
 
 
 @inject
 def print_port(port: int = Provide(get_db_port)) -> None:
     print("port is:", port)
+    # -> port is: 8080
 
 
 async def main() -> None:
     await init_resources()
     print_port()
-
-
-asyncio.run(main())
-# -> port is: 8080
 ```
 
 ## Using picodi with web frameworks
@@ -231,13 +209,47 @@ async def read_root(redis: str = Depends(Provide(get_redis_connection))):
 # uvicorn fastapi_di:app --reload
 ```
 
+### Helper functions
+
+#### `helpers.get_value`
+
+Function to get a value from a nested dictionary or object.
+Can be useful for getting single value from settings object
+and not be dependent on the type of the object.
+
+```python
+from picodi import inject, Provide
+from picodi.helpers import get_value
+
+def get_settings():
+    return {
+        "db": {
+            "host": "localhost",
+            "port": 8000
+        }
+    }
+
+
+@inject
+def get_setting(path: str, settings: dict = Provide(get_settings)):
+    value = get_value(path, settings)
+    return lambda: value
+
+
+@inject
+def get_connection(
+    host: str = Provide(get_setting(path="db.host")),
+    port: int = Provide(get_setting(path="db.port")),
+):
+    print("connecting to", host, port)
+    # -> connecting to localhost 8000
+```
+
 ## API Reference
 
 ### `Provide(dependency)`
 
 Marks a callable as a provider of a dependency.
-It manages the lifecycle of the dependency,
-including initialization and teardown if the dependency is a generator.
 
 - **Parameters**:
   - `dependency`: A callable that returns the dependency or a generator for context management.
@@ -245,6 +257,8 @@ including initialization and teardown if the dependency is a generator.
 ### `inject(fn)`
 
 Decorator to automatically inject dependencies declared by `Provide` into a function.
+It manages the lifecycle of the dependency,
+including initialization and teardown if the dependency is a generator.
 
 Should be placed first in the decorator chain (on bottom).
 
@@ -274,6 +288,56 @@ Cleans up all resources.
 It should be called when the application is shutting down to ensure proper resource cleanup.
 
 Can be called as `shutdown_resources()` in sync context and `await shutdown_resources()` in async context.
+
+### `registry` object
+
+Registry object to manage dependencies and resources.
+
+#### `registry.override(dependency, new_dependency)`
+
+Overrides a dependency with a new one. It can be used as a decorator, context manager
+or a regular method call. The new dependency will be used instead of the old one.
+Useful for testing or changing dependencies at runtime.
+
+- **Parameters**:
+  - `dependency`: The dependency to override.
+  - `new_dependency`: The new dependency to use instead of the old one. Don't specify
+  this parameter when using as a decorator. When passing `None`, the original dependency
+  will be restored.
+
+```python
+from picodi import registry
+
+def get_settings():
+    raise NotImplementedError
+
+
+# as a decorator
+@registry.override(get_settings)
+def real_settings():
+    return {"real": "settings"}
+
+
+# as a context manager
+with registry.override(get_settings, real_settings):
+    ...
+
+# as a regular method call
+registry.override(get_settings, real_settings)
+registry.override(get_settings, None)  # clear override
+```
+
+#### `registry.clear_overrides()`
+
+Clears all overrides set by `registry.override()`.
+
+#### `registry.clear()`
+
+Clears all dependencies and resources. This method will not close any resources.
+So you need to manually call `shutdown_resources` before this method.
+
+Don't use this method in production code (only if you know what you are doing),
+it's mostly for testing purposes.
 
 ### `helpers` module
 
