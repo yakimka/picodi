@@ -58,3 +58,8 @@ We follow [Semantic Versions](https://semver.org/).
 - Removed `make_dependency` experimental function
 - Some code cleanups
 - Fixed tests inconsistency (cleanup picodi resources after each test)
+
+
+## Version 0.7.1
+
+- Fix "coroutine was never awaited" warning when closing context manager for sync function in async context

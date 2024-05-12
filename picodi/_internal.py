@@ -49,7 +49,13 @@ class ExitStack:
 
     def close(self) -> Awaitable:
         self.__exit__(None, None, None)
-        if is_async_environment():
+        if (
+            is_async_environment()
+            # This is a workaround for the issue for RuntimeWarning
+            # "coroutine was never awaited". If we in sync function in async context -
+            # don't need to await for async exit if there are no async context managers.
+            and self._async_stack._exit_callbacks  # type: ignore # noqa: SF01
+        ):
             return self.__aexit__(None, None, None)
         return DummyAwaitable()
 
