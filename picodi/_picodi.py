@@ -83,13 +83,30 @@ class Registry:
         return iter(self._deps.values())
 
     def filter(self, predicate: Callable[[Provider], bool]) -> Iterable[Provider]:
-        return filter(predicate, self._deps.values())
+        return filter(predicate, self)
 
     def override(
         self,
         dependency: DependencyCallable,
         new_dependency: DependencyCallable | None | object = unset,
     ) -> Callable[[DependencyCallable], DependencyCallable]:
+        """
+        Override a dependency with a new one. It can be used as a decorator,
+        as a context manager or as a regular method call. New dependency will be
+        added to the registry.
+        Examples:
+        ```
+        @registry.override(get_settings)
+        def real_settings():
+            return {"real": "settings"}
+
+        with registry.override(get_settings, real_settings):
+            ...
+
+        registry.override(get_settings, real_settings)
+        registry.override(get_settings, None)  # clear override
+        """
+
         def decorator(override_to: DependencyCallable) -> DependencyCallable:
             self.add(override_to, in_use=False)
             if dependency is not override_to:
@@ -115,7 +132,20 @@ class Registry:
 
         return manage_context()
 
+    def clear(self) -> None:
+        """
+        Clear the registry. It will remove all dependencies and overrides.
+        This method will not close any resources. So you need to manually call
+        `shutdown_resources` before this method.
+        """
+        with self._lock:
+            self._deps.clear()
+            self._overrides.clear()
+
     def clear_overrides(self) -> None:
+        """
+        Clear all overrides. It will remove all overrides, but keep the dependencies.
+        """
         with self._lock:
             self._overrides.clear()
 
