@@ -57,3 +57,4 @@ We follow [Semantic Versions](https://semver.org/).
 - Now you can override dependencies. Useful for testing and "ABC" dependencies
 - Removed `make_dependency` experimental function
 - Some code cleanups
+- Fixed tests inconsistency (cleanup picodi resources after each test)
