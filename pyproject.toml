@@ -93,7 +93,9 @@ branch = true
 [tool.coverage.report]
 precision = 2
 exclude_lines = [
+  "pragma: no cover",
   "if TYPE_CHECKING:",
+  "raise NotImplementedError",
 ]
 
 [tool.mypy]

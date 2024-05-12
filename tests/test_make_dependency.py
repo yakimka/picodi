@@ -11,9 +11,6 @@ class MyClass:
         self.a = a
         self.b = b
 
-    def __repr__(self):
-        return f"MyClass({self.a}, {self.b})"
-
     def __eq__(self, other):
         return self.a == other.a and self.b == other.b
 

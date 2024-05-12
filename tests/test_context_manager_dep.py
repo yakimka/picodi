@@ -351,7 +351,7 @@ async def test_can_init_injected_resource_async():
 async def test_dont_init_not_used_resources():
     @resource
     async def not_used_resource():
-        yield 1 / 0
+        yield 1 / 0  # pragma: no cover
 
     @resource
     async def used_resource():

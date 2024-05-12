@@ -67,3 +67,13 @@ def test_get_default_value_if_not_found(obj):
     result = get_value("foo.bar.baz2", obj, default="my_default_value")
 
     assert result == "my_default_value"
+
+
+def test_cant_pass_empty_path():
+    with pytest.raises(ValueError, match="Empty path"):
+        get_value("", SN(foo=42))
+
+
+def test_path_must_be_string():
+    with pytest.raises(TypeError, match="Path must be a string"):
+        get_value(42, SN(foo=42))

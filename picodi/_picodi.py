@@ -8,15 +8,7 @@ from collections.abc import Awaitable, Callable, Generator, Iterable, Iterator
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import asdict, dataclass, field
 from functools import wraps
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    AsyncContextManager,
-    ContextManager,
-    ParamSpec,
-    TypeVar,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, cast
 
 from picodi._internal import DummyAwaitable
 from picodi._scopes import GlobalScope, NullScope, Scope, SingletonScope
@@ -109,8 +101,9 @@ class Registry:
 
         def decorator(override_to: DependencyCallable) -> DependencyCallable:
             self.add(override_to, in_use=True)
-            if dependency is not override_to:
-                self._overrides[dependency] = override_to
+            if dependency is override_to:
+                raise ValueError("Cannot override a dependency with itself")
+            self._overrides[dependency] = override_to
             return override_to
 
         if new_dependency is unset:
@@ -238,7 +231,6 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
                 scope.close_local()
             return result
 
-    wrapper._picodi_inject_ = True  # type: ignore[attr-defined] # noqa: SF01
     return wrapper  # type: ignore[return-value]
 
 
@@ -293,8 +285,7 @@ def make_dependency(fn: Callable[P, T], *args: Any, **kwargs: Any) -> Callable[.
     bound = signature.bind(*args, **kwargs)
     bound.apply_defaults()
 
-    if not getattr(fn, "_picodi_inject_", None):
-        fn = inject(fn)
+    fn = inject(fn)
 
     @wraps(fn)
     def wrapper(*args_in: P.args, **kwargs_in: P.kwargs) -> T:
@@ -303,9 +294,6 @@ def make_dependency(fn: Callable[P, T], *args: Any, **kwargs: Any) -> Callable[.
         return fn(*bound.args, **bound.kwargs)
 
     return wrapper
-
-
-CallableManager = Callable[..., AsyncContextManager | ContextManager]
 
 
 @dataclass(frozen=True)

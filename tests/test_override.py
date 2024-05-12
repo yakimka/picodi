@@ -1,3 +1,5 @@
+import pytest
+
 from picodi import (
     Provide,
     init_resources,
@@ -6,6 +8,10 @@ from picodi import (
     resource,
     shutdown_resources,
 )
+
+
+def get_abc_settings() -> dict:
+    raise NotImplementedError
 
 
 class Closeable:
@@ -17,14 +23,11 @@ class Closeable:
 
 
 def test_can_override_dependency_with_decorator():
-    def get_settings() -> dict:
-        raise NotImplementedError
-
     @inject
-    def my_service(settings: dict = Provide(get_settings)):
+    def my_service(settings: dict = Provide(get_abc_settings)):
         return settings
 
-    @registry.override(get_settings)
+    @registry.override(get_abc_settings)
     def real_settings():
         return {"real": "settings"}
 
@@ -43,7 +46,7 @@ def test_can_clear_overriding():
 
     @registry.override(get_settings)
     def overridden_settings():
-        return {"overridden": "settings"}
+        return {"overridden": "settings"}  # pragma: no cover
 
     registry.override(get_settings, None)
 
@@ -53,17 +56,14 @@ def test_can_clear_overriding():
 
 
 def test_can_override_dependency_with_call():
-    def get_settings() -> dict:
-        raise NotImplementedError
-
     @inject
-    def my_service(settings: dict = Provide(get_settings)):
+    def my_service(settings: dict = Provide(get_abc_settings)):
         return settings
 
     def real_settings():
         return {"real": "settings"}
 
-    registry.override(get_settings, real_settings)
+    registry.override(get_abc_settings, real_settings)
 
     result = my_service()
 
@@ -87,18 +87,15 @@ def test_can_override_with_context_manager():
 
 
 def test_can_context_manager_return_state_to_previous_not_to_original():
-    def get_settings() -> dict:
-        raise NotImplementedError
-
     @inject
-    def my_service(settings: dict = Provide(get_settings)):
+    def my_service(settings: dict = Provide(get_abc_settings)):
         return settings
 
-    @registry.override(get_settings)
+    @registry.override(get_abc_settings)
     def first_override():
         return {"first": "override"}
 
-    with registry.override(get_settings, lambda: {"second": "override"}):
+    with registry.override(get_abc_settings, lambda: {"second": "override"}):
         in_context_result = my_service()
     after_context_result = my_service()
 
@@ -107,20 +104,17 @@ def test_can_context_manager_return_state_to_previous_not_to_original():
 
 
 def test_overriding_overridden_dependency_dont_apply_to_original_dep():
-    def get_settings() -> dict:
-        raise NotImplementedError
-
     @inject
-    def my_service(settings: dict = Provide(get_settings)):
+    def my_service(settings: dict = Provide(get_abc_settings)):
         return settings
 
     def first_override():
         return {"first": "override"}
 
     def second_override():
-        return {"second": "override"}
+        return {"second": "override"}  # pragma: no cover
 
-    registry.override(get_settings, first_override)
+    registry.override(get_abc_settings, first_override)
     registry.override(first_override, second_override)
 
     result = my_service()
@@ -156,11 +150,8 @@ def test_can_clear_overrides():
 
 
 def test_can_use_yield_dependency_in_override():
-    def get_settings() -> dict:
-        raise NotImplementedError
-
     @inject
-    def my_service(settings: dict = Provide(get_settings)):
+    def my_service(settings: dict = Provide(get_abc_settings)):
         return settings
 
     closeable = Closeable()
@@ -169,7 +160,7 @@ def test_can_use_yield_dependency_in_override():
         yield {"real": "settings"}
         closeable.close()
 
-    registry.override(get_settings, real_settings)
+    registry.override(get_abc_settings, real_settings)
 
     result = my_service()
 
@@ -178,11 +169,8 @@ def test_can_use_yield_dependency_in_override():
 
 
 def test_can_use_resource_in_override():
-    def get_settings() -> dict:
-        raise NotImplementedError
-
     @inject
-    def my_service(settings: dict = Provide(get_settings)):
+    def my_service(settings: dict = Provide(get_abc_settings)):
         return settings
 
     closeable = Closeable()
@@ -192,7 +180,7 @@ def test_can_use_resource_in_override():
         yield {"real": "settings"}
         closeable.close()
 
-    registry.override(get_settings, real_settings)
+    registry.override(get_abc_settings, real_settings)
 
     result = my_service()
 
@@ -203,14 +191,11 @@ def test_can_use_resource_in_override():
 
 
 async def test_can_use_async_dependency_in_override():
-    def get_settings() -> dict:
-        raise NotImplementedError
-
     @inject
-    async def my_service(settings: dict = Provide(get_settings)):
+    async def my_service(settings: dict = Provide(get_abc_settings)):
         return settings
 
-    @registry.override(get_settings)
+    @registry.override(get_abc_settings)
     async def real_settings():
         return {"real": "settings"}
 
@@ -220,15 +205,12 @@ async def test_can_use_async_dependency_in_override():
 
 
 async def test_can_use_async_resource_in_override_in_sync_context():
-    def get_settings() -> dict:
-        raise NotImplementedError
-
     @inject
-    def my_service(settings: dict = Provide(get_settings)):
+    def my_service(settings: dict = Provide(get_abc_settings)):
         return settings
 
     @resource
-    @registry.override(get_settings)
+    @registry.override(get_abc_settings)
     async def real_settings():
         return {"real": "settings"}
 
@@ -237,3 +219,11 @@ async def test_can_use_async_resource_in_override_in_sync_context():
     result = my_service()
 
     assert result == {"real": "settings"}
+
+
+def test_cant_override_dependency_with_itself():
+    def get_settings() -> dict:
+        return {"default": "settings"}
+
+    with pytest.raises(ValueError, match="Cannot override a dependency with itself"):
+        registry.override(get_settings, get_settings)
