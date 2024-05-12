@@ -6,9 +6,9 @@ import inspect
 import threading
 from collections.abc import Awaitable, Callable, Generator, Iterable, Iterator
 from contextlib import asynccontextmanager, contextmanager
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from functools import wraps
-from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, cast
+from typing import TYPE_CHECKING, Any, NamedTuple, ParamSpec, TypeVar, cast
 
 from picodi._internal import DummyAwaitable
 from picodi._scopes import GlobalScope, NullScope, Scope, SingletonScope
@@ -296,8 +296,7 @@ def make_dependency(fn: Callable[P, T], *args: Any, **kwargs: Any) -> Callable[.
     return wrapper
 
 
-@dataclass(frozen=True)
-class Dependency:
+class Dependency(NamedTuple):
     original: DependencyCallable
 
     def __call__(self) -> Dependency:
@@ -310,7 +309,7 @@ class Dependency:
 @dataclass(frozen=True)
 class Provider:
     dependency: DependencyCallable
-    is_async: bool = field(compare=False)
+    is_async: bool
     scope_class: type[Scope]
     in_use: bool
 
