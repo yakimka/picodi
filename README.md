@@ -6,7 +6,8 @@
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/picodi)
 
 Picodi simplifies Dependency Injection (DI) for Python applications.
-DI is a design pattern that allows objects to receive their dependencies from
+[DI](https://en.wikipedia.org/wiki/Dependency_injection) is a design pattern
+that allows objects to receive their dependencies from
 an external source rather than creating them internally.
 This library supports both synchronous and asynchronous contexts,
 and offers features like resource lifecycle management.
@@ -25,6 +26,7 @@ and offers features like resource lifecycle management.
   - [Resolving async dependencies in sync functions](#resolving-async-dependencies-in-sync-functions)
   - [Using picodi with web frameworks](#using-picodi-with-web-frameworks)
   - [Helper functions](#helper-functions)
+- [Known Issues](#known-issues)
 - [API Reference](#api-reference)
 - [License](#license)
 - [Credits](#credits)
@@ -33,7 +35,6 @@ and offers features like resource lifecycle management.
 
 Picodi is currently in the experimental stage.
 Public APIs may change without notice until the library reaches a 1.x.x version.
-Use it at your own risk.
 
 ## Installation
 
@@ -64,7 +65,7 @@ from picodi import Provide, init_resources, inject, resource, shutdown_resources
 from picodi.helpers import get_value
 
 
-# Regular function without required arguments can be used as dependency
+# Regular functions without required arguments can be used as a dependency
 def get_settings() -> dict:
     return {
         "nasa_api": {
@@ -76,7 +77,7 @@ def get_settings() -> dict:
 
 
 # Helper function to get a setting from the settings dictionary.
-# We can use this function to inject specific setting not all settings object.
+# We can use this function to inject specific settings, not the whole settings object.
 @inject
 def get_setting(path: str, settings: dict = Provide(get_settings)) -> Callable[[], Any]:
     value = get_value(path, settings)
@@ -136,7 +137,7 @@ async def main():
     apod_data = await get_apod(date(2011, 7, 26))
     print("Title:", apod_data["title"])
 
-    # Closing all inited resources. This need to be done on the application shutdown.
+    # Closing all inited resources. This needs to be done on the application shutdown.
     await shutdown_resources()
 
 
@@ -368,6 +369,26 @@ def get_connection(
     print("connecting to", host, port)
     # -> connecting to localhost 8000
 ```
+
+## Known Issues
+
+### I'm getting a coroutine object instead of the actual value
+
+If you are trying to resolve async dependencies in sync functions, you will get a coroutine object.
+For regular dependencies this is intended behavior, so only use async dependencies in async functions.
+But if your dependency is a resource, you can use `init_resources` on app startup to resolve dependencies
+and then picodi will use cached values, even in sync functions.
+
+### Resources are not initialized when i call `init_resources()`
+
+1. If you have async dependencies - make sure that you are calling `await init_resources()` in async context.
+2. Make sure that modules with your `@resource` functions are imported (e.g. registered) before calling `init_resources()`.
+
+### flake8-bugbear throws `B008 Do not perform function calls in argument defaults.
+
+Edit `extend-immutable-calls` in your `setup.cfg`:
+
+`extend-immutable-calls = picodi.Provide,Provide`
 
 ## API Reference
 
