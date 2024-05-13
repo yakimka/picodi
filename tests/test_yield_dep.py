@@ -57,7 +57,7 @@ def int_service_async_resource_dep():
     return get_int_service_async_resource
 
 
-def test_resolve_context_manager_sync():
+def test_resolve_yield_dep_sync():
     @inject
     def get_int(service: IntService = Provide(get_int_service)):
         assert service.closed is False
@@ -68,7 +68,7 @@ def test_resolve_context_manager_sync():
     assert int_service.closed is True
 
 
-def test_multiple_calls_to_context_manager_sync_return_different_values():
+def test_multiple_calls_to_yield_dep_sync_return_different_values():
     @inject
     def get_int(service: IntService = Provide(get_int_service)):
         return service
@@ -81,7 +81,7 @@ def test_multiple_calls_to_context_manager_sync_return_different_values():
     assert int_service_1 is not int_service_2
 
 
-async def test_resolve_context_manager_async():
+async def test_resolve_yield_dep_async():
     @inject
     async def get_int(service: IntService = Provide(get_int_service_async)):
         assert service.closed is False
@@ -93,7 +93,7 @@ async def test_resolve_context_manager_async():
     assert int_service.closed is True
 
 
-async def test_resolve_context_manager_sync_from_async_context():
+async def test_resolve_yield_dep_sync_from_async_context():
     @inject
     async def get_int(service: IntService = Provide(get_int_service)):
         assert service.closed is False
@@ -105,7 +105,7 @@ async def test_resolve_context_manager_sync_from_async_context():
     assert int_service.closed is True
 
 
-async def test_multiple_calls_to_context_manager_async_return_different_values():
+async def test_multiple_calls_to_yield_dep_async_return_different_values():
     @inject
     async def get_int(service: IntService = Provide(get_int_service_async)):
         return service
@@ -158,7 +158,7 @@ async def test_multiple_calls_to_resource_sync_from_async_context_return_same_va
     assert int_service_1 is int_service_2
 
 
-def test_resolve_async_context_manager_from_sync_function_return_coroutine():
+def test_resolve_async_yield_dep_from_sync_function_return_coroutine():
     @inject
     def get_async_dep(port: int = Provide(get_int_service_async)):
         return port
@@ -169,7 +169,7 @@ def test_resolve_async_context_manager_from_sync_function_return_coroutine():
     assert result.__name__ == "get_int_service_async"
 
 
-async def test_resolve_async_context_manager_from_sync_function_can_be_inited():
+async def test_resolve_async_yield_dep_from_sync_function_can_be_inited():
     @resource
     async def async_resource():
         int_service = IntService.create()
