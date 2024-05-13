@@ -6,7 +6,8 @@
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/picodi)
 
 Picodi simplifies Dependency Injection (DI) for Python applications.
-DI is a design pattern that allows objects to receive their dependencies from
+[DI](https://en.wikipedia.org/wiki/Dependency_injection) is a design pattern
+that allows objects to receive their dependencies from
 an external source rather than creating them internally.
 This library supports both synchronous and asynchronous contexts,
 and offers features like resource lifecycle management.
@@ -16,6 +17,7 @@ and offers features like resource lifecycle management.
 - [Status](#status)
 - [Installation](#installation)
 - [Features](#features)
+- [Quick Start](#quick-start)
 - [Basic Usage](#basic-usage)
   - [Declaring dependencies](#declaring-dependencies)
   - [Injecting dependencies](#injecting-dependencies)
@@ -24,6 +26,7 @@ and offers features like resource lifecycle management.
   - [Resolving async dependencies in sync functions](#resolving-async-dependencies-in-sync-functions)
   - [Using picodi with web frameworks](#using-picodi-with-web-frameworks)
   - [Helper functions](#helper-functions)
+- [Known Issues](#known-issues)
 - [API Reference](#api-reference)
 - [License](#license)
 - [Credits](#credits)
@@ -32,7 +35,6 @@ and offers features like resource lifecycle management.
 
 Picodi is currently in the experimental stage.
 Public APIs may change without notice until the library reaches a 1.x.x version.
-Use it at your own risk.
 
 ## Installation
 
@@ -49,6 +51,109 @@ pip install picodi
 - 🔍 Type hints support
 - 🐍 Python 3.10+
 
+## Quick Start
+
+```python
+import asyncio
+from collections.abc import Callable
+from datetime import date
+from typing import Any
+
+import httpx
+
+from picodi import Provide, init_resources, inject, resource, shutdown_resources
+from picodi.helpers import get_value
+
+
+# Regular functions without required arguments can be used as a dependency
+def get_settings() -> dict:
+    return {
+        "nasa_api": {
+            "api_key": "DEMO_KEY",
+            "base_url": "https://api.nasa.gov",
+            "timeout": 10,
+        }
+    }
+
+
+# Helper function to get a setting from the settings dictionary.
+# We can use this function to inject specific settings, not the whole settings object.
+@inject
+def get_setting(path: str, settings: dict = Provide(get_settings)) -> Callable[[], Any]:
+    value = get_value(path, settings)
+    return lambda: value
+
+
+# We want to reuse the same client for all requests, so we create a resource that
+#   provides an httpx.AsyncClient instance with the correct settings.
+@resource
+@inject
+async def get_nasa_client(
+    api_key: str = Provide(get_setting("nasa_api.api_key")),
+    base_url: str = Provide(get_setting("nasa_api.base_url")),
+    timeout: int = Provide(get_setting("nasa_api.timeout")),
+) -> httpx.AsyncClient:
+    async with httpx.AsyncClient(
+        base_url=base_url, params={"api_key": api_key}, timeout=timeout
+    ) as client:
+        yield client
+
+
+@inject
+async def get_apod(
+    date: date, client: httpx.AsyncClient = Provide(get_nasa_client)
+) -> dict[str, Any]:
+    # Printing the client ID to show that the same client is reused for all requests.
+    print("Client ID:", id(client))
+    response = await client.get("/planetary/apod", params={"date": date.isoformat()})
+    response.raise_for_status()
+    return response.json()
+
+
+@inject
+# Note that asynchronous `get_nasa_client` is injected
+#  in synchronous `print_client_info` function.
+def print_client_info(client: httpx.AsyncClient = Provide(get_nasa_client)):
+    print("Client ID:", id(client))
+    print("Client Base URL:", client.base_url)
+    print("Client Params:", client.params)
+    print("Client Timeout:", client.timeout)
+
+
+async def main():
+    # Initialize resources on the application startup. This will create the
+    #   httpx.AsyncClient instance and cache it for later use. Thereby, the same
+    #   client will be reused for all requests. This is important for connection
+    #   pooling and performance.
+    # Also `init_resources` call will allow to pass asynchronous `get_nasa_client`
+    #   into synchronous functions.
+    await init_resources()
+
+    print_client_info()
+
+    apod_data = await get_apod(date(2011, 7, 19))
+    print("Title:", apod_data["title"])
+
+    apod_data = await get_apod(date(2011, 7, 26))
+    print("Title:", apod_data["title"])
+
+    # Closing all inited resources. This needs to be done on the application shutdown.
+    await shutdown_resources()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+# Client ID: 4334576784
+# Client Base URL: https://api.nasa.gov
+# Client Params: api_key=DEMO_KEY
+# Client Timeout: Timeout(timeout=10)
+#
+# Client ID: 4334576784
+# Title: Vesta Vista
+#
+# Client ID: 4334576784
+# Title: Galaxy NGC 474: Cosmic Blender
+```
 ## Basic Usage
 
 Picodi uses decorators, functions and generators to provide and inject dependencies.
@@ -264,6 +369,26 @@ def get_connection(
     print("connecting to", host, port)
     # -> connecting to localhost 8000
 ```
+
+## Known Issues
+
+### I'm getting a coroutine object instead of the actual value
+
+If you are trying to resolve async dependencies in sync functions, you will get a coroutine object.
+For regular dependencies this is intended behavior, so only use async dependencies in async functions.
+But if your dependency is a resource, you can use `init_resources` on app startup to resolve dependencies
+and then picodi will use cached values, even in sync functions.
+
+### Resources are not initialized when i call `init_resources()`
+
+1. If you have async dependencies - make sure that you are calling `await init_resources()` in async context.
+2. Make sure that modules with your `@resource` functions are imported (e.g. registered) before calling `init_resources()`.
+
+### flake8-bugbear throws `B008 Do not perform function calls in argument defaults.
+
+Edit `extend-immutable-calls` in your `setup.cfg`:
+
+`extend-immutable-calls = picodi.Provide,Provide`
 
 ## API Reference
 
