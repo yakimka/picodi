@@ -50,7 +50,7 @@ pip install picodi
 - ⏱️ Supports both sync and async contexts
 - 🔄 Resource lifecycle management
 - 🔍 Type hints support
-- 🐍 Python 3.10+
+- 🐍 Python & PyPy 3.10+ support
 
 ## Quick Start
 

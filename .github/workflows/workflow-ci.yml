@@ -94,6 +94,50 @@ jobs:
           name: built-package-py${{ matrix.python-version }}
           path: dist/
 
+  pypy-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        pypy-version: [ '3.10']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare Docker
+        run: |
+          docker login "$CACHE_REGISTRY" -u "$CACHE_REGISTRY_USERNAME" --password="${CACHE_REGISTRY_TOKEN}"
+          docker buildx create --use --driver=docker-container
+          docker --version && docker compose --version
+
+      - name: Load cached venv
+        id: cached-venv
+        uses: actions/cache@v4
+        with:
+          path: |
+            .venv
+          key: pypy${{ matrix.pypy-version }}-${{ hashFiles('./poetry.lock') }}
+
+      - name: Pull docker image
+        run: |
+          docker pull pypy:${{ matrix.pypy-version }}-slim
+          docker tag pypy:${{ matrix.pypy-version }}-slim pypy-image
+
+      - name: Run checks
+        run: >
+          docker run -e VIRTUAL_ENV=/opt/code/.venv --rm -v $(pwd):/opt/code -w /opt/code
+          pypy-image bash -c "
+          if [ ! -d .venv ]; then
+            python -m venv .venv;
+          fi
+          && .venv/bin/pip install poetry
+          && .venv/bin/poetry install
+          && .venv/bin/pip install --no-deps -e .
+          && .venv/bin/pytest
+          "
+
   release-package:
     runs-on: ubuntu-latest
     needs: [ check-code ]
