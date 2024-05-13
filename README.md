@@ -24,6 +24,7 @@ and offers features like resource lifecycle management.
   - [Declaring dependencies that acts like a context manager](#declaring-dependencies-that-acts-like-a-context-manager)
   - [Declaring resource dependencies](#declaring-resource-dependencies)
   - [Resolving async dependencies in sync functions](#resolving-async-dependencies-in-sync-functions)
+  - [Overriding dependencies](#overriding-dependencies)
   - [Using picodi with web frameworks](#using-picodi-with-web-frameworks)
   - [Helper functions](#helper-functions)
 - [Known Issues](#known-issues)
@@ -283,8 +284,6 @@ even in sync functions.
 But regular async functions will still need to be used only in async context.
 
 ```python
-import asyncio
-
 from picodi import Provide, init_resources, inject, resource
 
 @resource
@@ -303,7 +302,89 @@ async def main() -> None:
     print_port()
 ```
 
-## Using picodi with web frameworks
+### Overriding dependencies
+
+You can override dependencies at runtime. This is important for testing and useful
+for implementing "abstract" dependencies.
+
+```python
+import pytest
+
+from picodi import registry
+
+from my_app.dependencies import get_settings
+
+
+def get_test_settings():
+    return {"test": "settings"}
+
+
+@pytest.fixture()
+def _settings():
+    with registry.override(get_settings, get_test_settings):
+        yield  # use yield, so the override will be cleared after the test
+```
+
+"Abstract" dependencies can be used to provide a default implementation for a dependency,
+which can be overridden at runtime. This is useful for reusing dependencies in different contexts.
+
+```python
+from picodi import Provide, inject, registry
+
+
+def get_abc_setting() -> dict:
+    raise NotImplementedError
+
+
+@inject
+def my_service(settings: dict = Provide(get_abc_setting)) -> dict:
+    return settings
+
+
+@registry.override(get_abc_setting)
+def get_setting():
+    return {"my": "settings"}
+
+
+print(my_service())  # -> {'my': 'settings'}
+```
+
+You can also use `registry.override` as a regular method call.
+
+```python
+from picodi import registry
+
+
+def get_abc_setting() -> dict:
+    raise NotImplementedError
+
+
+def get_setting():
+    return {"my": "settings"}
+
+
+registry.override(get_abc_setting, get_setting)
+```
+
+For clearing specific override, you can pass None as a new dependency.
+
+```python
+from picodi import registry
+
+
+registry.override(get_abc_setting, None)
+```
+
+For clearing all overrides you can use `registry.clear_overrides()`.
+
+```python
+from picodi import registry
+
+
+registry.clear_overrides()
+```
+
+### Using picodi with web frameworks
 
 Picodi can be used with web frameworks like FastAPI or Django.
 
