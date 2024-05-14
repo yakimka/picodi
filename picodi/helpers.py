@@ -221,3 +221,54 @@ class _Lifespan:
 
 
 lifespan = _Lifespan()
+
+
+class enter:  # noqa: N801
+    def __init__(self, gen: Generator | AsyncGenerator) -> None:
+        """
+        Helper class to enter context manager from generator.
+
+        It ignores the scope of the dependency, so resources will not be cached
+        and will be closed after each usage.
+        """
+        self._gen = gen
+        self._context_manager: ContextManager | AsyncContextManager | None = None
+
+    def __enter__(self) -> Any:
+        if inspect.iscoroutine(self._gen) or inspect.isasyncgen(self._gen):
+            raise TypeError("Async generator is not supported in sync context")
+
+        if self._context_manager is None:
+            self._context_manager = contextmanager(lambda: self._gen)()  # type: ignore
+        return self._context_manager.__enter__()  # type: ignore[union-attr]
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> bool | None:
+        return self._context_manager.__exit__(  # type: ignore[union-attr]
+            exc_type, exc, traceback
+        )
+
+    async def __aenter__(self) -> Any:
+        if isinstance(self._gen, Generator):
+            raise TypeError("Sync generator is not supported in async context")
+
+        gen = self._gen
+        if inspect.iscoroutine(gen):
+            gen = await gen
+        if self._context_manager is None:
+            self._context_manager = asynccontextmanager(lambda: gen)()
+        return await self._context_manager.__aenter__()  # type: ignore[union-attr]
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> bool | None:
+        return await self._context_manager.__aexit__(  # type: ignore[union-attr]
+            exc_type, exc, traceback
+        )
