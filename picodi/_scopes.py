@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from contextvars import ContextVar
+from multiprocessing import RLock
 from typing import TYPE_CHECKING, Any
 
 from picodi._internal import DummyAwaitable, ExitStack
@@ -23,6 +25,12 @@ class Scope:
 
     def close_global(self) -> Awaitable:
         return DummyAwaitable()
+
+    def enter_decorator(self) -> None:
+        return None
+
+    def exit_decorator(self) -> None:
+        return None
 
 
 class GlobalScope(Scope):
@@ -57,3 +65,35 @@ class SingletonScope(GlobalScope):
     def close_global(self) -> Awaitable:
         self._store.clear()
         return super().close_global()
+
+
+class CallScope(Scope):
+    def __init__(self) -> None:
+        super().__init__()
+        self._store: dict[Hashable, Any] = {}
+        self._lock = RLock()
+        self._in_decorator_count = ContextVar("picodi_in_decorator_count", default=0)
+
+    def enter_decorator(self) -> None:
+        with self._lock:
+            self._in_decorator_count.set(self._in_decorator_count.get() + 1)
+
+    def exit_decorator(self) -> None:
+        with self._lock:
+            self._in_decorator_count.set(self._in_decorator_count.get() - 1)
+            if self._in_decorator_count.get() == 0:
+                self._store.clear()
+                self.exit_stack.close()
+
+    def get(self, key: Hashable) -> Any:
+        try:
+            return self._store[key].get()
+        except LookupError:
+            raise KeyError(key) from None
+
+    def set(self, key: Hashable, value: Any) -> None:
+        try:
+            var = self._store[key]
+        except KeyError:
+            var = self._store[key] = ContextVar("picodi")
+        var.set(value)

@@ -212,6 +212,8 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
 
         @functools.wraps(fn)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            for scope in _scopes.values():
+                scope.enter_decorator()
             bound, dep_arguments = _arguments_to_getters(
                 args, kwargs, signature, is_async=True
             )
@@ -228,12 +230,15 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
                 coro = scope.close_local()
                 if coro is not None:
                     await coro
+                scope.exit_decorator()
             return cast("T", result)
 
     else:
 
         @functools.wraps(fn)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            for scope in _scopes.values():
+                scope.enter_decorator()
             bound, dep_arguments = _arguments_to_getters(
                 args, kwargs, signature, is_async=False
             )
@@ -243,6 +248,7 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
             result = fn(*bound.args, **bound.kwargs)
             for scope in _scopes.values():
                 scope.close_local()
+                scope.exit_decorator()
             return result
 
     return wrapper  # type: ignore[return-value]
