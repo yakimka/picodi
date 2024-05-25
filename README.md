@@ -471,6 +471,25 @@ Edit `extend-immutable-calls` in your `setup.cfg`:
 
 `extend-immutable-calls = picodi.Provide,Provide`
 
+### I'm getting `RuntimeError: Event loop is closed` when using pytest-asyncio
+
+This error occurs because pytest-asyncio closes the event loop after the test is finished
+and you are using `@resource` decorator for your dependencies.
+
+To fix this, you need to close all resources after the test is finished.
+Just add `await shutdown_resources()` at the end of your tests.
+
+```python
+import picodi
+import pytest
+
+
+@pytest.fixture(autouse=True)
+async def _setup_picodi():
+    yield
+    await picodi.shutdown_resources()
+```
+
 ## API Reference
 
 ### `Provide(dependency)`

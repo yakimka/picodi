@@ -63,3 +63,7 @@ We follow [Semantic Versions](https://semver.org/).
 ## Version 0.7.1
 
 - Fix "coroutine was never awaited" warning when closing context manager for sync function in async context
+
+## Version 0.8.0
+
+- Clear store for singleton scope on `shutdown_resource`
