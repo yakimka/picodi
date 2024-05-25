@@ -53,3 +53,7 @@ class SingletonScope(GlobalScope):
 
     def set(self, key: Hashable, value: Any) -> None:
         self._store[key] = value
+
+    def close_global(self) -> Awaitable:
+        self._store.clear()
+        return super().close_global()
