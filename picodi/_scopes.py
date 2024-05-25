@@ -121,30 +121,25 @@ class ParentCallScope(Scope):
 
     def __init__(self) -> None:
         super().__init__()
-        self._store: dict[Hashable, Any] = {}
         self._lock = RLock()
-        self._in_decorator_count = ContextVar("picodi_in_decorator_count", default=0)
+        self._stack = ContextVar("picodi_ParentCallScope_stack", default=[])
 
     def enter_decorator(self) -> None:
         with self._lock:
-            self._in_decorator_count.set(self._in_decorator_count.get() + 1)
+            self._stack.get().append({})
 
     def exit_decorator(self) -> None:
         with self._lock:
-            self._in_decorator_count.set(self._in_decorator_count.get() - 1)
-            if self._in_decorator_count.get() == 0:
-                self._store.clear()
-                self.exit_stack.close()
+            self._stack.get().pop()
 
     def get(self, key: Hashable) -> Any:
-        try:
-            return self._store[key].get()
-        except LookupError:
-            raise KeyError(key) from None
+        for frame in self._stack.get():
+            if key in frame:
+                return frame[key]
+        raise KeyError(key)
 
     def set(self, key: Hashable, value: Any) -> None:
-        try:
-            var = self._store[key]
-        except KeyError:
-            var = self._store[key] = ContextVar("picodi")
-        var.set(value)
+        for frame in self._stack.get():
+            if key not in frame:
+                frame[key] = value
+                break
