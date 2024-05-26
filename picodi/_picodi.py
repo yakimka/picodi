@@ -219,11 +219,11 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
 
         @functools.wraps(fn)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-            for scope in _scopes.values():
-                scope.enter_decorator()
-            bound, dep_arguments = _arguments_to_getters(
+            bound, dep_arguments, scopes = _arguments_to_getters(
                 args, kwargs, signature, is_async=True
             )
+            for scope in scopes:
+                scope.enter_decorator()
             for name, get_value in dep_arguments.items():
                 bound.arguments[name] = await get_value()
 
@@ -233,7 +233,7 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
             else:
                 result = await result_or_gen  # type: ignore[misc]
 
-            for scope in _scopes.values():
+            for scope in scopes:
                 scope.exit_decorator()
                 coro = scope.close_local()
                 if coro is not None:
@@ -244,16 +244,16 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
 
         @functools.wraps(fn)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-            for scope in _scopes.values():
-                scope.enter_decorator()
-            bound, dep_arguments = _arguments_to_getters(
+            bound, dep_arguments, scopes = _arguments_to_getters(
                 args, kwargs, signature, is_async=False
             )
+            for scope in scopes:
+                scope.enter_decorator()
             for name, get_value in dep_arguments.items():
                 bound.arguments[name] = get_value()
 
             result = fn(*bound.args, **bound.kwargs)
-            for scope in _scopes.values():
+            for scope in scopes:
                 scope.exit_decorator()
                 scope.close_local()
             return result
@@ -265,6 +265,7 @@ def dependency(*, scope_class: type[Scope] = NullScope) -> Callable[[TC], TC]:
     """
     Decorator to declare a dependency. You don't need to use it with default arguments,
     use it only if you want to change the scope of the dependency.
+    Should be placed last in the decorator chain (on top).
     """
 
     if scope_class not in _scopes:
@@ -397,7 +398,7 @@ class Provider:
 
 def _arguments_to_getters(
     args: P.args, kwargs: P.kwargs, signature: Signature, is_async: bool
-) -> tuple[BoundArguments, dict[str, Callable[[], Any]]]:
+) -> tuple[BoundArguments, dict[str, Callable[[], Any]], list[Scope]]:
     bound = signature.bind(*args, **kwargs)
     bound.apply_defaults()
     dependencies: dict[Provider, list[str]] = {}
@@ -408,12 +409,16 @@ def _arguments_to_getters(
     get_val = _resolve_value_async if is_async else _resolve_value
 
     dep_arguments = {}
+    scopes = []
     for provider, names in dependencies.items():
         get_value: Callable = functools.partial(get_val, provider)
         for name in names:
             dep_arguments[name] = get_value
+        scope = provider.get_scope()
+        if scope not in scopes:
+            scopes.append(scope)
 
-    return bound, dep_arguments
+    return bound, dep_arguments, scopes
 
 
 def _resolve_value(provider: Provider) -> Any:

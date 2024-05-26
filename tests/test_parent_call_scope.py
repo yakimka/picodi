@@ -187,3 +187,65 @@ async def test_teardown_called_only_after_parent_exit_async(closeable):
     # Assert
     assert closeable.is_closed is True
     assert closeable.close_call_count == 1
+
+
+def test_dependency_without_parent_call_scope_in_args_is_not_parent():
+    # Arrange
+    nums_gen = iter(range(1, 1000))
+    called = 0
+
+    @dependency(scope_class=ParentCallScope)
+    def scoped_dep():
+        nonlocal called
+        called += 1
+        return next(nums_gen)
+
+    @inject
+    def child(num: int = Provide(scoped_dep)) -> int:
+        return num
+
+    @inject
+    def not_parent(
+        some_string: int = Provide(lambda: "some_string"),
+    ) -> tuple[int, int]:
+        assert some_string == "some_string"
+        return child(), child()
+
+    # Act
+    result = not_parent()
+    first_call_result, second_call_result = result
+
+    # Assert
+    assert called == 2
+    assert first_call_result != second_call_result
+
+
+async def test_dependency_without_parent_call_scope_in_args_is_not_parent_async():
+    # Arrange
+    nums_gen = iter(range(1, 1000))
+    called = 0
+
+    @dependency(scope_class=ParentCallScope)
+    async def scoped_dep():
+        nonlocal called
+        called += 1
+        return next(nums_gen)
+
+    @inject
+    async def child(num: int = Provide(scoped_dep)) -> int:
+        return num
+
+    @inject
+    async def not_parent(
+        some_string: int = Provide(lambda: "some_string"),
+    ) -> tuple[int, int]:
+        assert some_string == "some_string"
+        return await child(), await child()
+
+    # Act
+    result = await not_parent()
+    first_call_result, second_call_result = result
+
+    # Assert
+    assert called == 2
+    assert first_call_result != second_call_result
