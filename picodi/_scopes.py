@@ -57,6 +57,8 @@ class Scope:
     def exit_decorator(self) -> None:
         """
         Called before exiting a `inject` decorator.
+        `close_local` will be called after this, e.g.:
+            `exit_decorator` -> `close_local` -> `inject` wrapper returns.
         Can be used for tracking the number of decorators.
         """
         return None
@@ -113,7 +115,7 @@ class SingletonScope(GlobalScope):
         return super().close_global()
 
 
-class ParentCallScope(Scope):
+class ParentCallScope(LocalScope):
     """
     ParentCall scope. Values cached for the lifetime of the top function call.
     Resources are closed after top function call executed.
@@ -133,6 +135,11 @@ class ParentCallScope(Scope):
     def exit_decorator(self) -> None:
         with self._lock:
             self._stack.get().pop()
+
+    def close_local(self) -> Awaitable:
+        if not self._stack.get():
+            return super().close_local()
+        return DummyAwaitable()
 
     def get(self, key: Hashable) -> Any:
         for frame in self._stack.get():

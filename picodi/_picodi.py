@@ -234,10 +234,10 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
                 result = await result_or_gen  # type: ignore[misc]
 
             for scope in _scopes.values():
+                scope.exit_decorator()
                 coro = scope.close_local()
                 if coro is not None:
                     await coro
-                scope.exit_decorator()
             return cast("T", result)
 
     else:
@@ -254,8 +254,8 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
 
             result = fn(*bound.args, **bound.kwargs)
             for scope in _scopes.values():
-                scope.close_local()
                 scope.exit_decorator()
+                scope.close_local()
             return result
 
     return wrapper  # type: ignore[return-value]

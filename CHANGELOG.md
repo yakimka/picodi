@@ -67,3 +67,10 @@ We follow [Semantic Versions](https://semver.org/).
 ## Version 0.8.0
 
 - Clear store for singleton scope on `shutdown_resource`
+
+
+## Version 0.9.0
+
+- Experimental release (all changes are under the hood, there is no public API yet)
+  - Add `dependency` decorator, now you can specify scope_class, even user-defined
+  - Add `ParentCallScope` - dependency result cached for lifetime of parent function call
