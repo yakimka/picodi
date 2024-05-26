@@ -62,7 +62,7 @@ from typing import Any
 
 import httpx
 
-from picodi import Provide, init_dependencies, inject, resource, shutdown_dependencies
+from picodi import Provide, init_dependencies, inject, dependency, SingletonScope, shutdown_dependencies
 from picodi.helpers import get_value
 
 
@@ -87,7 +87,7 @@ def get_setting(path: str, settings: dict = Provide(get_settings)) -> Callable[[
 
 # We want to reuse the same client for all requests, so we create a resource that
 #   provides an httpx.AsyncClient instance with the correct settings.
-@resource
+@dependency(scope_class=SingletonScope)
 @inject
 async def get_nasa_client(
     api_key: str = Provide(get_setting("nasa_api.api_key")),
@@ -232,11 +232,11 @@ and that its lifecycle is managed across the application.
 import asyncio
 import random
 
-from picodi import Provide, inject, resource, shutdown_dependencies
+from picodi import Provide, inject, dependency, SingletonScope, shutdown_dependencies
 
 
 # useful for managing resources like connections
-@resource
+@dependency(scope_class=SingletonScope)
 async def get_db_port():
     yield random.randint(1024, 49151)
     print("closing db port")
@@ -284,9 +284,9 @@ even in sync functions.
 But regular async functions will still need to be used only in async context.
 
 ```python
-from picodi import Provide, init_dependencies, inject, resource
+from picodi import Provide, init_dependencies, inject, dependency, SingletonScope
 
-@resource
+@dependency(scope_class=SingletonScope)
 async def get_db_port():
     yield 8080
 

@@ -2,10 +2,11 @@ import pytest
 
 from picodi import (
     Provide,
+    SingletonScope,
+    dependency,
     init_dependencies,
     inject,
     registry,
-    resource,
     shutdown_dependencies,
 )
 
@@ -163,7 +164,7 @@ def test_can_use_resource_in_override(closeable):
     def my_service(settings: dict = Provide(get_abc_settings)):
         return settings
 
-    @resource
+    @dependency(scope_class=SingletonScope)
     def real_settings():
         yield {"real": "settings"}
         closeable.close()
@@ -197,7 +198,7 @@ async def test_can_use_async_resource_in_override_in_sync_context():
     def my_service(settings: dict = Provide(get_abc_settings)):
         return settings
 
-    @resource
+    @dependency(scope_class=SingletonScope)
     @registry.override(get_abc_settings)
     async def real_settings():
         return {"real": "settings"}

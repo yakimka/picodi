@@ -280,18 +280,6 @@ def dependency(*, scope_class: type[Scope] = NullScope) -> Callable[[TC], TC]:
     return decorator
 
 
-def resource(fn: TC) -> TC:
-    """
-    Decorator to declare a resource. Resource is a dependency that should be
-    called only once, cached and shared across the application.
-    On shutdown, all resources will be closed
-    (you need to call `shutdown_dependencies` manually).
-    Use it with a dependency generator function to declare a resource.
-    Should be placed last in the decorator chain (on top).
-    """
-    return dependency(scope_class=SingletonScope)(fn)
-
-
 def init_dependencies() -> Awaitable:
     """
     Call this function to close all resources. Usually, it should be called

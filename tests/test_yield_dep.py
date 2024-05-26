@@ -4,7 +4,14 @@ from dataclasses import dataclass
 
 import pytest
 
-from picodi import Provide, init_dependencies, inject, resource, shutdown_dependencies
+from picodi import (
+    Provide,
+    SingletonScope,
+    dependency,
+    init_dependencies,
+    inject,
+    shutdown_dependencies,
+)
 
 
 @dataclass
@@ -31,7 +38,7 @@ def get_int_service():
 
 @pytest.fixture()
 def int_service_resource_dep():
-    @resource
+    @dependency(scope_class=SingletonScope)
     def get_int_service_resource():
         int_service = IntService.create()
         yield int_service
@@ -48,7 +55,7 @@ async def get_int_service_async():
 
 @pytest.fixture()
 def int_service_async_resource_dep():
-    @resource
+    @dependency(scope_class=SingletonScope)
     async def get_int_service_async_resource():
         int_service = IntService.create()
         yield int_service
@@ -170,7 +177,7 @@ def test_resolve_async_yield_dep_from_sync_function_return_coroutine():
 
 
 async def test_resolve_async_yield_dep_from_sync_function_can_be_inited():
-    @resource
+    @dependency(scope_class=SingletonScope)
     async def async_resource():
         int_service = IntService.create()
         yield int_service
@@ -218,7 +225,7 @@ async def test_resource_doesnt_close_automatically_sync_from_async_context(
 
 
 def test_resource_can_be_closed_manually():
-    @resource
+    @dependency(scope_class=SingletonScope)
     def async_resource():
         int_service = IntService.create()
         yield int_service
@@ -237,7 +244,7 @@ def test_resource_can_be_closed_manually():
 
 
 async def test_resource_can_be_closed_manually_async():
-    @resource
+    @dependency(scope_class=SingletonScope)
     async def async_resource():
         int_service = IntService.create()
         yield int_service
@@ -312,7 +319,7 @@ def test_can_init_injected_resource():
     def get_42():
         return 42
 
-    @resource
+    @dependency(scope_class=SingletonScope)
     @inject
     def my_resource(number: int = Provide(get_42)):
         assert number == 42
@@ -333,7 +340,7 @@ async def test_can_init_injected_resource_async():
     def get_42():
         return 42
 
-    @resource
+    @dependency(scope_class=SingletonScope)
     @inject
     async def my_async_resource(number: int = Provide(get_42)):
         assert number == 42
@@ -349,11 +356,11 @@ async def test_can_init_injected_resource_async():
 
 
 async def test_dont_init_not_used_resources():
-    @resource
+    @dependency(scope_class=SingletonScope)
     async def not_used_resource():
         yield 1 / 0  # pragma: no cover
 
-    @resource
+    @dependency(scope_class=SingletonScope)
     async def used_resource():
         yield 42
 
