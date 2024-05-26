@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from types import TracebackType
 
 
-class DummyAwaitable:
+class NullAwaitable:
     def __await__(self) -> Generator[None, None, None]:
         yield
         return None
@@ -57,7 +57,7 @@ class ExitStack:
             and self._async_stack._exit_callbacks  # type: ignore # noqa: SF01
         ):
             return self.__aexit__(None, None, None)
-        return DummyAwaitable()
+        return NullAwaitable()
 
 
 def is_async_environment() -> bool:

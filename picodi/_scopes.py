@@ -4,7 +4,7 @@ from contextvars import ContextVar
 from multiprocessing import RLock
 from typing import TYPE_CHECKING, Any
 
-from picodi._internal import DummyAwaitable, ExitStack
+from picodi._internal import ExitStack, NullAwaitable
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Hashable
@@ -40,13 +40,13 @@ class Scope:
         Hook for closing resources. Will be called automatically
         after executing a decorated function.
         """
-        return DummyAwaitable()
+        return NullAwaitable()
 
     def close_global(self) -> Awaitable:
         """
         Hook for closing resources. Will be called from `shutdown_dependencies`.
         """
-        return DummyAwaitable()
+        return NullAwaitable()
 
     def enter_decorator(self) -> None:
         """
@@ -142,7 +142,7 @@ class ParentCallScope(LocalScope):
     def close_local(self) -> Awaitable:
         if not self._stack.get():
             return super().close_local()
-        return DummyAwaitable()
+        return NullAwaitable()
 
     def get(self, key: Hashable) -> Any:
         for frame in self._stack.get():

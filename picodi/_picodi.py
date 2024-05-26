@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager, contextmanager
 from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING, Any, NamedTuple, ParamSpec, TypeVar, cast
 
-from picodi._internal import DummyAwaitable
+from picodi._internal import NullAwaitable
 from picodi._scopes import (
     GlobalScope,
     NullScope,
@@ -297,7 +297,7 @@ def init_dependencies() -> Awaitable:
 
     if async_resources:
         return asyncio.gather(*async_resources)
-    return DummyAwaitable()
+    return NullAwaitable()
 
 
 def shutdown_dependencies() -> Awaitable:
