@@ -10,7 +10,13 @@ from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING, Any, NamedTuple, ParamSpec, TypeVar, cast
 
 from picodi._internal import DummyAwaitable
-from picodi._scopes import GlobalScope, NullScope, Scope, SingletonScope
+from picodi._scopes import (
+    GlobalScope,
+    NullScope,
+    ParentCallScope,
+    Scope,
+    SingletonScope,
+)
 
 if TYPE_CHECKING:
     from inspect import BoundArguments, Signature
@@ -160,6 +166,7 @@ _internal_registry = InternalRegistry(_registry_storage)
 registry = Registry(_registry_storage, _internal_registry)
 _scopes: dict[type[Scope], Scope] = {
     NullScope: NullScope(),
+    ParentCallScope: ParentCallScope(),
     SingletonScope: SingletonScope(),
 }
 _lock = threading.RLock()
@@ -212,6 +219,8 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
 
         @functools.wraps(fn)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            for scope in _scopes.values():
+                scope.enter_decorator()
             bound, dep_arguments = _arguments_to_getters(
                 args, kwargs, signature, is_async=True
             )
@@ -225,6 +234,7 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
                 result = await result_or_gen  # type: ignore[misc]
 
             for scope in _scopes.values():
+                scope.exit_decorator()
                 coro = scope.close_local()
                 if coro is not None:
                     await coro
@@ -234,6 +244,8 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
 
         @functools.wraps(fn)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            for scope in _scopes.values():
+                scope.enter_decorator()
             bound, dep_arguments = _arguments_to_getters(
                 args, kwargs, signature, is_async=False
             )
@@ -242,10 +254,29 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
 
             result = fn(*bound.args, **bound.kwargs)
             for scope in _scopes.values():
+                scope.exit_decorator()
                 scope.close_local()
             return result
 
     return wrapper  # type: ignore[return-value]
+
+
+def dependency(*, scope_class: type[Scope] = NullScope) -> Callable[[TC], TC]:
+    """
+    Decorator to declare a dependency. You don't need to use it with default arguments,
+    use it only if you want to change the scope of the dependency.
+    """
+
+    if scope_class not in _scopes:
+        _scopes[scope_class] = scope_class()
+
+    def decorator(fn: TC) -> TC:
+        _internal_registry.add(
+            fn, scope_class=scope_class, in_use=False, override_scope=True
+        )
+        return fn
+
+    return decorator
 
 
 def resource(fn: TC) -> TC:
@@ -257,13 +288,7 @@ def resource(fn: TC) -> TC:
     Use it with a dependency generator function to declare a resource.
     Should be placed last in the decorator chain (on top).
     """
-    _internal_registry.add(
-        fn,
-        scope_class=SingletonScope,
-        in_use=False,
-        override_scope=True,
-    )
-    return fn
+    return dependency(scope_class=SingletonScope)(fn)
 
 
 def init_resources() -> Awaitable:
