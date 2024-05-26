@@ -14,14 +14,6 @@ def get_abc_settings() -> dict:
     raise NotImplementedError
 
 
-class Closeable:
-    def __init__(self, closed: bool = False) -> None:
-        self.is_closed = closed
-
-    def close(self) -> None:
-        self.is_closed = True
-
-
 def test_can_override_dependency_with_decorator():
     @inject
     def my_service(settings: dict = Provide(get_abc_settings)):
@@ -149,12 +141,10 @@ def test_can_clear_overrides():
     assert cleared_result == ("original_func1", "original_func2")
 
 
-def test_can_use_yield_dependency_in_override():
+def test_can_use_yield_dependency_in_override(closeable):
     @inject
     def my_service(settings: dict = Provide(get_abc_settings)):
         return settings
-
-    closeable = Closeable()
 
     def real_settings():
         yield {"real": "settings"}
@@ -168,12 +158,10 @@ def test_can_use_yield_dependency_in_override():
     assert closeable.is_closed is True
 
 
-def test_can_use_resource_in_override():
+def test_can_use_resource_in_override(closeable):
     @inject
     def my_service(settings: dict = Provide(get_abc_settings)):
         return settings
-
-    closeable = Closeable()
 
     @resource
     def real_settings():
