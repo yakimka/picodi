@@ -261,6 +261,24 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
     return wrapper  # type: ignore[return-value]
 
 
+def dependency(*, scope_class: type[Scope] = NullScope) -> Callable[[TC], TC]:
+    """
+    Decorator to declare a dependency. You don't need to use it with default arguments,
+    use it only if you want to change the scope of the dependency.
+    """
+
+    if scope_class not in _scopes:
+        _scopes[scope_class] = scope_class()
+
+    def decorator(fn: TC) -> TC:
+        _internal_registry.add(
+            fn, scope_class=scope_class, in_use=False, override_scope=True
+        )
+        return fn
+
+    return decorator
+
+
 def resource(fn: TC) -> TC:
     """
     Decorator to declare a resource. Resource is a dependency that should be
@@ -270,13 +288,7 @@ def resource(fn: TC) -> TC:
     Use it with a dependency generator function to declare a resource.
     Should be placed last in the decorator chain (on top).
     """
-    _internal_registry.add(
-        fn,
-        scope_class=SingletonScope,
-        in_use=False,
-        override_scope=True,
-    )
-    return fn
+    return dependency(scope_class=SingletonScope)(fn)
 
 
 def init_resources() -> Awaitable:
