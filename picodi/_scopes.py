@@ -81,6 +81,9 @@ class LocalScope(Scope):
     def close_local(self) -> Awaitable:
         return self.exit_stack.close()
 
+    def close_global(self) -> Awaitable:
+        return self.exit_stack.close()
+
 
 class NullScope(LocalScope):
     """
