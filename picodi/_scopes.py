@@ -122,7 +122,9 @@ class ParentCallScope(Scope):
     def __init__(self) -> None:
         super().__init__()
         self._lock = RLock()
-        self._stack = ContextVar("picodi_ParentCallScope_stack", default=[])
+        self._stack: ContextVar[list[dict[Hashable, Any]]] = ContextVar(
+            "picodi_ParentCallScope_stack", default=[]
+        )
 
     def enter_decorator(self) -> None:
         with self._lock:

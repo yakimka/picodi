@@ -10,7 +10,13 @@ from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING, Any, NamedTuple, ParamSpec, TypeVar, cast
 
 from picodi._internal import DummyAwaitable
-from picodi._scopes import GlobalScope, NullScope, Scope, SingletonScope
+from picodi._scopes import (
+    GlobalScope,
+    NullScope,
+    ParentCallScope,
+    Scope,
+    SingletonScope,
+)
 
 if TYPE_CHECKING:
     from inspect import BoundArguments, Signature
@@ -160,6 +166,7 @@ _internal_registry = InternalRegistry(_registry_storage)
 registry = Registry(_registry_storage, _internal_registry)
 _scopes: dict[type[Scope], Scope] = {
     NullScope: NullScope(),
+    ParentCallScope: ParentCallScope(),
     SingletonScope: SingletonScope(),
 }
 _lock = threading.RLock()
