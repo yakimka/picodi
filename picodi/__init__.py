@@ -15,15 +15,15 @@ from picodi._scopes import (
 )
 
 __all__ = [
-    "dependency",
     "GlobalScope",
-    "init_dependencies",
-    "inject",
     "LocalScope",
     "NullScope",
     "ParentCallScope",
     "Provide",
+    "SingletonScope",
+    "dependency",
+    "init_dependencies",
+    "inject",
     "registry",
     "shutdown_dependencies",
-    "SingletonScope",
 ]

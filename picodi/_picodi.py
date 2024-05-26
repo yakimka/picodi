@@ -63,10 +63,8 @@ class InternalRegistry:
                     scope_class=(scope_class if override_scope else None),
                     # If the provider is already in use, keep it in use
                     # otherwise, use the new value. For example, if a provider
-                    # is already in use and we want to replace it with a resource,
-                    # we should keep it in use. If it's already a resource and we
-                    # want to replace it with a regular dependency, we should set
-                    # is_use to True.
+                    # is already in use and we want to replace it, `in_use=True`
+                    # should take precedence.
                     in_use=(provider.in_use or in_use),
                 )
                 if to_replace != provider:
@@ -146,7 +144,7 @@ class Registry:
     def clear(self) -> None:
         """
         Clear the registry. It will remove all dependencies and overrides.
-        This method will not close any resources. So you need to manually call
+        This method will not close any dependencies. So you need to manually call
         `shutdown_dependencies` before this method.
         """
         with self._storage.lock:
@@ -282,27 +280,27 @@ def dependency(*, scope_class: type[Scope] = NullScope) -> Callable[[TC], TC]:
 
 def init_dependencies() -> Awaitable:
     """
-    Call this function to close all resources. Usually, it should be called
+    Call this function to close dependencies. Usually, it should be called
     when your application is shutting down.
     """
-    async_resources = []
+    async_deps = []
     global_providers = _internal_registry.filter(
         lambda p: p.in_use and issubclass(p.scope_class, GlobalScope)
     )
     for provider in global_providers:
         if provider.is_async:
-            async_resources.append(_resolve_value_async(provider))
+            async_deps.append(_resolve_value_async(provider))
         else:
             _resolve_value(provider)
 
-    if async_resources:
-        return asyncio.gather(*async_resources)
+    if async_deps:
+        return asyncio.gather(*async_deps)
     return NullAwaitable()
 
 
 def shutdown_dependencies() -> Awaitable:
     """
-    Call this function to close all resources. Usually, it should be called
+    Call this function to close dependencies. Usually, it should be called
     when your application is shut down.
     """
     tasks = []

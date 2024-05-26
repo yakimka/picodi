@@ -37,14 +37,14 @@ def get_int_service():
 
 
 @pytest.fixture()
-def int_service_resource_dep():
+def int_service_singleton_scope_dep():
     @dependency(scope_class=SingletonScope)
-    def get_int_service_resource():
+    def get_int_service_singleton_scope_dep():
         int_service = IntService.create()
         yield int_service
         int_service.close()
 
-    return get_int_service_resource
+    return get_int_service_singleton_scope_dep
 
 
 async def get_int_service_async():
@@ -54,14 +54,14 @@ async def get_int_service_async():
 
 
 @pytest.fixture()
-def int_service_async_resource_dep():
+def int_service_async_singleton_scope_dep():
     @dependency(scope_class=SingletonScope)
-    async def get_int_service_async_resource():
+    async def get_int_service_async_singleton_scope_dep():
         int_service = IntService.create()
         yield int_service
         await int_service.aclose()
 
-    return get_int_service_async_resource
+    return get_int_service_async_singleton_scope_dep
 
 
 def test_resolve_yield_dep_sync():
@@ -125,9 +125,11 @@ async def test_multiple_calls_to_yield_dep_async_return_different_values():
     assert int_service_1 is not int_service_2
 
 
-def test_multiple_calls_to_resource_sync_return_same_values(int_service_resource_dep):
+def test_multiple_calls_to_singleton_scope_dep_sync_return_same_values(
+    int_service_singleton_scope_dep,
+):
     @inject
-    def get_int(service: IntService = Provide(int_service_resource_dep)):
+    def get_int(service: IntService = Provide(int_service_singleton_scope_dep)):
         return service
 
     int_service_1 = get_int()
@@ -137,11 +139,13 @@ def test_multiple_calls_to_resource_sync_return_same_values(int_service_resource
     assert int_service_1 is int_service_2
 
 
-async def test_multiple_calls_to_resource_async_return_same_values(
-    int_service_async_resource_dep,
+async def test_multiple_calls_to_singleton_scope_dep_async_return_same_values(
+    int_service_async_singleton_scope_dep,
 ):
     @inject
-    async def get_int(service: IntService = Provide(int_service_async_resource_dep)):
+    async def get_int(
+        service: IntService = Provide(int_service_async_singleton_scope_dep),
+    ):
         return service
 
     int_service_1 = await get_int()
@@ -151,11 +155,11 @@ async def test_multiple_calls_to_resource_async_return_same_values(
     assert int_service_1 is int_service_2
 
 
-async def test_multiple_calls_to_resource_sync_from_async_context_return_same_values(
-    int_service_resource_dep,
+async def test_multiple_calls_to_singleton_scope_dep_sync_from_async_context_same_val(
+    int_service_singleton_scope_dep,
 ):
     @inject
-    async def get_int(service: IntService = Provide(int_service_resource_dep)):
+    async def get_int(service: IntService = Provide(int_service_singleton_scope_dep)):
         return service
 
     int_service_1 = await get_int()
@@ -178,13 +182,13 @@ def test_resolve_async_yield_dep_from_sync_function_return_coroutine():
 
 async def test_resolve_async_yield_dep_from_sync_function_can_be_inited():
     @dependency(scope_class=SingletonScope)
-    async def async_resource():
+    async def async_singleton_scope_dep():
         int_service = IntService.create()
         yield int_service
         await int_service.aclose()
 
     @inject
-    def get_async_dep(port: int = Provide(async_resource)):
+    def get_async_dep(port: int = Provide(async_singleton_scope_dep)):
         return port
 
     await init_dependencies()
@@ -193,46 +197,50 @@ async def test_resolve_async_yield_dep_from_sync_function_can_be_inited():
     assert isinstance(result, IntService)
 
 
-def test_resource_doesnt_close_automatically(int_service_resource_dep):
+def test_singleton_scope_dep_doesnt_close_automatically(
+    int_service_singleton_scope_dep,
+):
     @inject
-    def get_int(service: IntService = Provide(int_service_resource_dep)):
+    def get_int(service: IntService = Provide(int_service_singleton_scope_dep)):
         return service
 
     int_service = get_int()
     assert int_service.closed is False
 
 
-async def test_resource_doesnt_close_automatically_async(
-    int_service_async_resource_dep,
+async def test_singleton_scope_dep_doesnt_close_automatically_async(
+    int_service_async_singleton_scope_dep,
 ):
     @inject
-    async def get_int(service: IntService = Provide(int_service_async_resource_dep)):
+    async def get_int(
+        service: IntService = Provide(int_service_async_singleton_scope_dep),
+    ):
         return service
 
     int_service = await get_int()
     assert int_service.closed is False
 
 
-async def test_resource_doesnt_close_automatically_sync_from_async_context(
-    int_service_resource_dep,
+async def test_singleton_scope_dep_doesnt_close_automatically_sync_from_async_context(
+    int_service_singleton_scope_dep,
 ):
     @inject
-    async def get_int(service: IntService = Provide(int_service_resource_dep)):
+    async def get_int(service: IntService = Provide(int_service_singleton_scope_dep)):
         return service
 
     int_service = await get_int()
     assert int_service.closed is False
 
 
-def test_resource_can_be_closed_manually():
+def test_singleton_scope_dep_can_be_closed_manually():
     @dependency(scope_class=SingletonScope)
-    def async_resource():
+    def async_singleton_scope_dep():
         int_service = IntService.create()
         yield int_service
         int_service.close()
 
     @inject
-    def get_async_dep(port: int = Provide(async_resource)):
+    def get_async_dep(port: int = Provide(async_singleton_scope_dep)):
         return port
 
     result = get_async_dep()
@@ -243,15 +251,15 @@ def test_resource_can_be_closed_manually():
     assert result.closed is True
 
 
-async def test_resource_can_be_closed_manually_async():
+async def test_singleton_scope_dep_can_be_closed_manually_async():
     @dependency(scope_class=SingletonScope)
-    async def async_resource():
+    async def async_singleton_scope_dep():
         int_service = IntService.create()
         yield int_service
         await int_service.aclose()
 
     @inject
-    async def get_async_dep(port: int = Provide(async_resource)):
+    async def get_async_dep(port: int = Provide(async_singleton_scope_dep)):
         return port
 
     result = await get_async_dep()
@@ -313,7 +321,7 @@ async def test_can_resolve_sync_injected_generator_in_async_context():
     assert result.closed is True
 
 
-def test_can_init_injected_resource():
+def test_can_init_injected_singleton_scope_dep():
     called = 0
 
     def get_42():
@@ -321,20 +329,20 @@ def test_can_init_injected_resource():
 
     @dependency(scope_class=SingletonScope)
     @inject
-    def my_resource(number: int = Provide(get_42)):
+    def my_singleton_scope_dep(number: int = Provide(get_42)):
         assert number == 42
         nonlocal called
         called += 1
         return number
 
-    Provide(my_resource)  # for register resource
+    Provide(my_singleton_scope_dep)  # for registering dependency
 
     init_dependencies()
 
     assert called == 1
 
 
-async def test_can_init_injected_resource_async():
+async def test_can_init_injected_singleton_scope_dep_async():
     called = 0
 
     def get_42():
@@ -342,30 +350,30 @@ async def test_can_init_injected_resource_async():
 
     @dependency(scope_class=SingletonScope)
     @inject
-    async def my_async_resource(number: int = Provide(get_42)):
+    async def my_async_singleton_scope_dep(number: int = Provide(get_42)):
         assert number == 42
         nonlocal called
         called += 1
         return number
 
-    Provide(my_async_resource)  # for register resource
+    Provide(my_async_singleton_scope_dep)  # for registering dependency
 
     await init_dependencies()
 
     assert called == 1
 
 
-async def test_dont_init_not_used_resources():
+async def test_dont_init_not_used_singleton_scope_deps():
     @dependency(scope_class=SingletonScope)
-    async def not_used_resource():
+    async def not_used_singleton_scope_dep():
         yield 1 / 0  # pragma: no cover
 
     @dependency(scope_class=SingletonScope)
-    async def used_resource():
+    async def used_singleton_scope_dep():
         yield 42
 
     @inject
-    def get_async_dep(num: int = Provide(used_resource)):
+    def get_async_dep(num: int = Provide(used_singleton_scope_dep)):
         return num
 
     await init_dependencies()
