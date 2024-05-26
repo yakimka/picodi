@@ -44,7 +44,7 @@ class Scope:
 
     def close_global(self) -> Awaitable:
         """
-        Hook for closing resources. Will be called from `shutdown_resources`.
+        Hook for closing resources. Will be called from `shutdown_dependencies`.
         """
         return DummyAwaitable()
 
@@ -100,7 +100,7 @@ class NullScope(LocalScope):
 class SingletonScope(GlobalScope):
     """
     Singleton scope. Values cached for the lifetime of the application.
-    Resources closed only when user manually call `shutdown_resources`.
+    Resources closed only when user manually call `shutdown_dependencies`.
     """
 
     def __init__(self) -> None:

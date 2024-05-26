@@ -62,7 +62,7 @@ from typing import Any
 
 import httpx
 
-from picodi import Provide, init_resources, inject, resource, shutdown_resources
+from picodi import Provide, init_dependencies, inject, resource, shutdown_dependencies
 from picodi.helpers import get_value
 
 
@@ -126,9 +126,9 @@ async def main():
     #   httpx.AsyncClient instance and cache it for later use. Thereby, the same
     #   client will be reused for all requests. This is important for connection
     #   pooling and performance.
-    # Also `init_resources` call will allow to pass asynchronous `get_nasa_client`
+    # Also `init_dependencies` call will allow to pass asynchronous `get_nasa_client`
     #   into synchronous functions.
-    await init_resources()
+    await init_dependencies()
 
     print_client_info()
 
@@ -139,7 +139,7 @@ async def main():
     print("Title:", apod_data["title"])
 
     # Closing all inited resources. This needs to be done on the application shutdown.
-    await shutdown_resources()
+    await shutdown_dependencies()
 
 
 if __name__ == "__main__":
@@ -232,7 +232,7 @@ and that its lifecycle is managed across the application.
 import asyncio
 import random
 
-from picodi import Provide, inject, resource, shutdown_resources
+from picodi import Provide, inject, resource, shutdown_dependencies
 
 
 # useful for managing resources like connections
@@ -252,7 +252,7 @@ async def main() -> None:
     await check_port()
     print("shutting down resources")
     # resources need to be closed manually
-    await shutdown_resources()
+    await shutdown_dependencies()
 
 
 asyncio.run(main())
@@ -279,12 +279,12 @@ def print_port(port: int = Provide(get_db_port)) -> None:
 ```
 
 But if your dependency is a resource,
-you can use `init_resources` on startup to resolve dependencies and then use cached values,
+you can use `init_dependencies` on startup to resolve dependencies and then use cached values,
 even in sync functions.
 But regular async functions will still need to be used only in async context.
 
 ```python
-from picodi import Provide, init_resources, inject, resource
+from picodi import Provide, init_dependencies, inject, resource
 
 @resource
 async def get_db_port():
@@ -298,7 +298,7 @@ def print_port(port: int = Provide(get_db_port)) -> None:
 
 
 async def main() -> None:
-    await init_resources()
+    await init_dependencies()
     print_port()
 ```
 
@@ -457,13 +457,13 @@ def get_connection(
 
 If you are trying to resolve async dependencies in sync functions, you will get a coroutine object.
 For regular dependencies this is intended behavior, so only use async dependencies in async functions.
-But if your dependency is a resource, you can use `init_resources` on app startup to resolve dependencies
+But if your dependency is a resource, you can use `init_dependencies` on app startup to resolve dependencies
 and then picodi will use cached values, even in sync functions.
 
-### Resources are not initialized when i call `init_resources()`
+### Resources are not initialized when i call `init_dependencies()`
 
-1. If you have async dependencies - make sure that you are calling `await init_resources()` in async context.
-2. Make sure that modules with your `@resource` functions are imported (e.g. registered) before calling `init_resources()`.
+1. If you have async dependencies - make sure that you are calling `await init_dependencies()` in async context.
+2. Make sure that modules with your `@resource` functions are imported (e.g. registered) before calling `init_dependencies()`.
 
 ### flake8-bugbear throws `B008 Do not perform function calls in argument defaults.
 
@@ -477,7 +477,7 @@ This error occurs because pytest-asyncio closes the event loop after the test is
 and you are using `@resource` decorator for your dependencies.
 
 To fix this, you need to close all resources after the test is finished.
-Just add `await shutdown_resources()` at the end of your tests.
+Just add `await shutdown_dependencies()` at the end of your tests.
 
 ```python
 import picodi
@@ -487,7 +487,7 @@ import pytest
 @pytest.fixture(autouse=True)
 async def _setup_picodi():
     yield
-    await picodi.shutdown_resources()
+    await picodi.shutdown_dependencies()
 ```
 
 ## API Reference
@@ -521,18 +521,18 @@ Should be placed first in the decorator chain (on top).
 - **Parameters**:
   - `fn`: A generator function that yields a resource.
 
-### `init_resources()`
+### `init_dependencies()`
 
 Initializes all declared resources. Typically called at the startup of the application.
 
-Can be called as `init_resources()` in sync context and `await init_resources()` in async context.
+Can be called as `init_dependencies()` in sync context and `await init_dependencies()` in async context.
 
-### `shutdown_resources()`
+### `shutdown_dependencies()`
 
 Cleans up all resources.
 It should be called when the application is shutting down to ensure proper resource cleanup.
 
-Can be called as `shutdown_resources()` in sync context and `await shutdown_resources()` in async context.
+Can be called as `shutdown_dependencies()` in sync context and `await shutdown_dependencies()` in async context.
 
 ### `registry` object
 
@@ -579,7 +579,7 @@ Clears all overrides set by `registry.override()`.
 #### `registry.clear()`
 
 Clears all dependencies and resources. This method will not close any resources.
-So you need to manually call `shutdown_resources` before this method.
+So you need to manually call `shutdown_dependencies` before this method.
 
 Don't use this method in production code (only if you know what you are doing),
 it's mostly for testing purposes.

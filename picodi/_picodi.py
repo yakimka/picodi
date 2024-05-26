@@ -147,7 +147,7 @@ class Registry:
         """
         Clear the registry. It will remove all dependencies and overrides.
         This method will not close any resources. So you need to manually call
-        `shutdown_resources` before this method.
+        `shutdown_dependencies` before this method.
         """
         with self._storage.lock:
             self._storage.deps.clear()
@@ -285,14 +285,14 @@ def resource(fn: TC) -> TC:
     Decorator to declare a resource. Resource is a dependency that should be
     called only once, cached and shared across the application.
     On shutdown, all resources will be closed
-    (you need to call `shutdown_resources` manually).
+    (you need to call `shutdown_dependencies` manually).
     Use it with a dependency generator function to declare a resource.
     Should be placed last in the decorator chain (on top).
     """
     return dependency(scope_class=SingletonScope)(fn)
 
 
-def init_resources() -> Awaitable:
+def init_dependencies() -> Awaitable:
     """
     Call this function to close all resources. Usually, it should be called
     when your application is shutting down.
@@ -312,7 +312,7 @@ def init_resources() -> Awaitable:
     return DummyAwaitable()
 
 
-def shutdown_resources() -> Awaitable:
+def shutdown_dependencies() -> Awaitable:
     """
     Call this function to close all resources. Usually, it should be called
     when your application is shut down.

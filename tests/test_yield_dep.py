@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from picodi import Provide, init_resources, inject, resource, shutdown_resources
+from picodi import Provide, init_dependencies, inject, resource, shutdown_dependencies
 
 
 @dataclass
@@ -180,7 +180,7 @@ async def test_resolve_async_yield_dep_from_sync_function_can_be_inited():
     def get_async_dep(port: int = Provide(async_resource)):
         return port
 
-    await init_resources()
+    await init_dependencies()
     result = get_async_dep()
 
     assert isinstance(result, IntService)
@@ -231,7 +231,7 @@ def test_resource_can_be_closed_manually():
     result = get_async_dep()
     assert result.closed is False
 
-    shutdown_resources()
+    shutdown_dependencies()
 
     assert result.closed is True
 
@@ -250,7 +250,7 @@ async def test_resource_can_be_closed_manually_async():
     result = await get_async_dep()
     assert result.closed is False
 
-    await shutdown_resources()
+    await shutdown_dependencies()
 
     assert result.closed is True
 
@@ -322,7 +322,7 @@ def test_can_init_injected_resource():
 
     Provide(my_resource)  # for register resource
 
-    init_resources()
+    init_dependencies()
 
     assert called == 1
 
@@ -343,7 +343,7 @@ async def test_can_init_injected_resource_async():
 
     Provide(my_async_resource)  # for register resource
 
-    await init_resources()
+    await init_dependencies()
 
     assert called == 1
 
@@ -361,7 +361,7 @@ async def test_dont_init_not_used_resources():
     def get_async_dep(num: int = Provide(used_resource)):
         return num
 
-    await init_resources()
+    await init_dependencies()
     result = get_async_dep()
 
     assert result == 42

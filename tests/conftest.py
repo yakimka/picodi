@@ -1,12 +1,12 @@
 import pytest
 
-from picodi import registry, shutdown_resources
+from picodi import registry, shutdown_dependencies
 
 
 @pytest.fixture(autouse=True)
 async def _clear_registry():
     yield
-    await shutdown_resources()
+    await shutdown_dependencies()
     registry.clear()
 
 

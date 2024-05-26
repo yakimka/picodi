@@ -1,17 +1,17 @@
 from picodi._picodi import (
     Provide,
-    init_resources,
+    init_dependencies,
     inject,
     registry,
     resource,
-    shutdown_resources,
+    shutdown_dependencies,
 )
 
 __all__ = [
-    "init_resources",
+    "init_dependencies",
     "inject",
     "Provide",
     "registry",
     "resource",
-    "shutdown_resources",
+    "shutdown_dependencies",
 ]

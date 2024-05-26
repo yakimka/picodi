@@ -2,11 +2,11 @@ import pytest
 
 from picodi import (
     Provide,
-    init_resources,
+    init_dependencies,
     inject,
     registry,
     resource,
-    shutdown_resources,
+    shutdown_dependencies,
 )
 
 
@@ -174,7 +174,7 @@ def test_can_use_resource_in_override(closeable):
 
     assert result == {"real": "settings"}
     assert closeable.is_closed is False
-    shutdown_resources()
+    shutdown_dependencies()
     assert closeable.is_closed is True
 
 
@@ -202,7 +202,7 @@ async def test_can_use_async_resource_in_override_in_sync_context():
     async def real_settings():
         return {"real": "settings"}
 
-    await init_resources()
+    await init_dependencies()
 
     result = my_service()
 
