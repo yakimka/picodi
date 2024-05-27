@@ -10,7 +10,7 @@ Picodi simplifies Dependency Injection (DI) for Python applications.
 that allows objects to receive their dependencies from
 an external source rather than creating them internally.
 This library supports both synchronous and asynchronous contexts,
-and offers features like resource lifecycle management.
+and offers features like lifecycle management.
 
 ## Table of Contents
 
@@ -22,7 +22,7 @@ and offers features like resource lifecycle management.
   - [Declaring dependencies](#declaring-dependencies)
   - [Injecting dependencies](#injecting-dependencies)
   - [Declaring dependencies that acts like a context manager](#declaring-dependencies-that-acts-like-a-context-manager)
-  - [Declaring resource dependencies](#declaring-resource-dependencies)
+  - [Declaring dependencies with different scopes](#declaring-dependencies-with-different-scopes)
   - [Resolving async dependencies in sync functions](#resolving-async-dependencies-in-sync-functions)
   - [Overriding dependencies](#overriding-dependencies)
   - [Using picodi with web frameworks](#using-picodi-with-web-frameworks)
@@ -48,7 +48,7 @@ pip install picodi
 - 🌟 Simple and lightweight
 - 📦 Zero dependencies
 - ⏱️ Supports both sync and async contexts
-- 🔄 Resource lifecycle management
+- 🔄 Lifecycle management
 - 🔍 Type hints support
 - 🐍 Python & PyPy 3.10+ support
 
@@ -85,8 +85,9 @@ def get_setting(path: str, settings: dict = Provide(get_settings)) -> Callable[[
     return lambda: value
 
 
-# We want to reuse the same client for all requests, so we create a resource that
-#   provides an httpx.AsyncClient instance with the correct settings.
+# We want to reuse the same client for all requests, so we declare a dependency
+#   with `SingletonScope` that provides an httpx.AsyncClient instance
+#   with the correct settings.
 @dependency(scope_class=SingletonScope)
 @inject
 async def get_nasa_client(
@@ -122,7 +123,7 @@ def print_client_info(client: httpx.AsyncClient = Provide(get_nasa_client)):
 
 
 async def main():
-    # Initialize resources on the application startup. This will create the
+    # Initialize dependencies on the application startup. This will create the
     #   httpx.AsyncClient instance and cache it for later use. Thereby, the same
     #   client will be reused for all requests. This is important for connection
     #   pooling and performance.
@@ -138,7 +139,7 @@ async def main():
     apod_data = await get_apod(date(2011, 7, 26))
     print("Title:", apod_data["title"])
 
-    # Closing all inited resources. This needs to be done on the application shutdown.
+    # Closing all inited dependencies. This needs to be done on the application shutdown.
     await shutdown_dependencies()
 
 
@@ -222,11 +223,9 @@ def process_data(db: str = Provide(get_db)) -> None:
 
 `get_db` and `process_data` also can be async, just add `async` keyword before `def`.
 
-### Declaring resource dependencies
+### Declaring dependencies with different scopes
 
-Use the `resource` decorator to declare a resource,
-which ensures that the provided function is treated as a singleton
-and that its lifecycle is managed across the application.
+Use the `dependency` decorator to specify the scope of a dependency.
 
 ```python
 import asyncio
@@ -250,15 +249,15 @@ async def check_port(port: int = Provide(get_db_port)) -> None:
 async def main() -> None:
     await check_port()
     await check_port()
-    print("shutting down resources")
-    # resources need to be closed manually
+    print("cleaning up")
+    # manually close all global dependencies
     await shutdown_dependencies()
 
 
 asyncio.run(main())
 # -> checking port: 24090
 # -> checking port: 24090
-# -> shutting down resources
+# -> cleaning up
 # -> closing db port
 ```
 
@@ -278,7 +277,7 @@ def print_port(port: int = Provide(get_db_port)) -> None:
     # port is: <coroutine object get_db_port at 0x1037741a0>
 ```
 
-But if your dependency is a resource,
+But if your dependency declared with GlobalScope like `SingletonScope`
 you can use `init_dependencies` on startup to resolve dependencies and then use cached values,
 even in sync functions.
 But regular async functions will still need to be used only in async context.
@@ -457,13 +456,14 @@ def get_connection(
 
 If you are trying to resolve async dependencies in sync functions, you will get a coroutine object.
 For regular dependencies this is intended behavior, so only use async dependencies in async functions.
-But if your dependency is a resource, you can use `init_dependencies` on app startup to resolve dependencies
+But if your dependency used scope inherited from `GlobalScope`,
+you can use `init_dependencies` on app startup to resolve dependencies
 and then picodi will use cached values, even in sync functions.
 
-### Resources are not initialized when i call `init_dependencies()`
+### Dependencies with global scope are not initialized when i call `init_dependencies()`
 
 1. If you have async dependencies - make sure that you are calling `await init_dependencies()` in async context.
-2. Make sure that modules with your `@resource` functions are imported (e.g. registered) before calling `init_dependencies()`.
+2. Make sure that modules with your global scoped functions are imported (e.g. registered) before calling `init_dependencies()`.
 
 ### flake8-bugbear throws `B008 Do not perform function calls in argument defaults.
 
@@ -474,7 +474,7 @@ Edit `extend-immutable-calls` in your `setup.cfg`:
 ### I'm getting `RuntimeError: Event loop is closed` when using pytest-asyncio
 
 This error occurs because pytest-asyncio closes the event loop after the test is finished
-and you are using `@resource` decorator for your dependencies.
+and you are using global scoped dependencies.
 
 To fix this, you need to close all resources after the test is finished.
 Just add `await shutdown_dependencies()` at the end of your tests.
@@ -510,33 +510,32 @@ Should be placed first in the decorator chain (on bottom).
 - **Parameters**:
   - `fn`: The function into which dependencies will be injected.
 
-### `resource(fn)`
+### `dependency(*, scope_class)`
 
-Decorator to declare a resource,
-which ensures that the provided function is treated as a singleton
-and that its lifecycle is managed across the application.
+Decorator to declare a dependency with a specific scope.
 
 Should be placed first in the decorator chain (on top).
 
 - **Parameters**:
-  - `fn`: A generator function that yields a resource.
+  - `scope_class`: A class that defines the scope of the dependency.
+    Available scopes are `NullScope` (default), `SingletonScope`, and `ParentCallScope`.
 
 ### `init_dependencies()`
 
-Initializes all declared resources. Typically called at the startup of the application.
+Initializes all global scoped dependencies. Typically called at the startup of the application.
 
 Can be called as `init_dependencies()` in sync context and `await init_dependencies()` in async context.
 
 ### `shutdown_dependencies()`
 
-Cleans up all resources.
-It should be called when the application is shutting down to ensure proper resource cleanup.
+Call all dependencies teardowns.
+It should be called when the application is shutting down to ensure proper cleanup.
 
 Can be called as `shutdown_dependencies()` in sync context and `await shutdown_dependencies()` in async context.
 
 ### `registry` object
 
-Registry object to manage dependencies and resources.
+Registry object to manage dependencies.
 
 #### `registry.override(dependency, new_dependency)`
 
@@ -578,7 +577,7 @@ Clears all overrides set by `registry.override()`.
 
 #### `registry.clear()`
 
-Clears all dependencies and resources. This method will not close any resources.
+Clears all dependencies. This method will not close any context managers.
 So you need to manually call `shutdown_dependencies` before this method.
 
 Don't use this method in production code (only if you know what you are doing),
