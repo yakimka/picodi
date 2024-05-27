@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from picodi import Provide, inject
-from picodi._picodi import dependency
-from picodi._scopes import Scope
+from picodi import Provide, Scope, dependency, inject
 
 if TYPE_CHECKING:
     from collections.abc import Hashable

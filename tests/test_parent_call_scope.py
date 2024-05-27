@@ -1,6 +1,4 @@
-from picodi import Provide, inject
-from picodi._picodi import dependency
-from picodi._scopes import ParentCallScope
+from picodi import ParentCallScope, Provide, dependency, inject
 
 
 def test_result_cached_for_parent_and_child_scope():

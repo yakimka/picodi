@@ -11,6 +11,7 @@ from picodi._scopes import (
     LocalScope,
     NullScope,
     ParentCallScope,
+    Scope,
     SingletonScope,
 )
 
@@ -20,6 +21,7 @@ __all__ = [
     "NullScope",
     "ParentCallScope",
     "Provide",
+    "Scope",
     "SingletonScope",
     "dependency",
     "init_dependencies",
