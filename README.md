@@ -520,6 +520,65 @@ Should be placed first in the decorator chain (on top).
   - `scope_class`: A class that defines the scope of the dependency.
     Available scopes are `NullScope` (default), `SingletonScope`, and `ParentCallScope`.
 
+### `Scope` class
+
+Base class for defining dependency scopes.
+
+#### `Scope.get(key)`
+
+Get a dependency by key. Key is a dependency function.
+If value is not exists must raise KeyError.
+
+#### `Scope.set(key, value)`
+
+Set a dependency by key. Key is a dependency function.
+
+#### `Scope.close_local()`
+
+Hook for closing dependencies. Will be called automatically
+after executing a decorated function.
+
+#### `Scope.close_global()`
+
+Hook for closing dependencies. Will be called from `shutdown_dependencies`.
+
+#### `Scope.enter_decorator()`
+
+Called when entering a `inject` decorator for dependencies with this scope.
+With `Scope.exit_decorator()` can be used for tracking decorators nesting.
+
+#### `Scope.exit_decorator()`
+
+Called when exiting a `inject` decorator for dependencies with this scope.
+
+### `LocalScope` class
+
+Base class for defining local dependency scopes. Local dependency scope is a scope
+that is call `close_local` after each function call.
+
+### `GlobalScope` class
+
+Base class for defining global dependency scopes. Global dependency scope is a scope
+that is call `close_global` from `shutdown_dependencies` function.
+
+Global scoped dependencies can be managed by `init_dependencies` and `shutdown_dependencies`.
+
+### `NullScope` class
+
+Default scope for dependencies. Doesn't cache the dependency result -
+dependency will be called on each injection. Yield dependencies are closed after every call.
+
+### `SingletonScope` class
+
+Scope for dependencies that should be created once and reused for all injections.
+Close the dependency when `shutdown_dependencies` is called.
+Useful for managing resources like connections.
+
+### `ParentCallScope` class
+
+Scope for dependencies that should be created once per parent call.
+Yield dependencies are closed after the parent function call.
+
 ### `init_dependencies()`
 
 Initializes all global scoped dependencies. Typically called at the startup of the application.
