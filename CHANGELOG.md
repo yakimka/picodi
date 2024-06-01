@@ -74,3 +74,9 @@ We follow [Semantic Versions](https://semver.org/).
 - Experimental release (all changes are under the hood, there is no public API yet)
   - Add `dependency` decorator, now you can specify scope_class, even user-defined
   - Add `ParentCallScope` - dependency result cached for lifetime of parent function call
+
+## Version 0.10.0
+
+- Backward incompatible changes
+  - Renamed `init_resources` and `shutdown_resources` to `init_dependencies` and `shutdown_dependencies`
+  - Removed `resource` decorator (use `dependency` decorator with `SingletonScope` instead)

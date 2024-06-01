@@ -1,17 +1,31 @@
 from picodi._picodi import (
     Provide,
-    init_resources,
+    dependency,
+    init_dependencies,
     inject,
     registry,
-    resource,
-    shutdown_resources,
+    shutdown_dependencies,
+)
+from picodi._scopes import (
+    GlobalScope,
+    LocalScope,
+    NullScope,
+    ParentCallScope,
+    Scope,
+    SingletonScope,
 )
 
 __all__ = [
-    "init_resources",
-    "inject",
+    "GlobalScope",
+    "LocalScope",
+    "NullScope",
+    "ParentCallScope",
     "Provide",
+    "Scope",
+    "SingletonScope",
+    "dependency",
+    "init_dependencies",
+    "inject",
     "registry",
-    "resource",
-    "shutdown_resources",
+    "shutdown_dependencies",
 ]

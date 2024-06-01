@@ -4,7 +4,7 @@ from contextvars import ContextVar
 from multiprocessing import RLock
 from typing import TYPE_CHECKING, Any
 
-from picodi._internal import DummyAwaitable, ExitStack
+from picodi._internal import ExitStack, NullAwaitable
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Hashable
@@ -14,7 +14,7 @@ class Scope:
     """
     Base class for scopes.
 
-    Scopes are used to store and retrieve values by key and for closing resources.
+    Scopes are used to store and retrieve values by key and for closing dependencies.
     For implementing a custom scope,
     inherit from this class and implement the abstract methods.
     """
@@ -37,16 +37,16 @@ class Scope:
 
     def close_local(self) -> Awaitable:
         """
-        Hook for closing resources. Will be called automatically
+        Hook for closing dependencies. Will be called automatically
         after executing a decorated function.
         """
-        return DummyAwaitable()
+        return NullAwaitable()
 
     def close_global(self) -> Awaitable:
         """
-        Hook for closing resources. Will be called from `shutdown_resources`.
+        Hook for closing dependencies. Will be called from `shutdown_dependencies`.
         """
-        return DummyAwaitable()
+        return NullAwaitable()
 
     def enter_decorator(self) -> None:
         """
@@ -87,7 +87,7 @@ class LocalScope(Scope):
 
 class NullScope(LocalScope):
     """
-    Null scope. Values not cached, resources closed after every function call.
+    Null scope. Values not cached, dependencies closed after every function call.
     """
 
     def get(self, key: Hashable) -> Any:
@@ -100,7 +100,7 @@ class NullScope(LocalScope):
 class SingletonScope(GlobalScope):
     """
     Singleton scope. Values cached for the lifetime of the application.
-    Resources closed only when user manually call `shutdown_resources`.
+    Dependencies closed only when user manually call `shutdown_dependencies`.
     """
 
     def __init__(self) -> None:
@@ -121,7 +121,7 @@ class SingletonScope(GlobalScope):
 class ParentCallScope(LocalScope):
     """
     ParentCall scope. Values cached for the lifetime of the top function call.
-    Resources are closed after top function call executed.
+    Dependencies are closed after top function call executed.
     """
 
     def __init__(self) -> None:
@@ -142,7 +142,7 @@ class ParentCallScope(LocalScope):
     def close_local(self) -> Awaitable:
         if not self._stack.get():
             return super().close_local()
-        return DummyAwaitable()
+        return NullAwaitable()
 
     def get(self, key: Hashable) -> Any:
         for frame in self._stack.get():

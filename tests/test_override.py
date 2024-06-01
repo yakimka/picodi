@@ -2,11 +2,12 @@ import pytest
 
 from picodi import (
     Provide,
-    init_resources,
+    SingletonScope,
+    dependency,
+    init_dependencies,
     inject,
     registry,
-    resource,
-    shutdown_resources,
+    shutdown_dependencies,
 )
 
 
@@ -158,12 +159,12 @@ def test_can_use_yield_dependency_in_override(closeable):
     assert closeable.is_closed is True
 
 
-def test_can_use_resource_in_override(closeable):
+def test_can_use_dep_with_not_default_scope_class_in_override(closeable):
     @inject
     def my_service(settings: dict = Provide(get_abc_settings)):
         return settings
 
-    @resource
+    @dependency(scope_class=SingletonScope)
     def real_settings():
         yield {"real": "settings"}
         closeable.close()
@@ -174,7 +175,7 @@ def test_can_use_resource_in_override(closeable):
 
     assert result == {"real": "settings"}
     assert closeable.is_closed is False
-    shutdown_resources()
+    shutdown_dependencies()
     assert closeable.is_closed is True
 
 
@@ -192,17 +193,17 @@ async def test_can_use_async_dependency_in_override():
     assert result == {"real": "settings"}
 
 
-async def test_can_use_async_resource_in_override_in_sync_context():
+async def test_can_use_async_dep_with_not_default_scope_in_override_in_sync_context():
     @inject
     def my_service(settings: dict = Provide(get_abc_settings)):
         return settings
 
-    @resource
+    @dependency(scope_class=SingletonScope)
     @registry.override(get_abc_settings)
     async def real_settings():
         return {"real": "settings"}
 
-    await init_resources()
+    await init_dependencies()
 
     result = my_service()
 
