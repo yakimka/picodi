@@ -233,9 +233,7 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
 
             for scope in scopes:
                 scope.exit_decorator()
-                coro = scope.close_local()
-                if coro is not None:
-                    await coro
+                await scope.close_local()
             return cast("T", result)
 
     else:
@@ -303,11 +301,7 @@ def shutdown_dependencies() -> Awaitable:
     Call this function to close dependencies. Usually, it should be called
     when your application is shut down.
     """
-    tasks = []
-    for scope in _scopes.values():
-        coro = scope.close_global()
-        if coro is not None:
-            tasks.append(coro)
+    tasks = [scope.close_global() for scope in _scopes.values()]
     return asyncio.gather(*tasks)
 
 

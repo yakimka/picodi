@@ -81,3 +81,8 @@ We follow [Semantic Versions](https://semver.org/).
   - Renamed `init_resources` and `shutdown_resources` to `init_dependencies` and `shutdown_dependencies`
   - Removed `resource` decorator (use `dependency` decorator with `SingletonScope` instead)
 - Expose scopes to public API
+
+
+## Version 0.11.0
+
+- Removed dead code branches
