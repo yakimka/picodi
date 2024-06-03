@@ -380,3 +380,51 @@ async def test_dont_init_not_used_singleton_scope_deps():
     result = get_async_dep()
 
     assert result == 42
+
+
+async def test_can_resolve_yield_in_yield_with_correct_scopes():
+    context_calls = []
+
+    def get_a_dep():
+        context_calls.append("get_a_dep")
+        yield "a"
+        context_calls.append("close_a_dep")
+
+    @inject
+    def get_b_dep(a: str = Provide(get_a_dep)):
+        context_calls.append("get_b_dep")
+        yield a, "b"
+        context_calls.append("close_b_dep")
+
+    @inject
+    def service(b: tuple[str, str] = Provide(get_b_dep)):
+        return b
+
+    result = service()
+
+    assert result == ("a", "b")
+    assert context_calls == ["get_a_dep", "get_b_dep", "close_b_dep", "close_a_dep"]
+
+
+async def test_can_resolve_yield_in_yield_with_correct_scopes_async():
+    context_calls = []
+
+    async def get_a_dep():
+        context_calls.append("get_a_dep")
+        yield "a"
+        context_calls.append("close_a_dep")
+
+    @inject
+    async def get_b_dep(a: str = Provide(get_a_dep)):
+        context_calls.append("get_b_dep")
+        yield a, "b"
+        context_calls.append("close_b_dep")
+
+    @inject
+    async def service(b: tuple[str, str] = Provide(get_b_dep)):
+        return b
+
+    result = await service()
+
+    assert result == ("a", "b")
+    assert context_calls == ["get_a_dep", "get_b_dep", "close_b_dep", "close_a_dep"]
