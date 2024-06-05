@@ -7,7 +7,7 @@ import threading
 from collections.abc import Awaitable, Callable, Generator, Iterable, Iterator
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import asdict, dataclass
-from typing import TYPE_CHECKING, Any, NamedTuple, ParamSpec, TypeVar, cast
+from typing import Any, NamedTuple, ParamSpec, TypeVar, cast
 
 from picodi._internal import NullAwaitable
 from picodi._scopes import (
@@ -17,9 +17,6 @@ from picodi._scopes import (
     Scope,
     SingletonScope,
 )
-
-if TYPE_CHECKING:
-    from inspect import BoundArguments, Signature
 
 DependencyCallable = Callable[..., Any]
 T = TypeVar("T")
@@ -213,25 +210,32 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
     ```
     """
     signature = inspect.signature(fn)
-    dependant = parse_depend_tree(Dependency(fn))
+    dependant = _parse_depend_tree(Dependency(fn))
     if inspect.iscoroutinefunction(fn) or inspect.isasyncgenfunction(fn):
 
         @functools.wraps(fn)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-            bound, dep_arguments, scopes = _arguments_to_getters(
-                args, kwargs, signature, is_async=True
+            bound = signature.bind(*args, **kwargs)
+            bound.apply_defaults()
+            arguments: dict[str, Any] = bound.arguments
+            scopes: list[Scope] = []
+            is_root = any(
+                isinstance(value, Dependency) for value in bound.arguments.values()
             )
+
+            if is_root:
+                arguments, scopes = _resolve_dependencies(dependant, is_async=True)
+
             for scope in scopes:
                 scope.enter_decorator()
-            for name, get_value in dep_arguments.items():
-                bound.arguments[name] = await get_value()
-
+            for name, call in arguments.items():
+                if isinstance(call, LazyCallable):
+                    bound.arguments[name] = await call()
             result_or_gen = fn(*bound.args, **bound.kwargs)
             if inspect.isasyncgen(result_or_gen):
                 result = result_or_gen
             else:
                 result = await result_or_gen  # type: ignore[misc]
-
             for scope in scopes:
                 scope.exit_decorator()
                 await scope.close_local()
@@ -250,7 +254,7 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
             )
 
             if is_root:
-                arguments, scopes = resolve_dependencies(dependant)
+                arguments, scopes = _resolve_dependencies(dependant, is_async=False)
 
             for scope in scopes:
                 scope.enter_decorator()
@@ -264,62 +268,6 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
             return result
 
     return wrapper  # type: ignore[return-value]
-
-
-class LazyCallable:
-    def __init__(
-        self,
-        call: DependencyCallable,
-        is_async: bool,
-        args: tuple[Any, ...],
-        kwargs: dict[str, Any],
-    ) -> None:
-        self.call = call
-        self.is_async = is_async
-        self.args = args
-        self.kwargs = kwargs
-
-    def __call__(self) -> Any:
-        return self.call(*self.args, **self.kwargs)
-
-
-def resolve_dependencies(
-    dependant: DependNode,
-) -> tuple[dict[str, LazyCallable], list[Scope]]:
-    scopes = set()
-    resolved_dependencies = {}
-    for dep in dependant.dependencies:
-        values, dep_scopes = resolve_dependencies(dep)
-        resolved_dependencies.update(values)
-        scopes.update(dep_scopes)
-
-    if dependant.name is None:
-        return resolved_dependencies, list(scopes)
-
-    provider = dependant.value.get_provider()
-    value = LazyCallable(
-        call=_resolve_value,
-        is_async=provider.is_async,
-        args=(provider,),
-        kwargs=resolved_dependencies,
-    )
-    return {dependant.name: value}, [provider.get_scope()]
-
-
-@dataclass
-class DependNode:
-    value: Dependency
-    name: str | None
-    dependencies: list[DependNode]
-
-
-def parse_depend_tree(dependency: Dependency, name: str | None = None) -> DependNode:
-    signature = inspect.signature(dependency.call)
-    dependencies = []
-    for name_, value in signature.parameters.items():
-        if isinstance(value.default, Dependency):
-            dependencies.append(parse_depend_tree(value.default, name=name_))
-    return DependNode(value=dependency, dependencies=dependencies, name=name)
 
 
 def dependency(*, scope_class: type[Scope] = NullScope) -> Callable[[TC], TC]:
@@ -441,29 +389,60 @@ class Provider:
         return value_or_gen
 
 
-def _arguments_to_getters(
-    args: P.args, kwargs: P.kwargs, signature: Signature, is_async: bool
-) -> tuple[BoundArguments, dict[str, Callable[[], Any]], list[Scope]]:
-    bound = signature.bind(*args, **kwargs)
-    bound.apply_defaults()
-    dependencies: dict[Provider, list[str]] = {}
-    for name, value in bound.arguments.items():
-        if isinstance(value, Dependency):
-            dependencies.setdefault(value.get_provider(), []).append(name)
+class LazyCallable:
+    def __init__(
+        self,
+        call: DependencyCallable,
+        is_async: bool,
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
+    ) -> None:
+        self.call = call
+        self.is_async = is_async
+        self.args = args
+        self.kwargs = kwargs
 
-    get_val = _resolve_value_async if is_async else _resolve_value
+    def __call__(self) -> Any:
+        return self.call(*self.args, **self.kwargs)
 
-    dep_arguments = {}
-    scopes = []
-    for provider, names in dependencies.items():
-        get_value: Callable = functools.partial(get_val, provider)
-        for name in names:
-            dep_arguments[name] = get_value
-        scope = provider.get_scope()
-        if scope not in scopes:
-            scopes.append(scope)
 
-    return bound, dep_arguments, scopes
+def _resolve_dependencies(
+    dependant: DependNode, is_async: bool
+) -> tuple[dict[str, LazyCallable], list[Scope]]:
+    scopes = set()
+    resolved_dependencies = {}
+    for dep in dependant.dependencies:
+        values, dep_scopes = _resolve_dependencies(dep, is_async=is_async)
+        resolved_dependencies.update(values)
+        scopes.update(dep_scopes)
+
+    if dependant.name is None:
+        return resolved_dependencies, list(scopes)
+
+    provider = dependant.value.get_provider()
+    value = LazyCallable(
+        call=_resolve_value_async if is_async else _resolve_value,
+        is_async=provider.is_async,
+        args=(provider,),
+        kwargs=resolved_dependencies,
+    )
+    return {dependant.name: value}, [provider.get_scope()]
+
+
+@dataclass
+class DependNode:
+    value: Dependency
+    name: str | None
+    dependencies: list[DependNode]
+
+
+def _parse_depend_tree(dependency: Dependency, name: str | None = None) -> DependNode:
+    signature = inspect.signature(dependency.call)
+    dependencies = []
+    for name_, value in signature.parameters.items():
+        if isinstance(value.default, Dependency):
+            dependencies.append(_parse_depend_tree(value.default, name=name_))
+    return DependNode(value=dependency, dependencies=dependencies, name=name)
 
 
 def _resolve_value(provider: Provider, **kwargs: Any) -> Any:
