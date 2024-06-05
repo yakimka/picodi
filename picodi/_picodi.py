@@ -211,61 +211,45 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
     """
     signature = inspect.signature(fn)
     dependant = _parse_depend_tree(Dependency(fn))
+
     if inspect.iscoroutinefunction(fn) or inspect.isasyncgenfunction(fn):
 
         @functools.wraps(fn)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-            bound = signature.bind(*args, **kwargs)
-            bound.apply_defaults()
-            arguments: dict[str, Any] = bound.arguments
-            scopes: list[Scope] = []
-            is_root = any(
-                isinstance(value, Dependency) for value in bound.arguments.values()
+            gen = _wrapper_helper(
+                dependant, signature, is_async=True, args=args, kwargs=kwargs
             )
+            value, action = next(gen)
+            result = None
+            while True:
+                if inspect.iscoroutine(value):
+                    value = await value
 
-            if is_root:
-                arguments, scopes = _resolve_dependencies(dependant, is_async=True)
-
-            for scope in scopes:
-                scope.enter_decorator()
-            for name, call in arguments.items():
-                if isinstance(call, LazyCallable):
-                    bound.arguments[name] = await call()
-            result_or_gen = fn(*bound.args, **bound.kwargs)
-            if inspect.isasyncgen(result_or_gen):
-                result = result_or_gen
-            else:
-                result = await result_or_gen  # type: ignore[misc]
-            for scope in scopes:
-                scope.exit_decorator()
-                await scope.close_local()
+                if action == "result":
+                    result = value
+                try:
+                    value, action = gen.send(value)
+                except StopIteration:
+                    break
             return cast("T", result)
 
     else:
 
         @functools.wraps(fn)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-            bound = signature.bind(*args, **kwargs)
-            bound.apply_defaults()
-            arguments: dict[str, Any] = bound.arguments
-            scopes: list[Scope] = []
-            is_root = any(
-                isinstance(value, Dependency) for value in bound.arguments.values()
+            gen = _wrapper_helper(
+                dependant, signature, is_async=False, args=args, kwargs=kwargs
             )
-
-            if is_root:
-                arguments, scopes = _resolve_dependencies(dependant, is_async=False)
-
-            for scope in scopes:
-                scope.enter_decorator()
-            for name, call in arguments.items():
-                if isinstance(call, LazyCallable):
-                    bound.arguments[name] = call()
-            result = fn(*bound.args, **bound.kwargs)
-            for scope in scopes:
-                scope.exit_decorator()
-                scope.close_local()
-            return result
+            value, action = next(gen)
+            result = None
+            while True:
+                if action == "result":
+                    result = value
+                try:
+                    value, action = gen.send(value)
+                except StopIteration:
+                    break
+            return cast("T", result)
 
     return wrapper  # type: ignore[return-value]
 
@@ -389,16 +373,42 @@ class Provider:
         return value_or_gen
 
 
+def _wrapper_helper(
+    dependant: DependNode,
+    signature: inspect.Signature,
+    is_async: bool,
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+) -> Generator[Any, None, None]:
+    bound = signature.bind(*args, **kwargs)
+    bound.apply_defaults()
+    arguments: dict[str, Any] = bound.arguments
+    scopes: list[Scope] = []
+    is_root = any(isinstance(value, Dependency) for value in bound.arguments.values())
+
+    if is_root:
+        arguments, scopes = _resolve_dependencies(dependant, is_async=is_async)
+
+    for scope in scopes:
+        scope.enter_decorator()
+    for name, call in arguments.items():
+        if isinstance(call, LazyCallable):
+            value = yield call(), "dependency"
+            bound.arguments[name] = value
+    yield dependant.value.call(*bound.args, **bound.kwargs), "result"
+    for scope in scopes:
+        scope.exit_decorator()
+        yield scope.close_local(), "close_scope"
+
+
 class LazyCallable:
     def __init__(
         self,
         call: DependencyCallable,
-        is_async: bool,
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
     ) -> None:
         self.call = call
-        self.is_async = is_async
         self.args = args
         self.kwargs = kwargs
 
@@ -422,7 +432,6 @@ def _resolve_dependencies(
     provider = dependant.value.get_provider()
     value = LazyCallable(
         call=_resolve_value_async if is_async else _resolve_value,
-        is_async=provider.is_async,
         args=(provider,),
         kwargs=resolved_dependencies,
     )
