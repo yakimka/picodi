@@ -21,7 +21,7 @@ from picodi._scopes import (
 try:
     import fastapi.params
 except ImportError:
-    fastapi = None  # type: ignore[assignment]
+    fastapi = None  # type: ignore[assignment] # pragma: no cover
 
 
 DependencyCallable = Callable[..., Any]
@@ -319,9 +319,7 @@ class Provider:
 
     @classmethod
     def from_dependency(
-        cls,
-        dependency: DependencyCallable,
-        scope_class: type[Scope],
+        cls, dependency: DependencyCallable, scope_class: type[Scope]
     ) -> Provider:
         is_async = inspect.iscoroutinefunction(
             dependency

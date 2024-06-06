@@ -2,54 +2,38 @@
 
 We follow [Semantic Versions](https://semver.org/).
 
+## Version next
 
-## Version 0.1.0
+-
 
-- Initial release
+## Version 0.11.0
 
-## Version 0.1.1
+- Removed dead code branches
+- Refactor injection logic
+- Fix problems with generators
+- Register dependencies in `inject`, not in `Provide`
+- Get rid of `in_use` parameter in `Provider`
 
-- Fix context manager error
+## Version 0.10.0
 
-## Version 0.2.0
+- Backward incompatible changes
+  - Renamed `init_resources` and `shutdown_resources` to `init_dependencies` and `shutdown_dependencies`
+  - Removed `resource` decorator (use `dependency` decorator with `SingletonScope` instead)
+- Expose scopes to public API
 
-- Removed `use_cache` parameter
-- Added tests
+## Version 0.9.0
 
-## Version 0.3.0
+- Experimental release (all changes are under the hood, there is no public API yet)
+  - Add `dependency` decorator, now you can specify scope_class, even user-defined
+  - Add `ParentCallScope` - dependency result cached for lifetime of parent function call
 
-- Internal refactoring
-- Updated README.md
+## Version 0.8.0
 
-## Version 0.4.0
+- Clear store for singleton scope on `shutdown_resource`
 
-- Added `make_dependency` function (experimental)
+## Version 0.7.1
 
-## Version 0.4.1
-
-- Fix FastAPI support
-
-## Version 0.4.2
-
-- Fix injected generator dependencies resolving
-
-## Version 0.4.3
-
-- Fix resource placement bug
-- Change typings for `init_resources` and `shutdown_resources`. Now they always return `Awaitable`.
-- Add tests for FastAPI integration
-
-## Version 0.5.0
-
-- Switch from storing only resource deps to storing all deps
-- Don't initialize unused resources
-- Refactor scope resource management
-- Removed dead code (detecting fastapi dependency)
-
-## Version 0.6.0
-
-- Add `helpers` module
-- Fix potential `RuntimeWarning`
+- Fix "coroutine was never awaited" warning when closing context manager for sync function in async context
 
 ## Version 0.7.0
 
@@ -59,34 +43,50 @@ We follow [Semantic Versions](https://semver.org/).
 - Some code cleanups
 - Fixed tests inconsistency (cleanup picodi resources after each test)
 
+## Version 0.6.0
 
-## Version 0.7.1
+- Add `helpers` module
+- Fix potential `RuntimeWarning`
 
-- Fix "coroutine was never awaited" warning when closing context manager for sync function in async context
+## Version 0.5.0
 
-## Version 0.8.0
+- Switch from storing only resource deps to storing all deps
+- Don't initialize unused resources
+- Refactor scope resource management
+- Removed dead code (detecting fastapi dependency)
 
-- Clear store for singleton scope on `shutdown_resource`
+## Version 0.4.3
 
+- Fix resource placement bug
+- Change typings for `init_resources` and `shutdown_resources`. Now they always return `Awaitable`.
+- Add tests for FastAPI integration
 
-## Version 0.9.0
+## Version 0.4.2
 
-- Experimental release (all changes are under the hood, there is no public API yet)
-  - Add `dependency` decorator, now you can specify scope_class, even user-defined
-  - Add `ParentCallScope` - dependency result cached for lifetime of parent function call
+- Fix injected generator dependencies resolving
 
-## Version 0.10.0
+## Version 0.4.1
 
-- Backward incompatible changes
-  - Renamed `init_resources` and `shutdown_resources` to `init_dependencies` and `shutdown_dependencies`
-  - Removed `resource` decorator (use `dependency` decorator with `SingletonScope` instead)
-- Expose scopes to public API
+- Fix FastAPI support
 
+## Version 0.4.0
 
-## Version 0.11.0
+- Added `make_dependency` function (experimental)
 
-- Removed dead code branches
-- Refactor injection logic
-- Fix problems with generators
-- Register dependencies in `inject`, not in `Provide`
-- Get rid of `in_use` parameter in `Provider`
+## Version 0.3.0
+
+- Internal refactoring
+- Updated README.md
+
+## Version 0.2.0
+
+- Removed `use_cache` parameter
+- Added tests
+
+## Version 0.1.1
+
+- Fix context manager error
+
+## Version 0.1.0
+
+- Initial release
