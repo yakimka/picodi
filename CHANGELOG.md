@@ -86,3 +86,5 @@ We follow [Semantic Versions](https://semver.org/).
 ## Version 0.11.0
 
 - Removed dead code branches
+- Refactor injection logic
+- Fix problems with generators
