@@ -335,8 +335,6 @@ def test_can_init_injected_singleton_scope_dep():
         called += 1
         return number
 
-    Provide(my_singleton_scope_dep)  # for registering dependency
-
     init_dependencies()
 
     assert called == 1
@@ -356,30 +354,9 @@ async def test_can_init_injected_singleton_scope_dep_async():
         called += 1
         return number
 
-    Provide(my_async_singleton_scope_dep)  # for registering dependency
-
     await init_dependencies()
 
     assert called == 1
-
-
-async def test_dont_init_not_used_singleton_scope_deps():
-    @dependency(scope_class=SingletonScope)
-    async def not_used_singleton_scope_dep():
-        yield 1 / 0  # pragma: no cover
-
-    @dependency(scope_class=SingletonScope)
-    async def used_singleton_scope_dep():
-        yield 42
-
-    @inject
-    def get_async_dep(num: int = Provide(used_singleton_scope_dep)):
-        return num
-
-    await init_dependencies()
-    result = get_async_dep()
-
-    assert result == 42
 
 
 async def test_can_resolve_yield_in_yield_with_correct_scopes():

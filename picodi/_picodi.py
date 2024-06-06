@@ -21,7 +21,7 @@ from picodi._scopes import (
 try:
     import fastapi.params
 except ImportError:
-    fastapi = None  # type: ignore[assignment]
+    fastapi = None  # type: ignore[assignment] # pragma: no cover
 
 
 DependencyCallable = Callable[..., Any]
@@ -50,25 +50,16 @@ class InternalRegistry:
         self,
         dependency: DependencyCallable,
         scope_class: type[Scope] = NullScope,
-        in_use: bool = True,
         override_scope: bool = False,
     ) -> None:
         """
-        Add a dependency to the registry. If the dependency is already in the registry,
-        it `in_use` flag can be updated, but the scope class cannot be changed.
-        If the dependency is not in the registry, it will be added with the provided
-        scope class and `in_use` flag.
+        Add a dependency to the registry.
         """
         with self._storage.lock:
             if dependency in self._storage.deps:
                 provider = self._storage.deps[dependency]
                 to_replace = provider.replace(
-                    scope_class=(scope_class if override_scope else None),
-                    # If the provider is already in use, keep it in use
-                    # otherwise, use the new value. For example, if a provider
-                    # is already in use and we want to replace it, `in_use=True`
-                    # should take precedence.
-                    in_use=(provider.in_use or in_use),
+                    scope_class=(scope_class if override_scope else None)
                 )
                 if to_replace != provider:
                     self._storage.deps[dependency] = to_replace
@@ -76,7 +67,6 @@ class InternalRegistry:
                 self._storage.deps[dependency] = Provider.from_dependency(
                     dependency=dependency,
                     scope_class=scope_class,
-                    in_use=in_use,
                 )
 
     def get(self, dependency: DependencyCallable) -> Provider:
@@ -119,7 +109,7 @@ class Registry:
         """
 
         def decorator(override_to: DependencyCallable) -> DependencyCallable:
-            self._internal_registry.add(override_to, in_use=True)
+            self._internal_registry.add(override_to)
             if dependency is override_to:
                 raise ValueError("Cannot override a dependency with itself")
             self._storage.overrides[dependency] = override_to
@@ -196,7 +186,6 @@ def Provide(dependency: DependencyCallable, /) -> Any:  # noqa: N802
         assert db == "db connection"
     ```
     """
-    _internal_registry.add(dependency)
     return Dependency(dependency)
 
 
@@ -222,7 +211,7 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
     ```
     """
     signature = inspect.signature(fn)
-    dependant = _parse_depend_tree(Dependency(fn))
+    dependant = _build_depend_tree(Dependency(fn))
 
     if inspect.iscoroutinefunction(fn) or inspect.isasyncgenfunction(fn):
 
@@ -277,9 +266,7 @@ def dependency(*, scope_class: type[Scope] = NullScope) -> Callable[[TC], TC]:
         _scopes[scope_class] = scope_class()
 
     def decorator(fn: TC) -> TC:
-        _internal_registry.add(
-            fn, scope_class=scope_class, in_use=False, override_scope=True
-        )
+        _internal_registry.add(fn, scope_class=scope_class, override_scope=True)
         return fn
 
     return decorator
@@ -292,7 +279,7 @@ def init_dependencies() -> Awaitable:
     """
     async_deps = []
     global_providers = _internal_registry.filter(
-        lambda p: p.in_use and issubclass(p.scope_class, GlobalScope)
+        lambda p: issubclass(p.scope_class, GlobalScope)
     )
     for provider in global_providers:
         if provider.is_async:
@@ -329,14 +316,10 @@ class Provider:
     dependency: DependencyCallable
     is_async: bool
     scope_class: type[Scope]
-    in_use: bool
 
     @classmethod
     def from_dependency(
-        cls,
-        dependency: DependencyCallable,
-        scope_class: type[Scope],
-        in_use: bool,
+        cls, dependency: DependencyCallable, scope_class: type[Scope]
     ) -> Provider:
         is_async = inspect.iscoroutinefunction(
             dependency
@@ -345,17 +328,12 @@ class Provider:
             dependency=dependency,
             is_async=is_async,
             scope_class=scope_class,
-            in_use=in_use,
         )
 
-    def replace(
-        self, scope_class: type[Scope] | None = None, in_use: bool | None = None
-    ) -> Provider:
+    def replace(self, scope_class: type[Scope] | None = None) -> Provider:
         kwargs = asdict(self)
         if scope_class is not None:
             kwargs["scope_class"] = scope_class
-        if in_use is not None:
-            kwargs["in_use"] = in_use
         return Provider(**kwargs)
 
     def get_scope(self) -> Scope:
@@ -457,18 +435,21 @@ class DependNode:
     dependencies: list[DependNode]
 
 
-def _parse_depend_tree(dependency: Dependency, name: str | None = None) -> DependNode:
+def _build_depend_tree(dependency: Dependency, name: str | None = None) -> DependNode:
     signature = inspect.signature(dependency.call)
     dependencies = []
     for name_, value in signature.parameters.items():
-        param_dep = _extract_dependency_from_parameter(value)
-        if isinstance(param_dep, Dependency):
-            dependencies.append(_parse_depend_tree(param_dep, name=name_))
+        param_dep = _extract_and_register_dependency_from_parameter(value)
+        if param_dep is not None:
+            dependencies.append(_build_depend_tree(param_dep, name=name_))
     return DependNode(value=dependency, dependencies=dependencies, name=name)
 
 
-def _extract_dependency_from_parameter(value: inspect.Parameter) -> Dependency | None:
+def _extract_and_register_dependency_from_parameter(
+    value: inspect.Parameter,
+) -> Dependency | None:
     if isinstance(value.default, Dependency):
+        _internal_registry.add(value.default.call)
         return value.default
 
     if fastapi is None:
@@ -482,7 +463,8 @@ def _extract_dependency_from_parameter(value: inspect.Parameter) -> Dependency |
                 fastapi_dependency = metadata.dependency
                 break
     if isinstance(fastapi_dependency, Dependency):
-        return fastapi_dependency  # type: ignore[unreachable]
+        _internal_registry.add(fastapi_dependency.call)  # type: ignore[unreachable]
+        return fastapi_dependency
     return None
 
 

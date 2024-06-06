@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Annotated
+from typing import Annotated
 
 import pytest
 from fastapi import Depends, FastAPI
@@ -6,9 +6,6 @@ from fastapi.exceptions import FastAPIError
 from fastapi.testclient import TestClient
 
 from picodi import Provide, inject
-
-if TYPE_CHECKING:
-    from collections.abc import Generator
 
 
 class MyNumber:
@@ -127,29 +124,3 @@ def test_resolve_annotated_dependency(app, client):
     response = client.get("/")
 
     assert response.json() == {"number": 42}
-
-
-@pytest.mark.skip(reason="Maybe we should support this in the future")
-def test_resolve_raw_fastapi_dependencies():
-    def get_42() -> MyNumber:
-        return MyNumber(42)
-
-    def get_simple_number() -> "Generator[int, None, None]":
-        yield 1
-
-    def get_meaning_of_life(num: MyNumber = Depends(get_42)) -> MyNumber:
-        return num
-
-    def get_some(
-        number: int = Depends(get_simple_number),
-        meaning_of_life: MyNumber = Depends(get_meaning_of_life),
-    ) -> int:
-        return number + meaning_of_life.value
-
-    @inject
-    def my_service(some: int = Provide(get_some)):
-        return some
-
-    result = my_service()
-
-    assert result == 43
