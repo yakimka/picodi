@@ -88,3 +88,5 @@ We follow [Semantic Versions](https://semver.org/).
 - Removed dead code branches
 - Refactor injection logic
 - Fix problems with generators
+- Register dependencies in `inject`, not in `Provide`
+- Get rid of `in_use` parameter in `Provider`

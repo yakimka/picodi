@@ -50,25 +50,16 @@ class InternalRegistry:
         self,
         dependency: DependencyCallable,
         scope_class: type[Scope] = NullScope,
-        in_use: bool = True,
         override_scope: bool = False,
     ) -> None:
         """
-        Add a dependency to the registry. If the dependency is already in the registry,
-        it `in_use` flag can be updated, but the scope class cannot be changed.
-        If the dependency is not in the registry, it will be added with the provided
-        scope class and `in_use` flag.
+        Add a dependency to the registry.
         """
         with self._storage.lock:
             if dependency in self._storage.deps:
                 provider = self._storage.deps[dependency]
                 to_replace = provider.replace(
-                    scope_class=(scope_class if override_scope else None),
-                    # If the provider is already in use, keep it in use
-                    # otherwise, use the new value. For example, if a provider
-                    # is already in use and we want to replace it, `in_use=True`
-                    # should take precedence.
-                    in_use=(provider.in_use or in_use),
+                    scope_class=(scope_class if override_scope else None)
                 )
                 if to_replace != provider:
                     self._storage.deps[dependency] = to_replace
@@ -76,7 +67,6 @@ class InternalRegistry:
                 self._storage.deps[dependency] = Provider.from_dependency(
                     dependency=dependency,
                     scope_class=scope_class,
-                    in_use=in_use,
                 )
 
     def get(self, dependency: DependencyCallable) -> Provider:
@@ -119,7 +109,7 @@ class Registry:
         """
 
         def decorator(override_to: DependencyCallable) -> DependencyCallable:
-            self._internal_registry.add(override_to, in_use=True)
+            self._internal_registry.add(override_to)
             if dependency is override_to:
                 raise ValueError("Cannot override a dependency with itself")
             self._storage.overrides[dependency] = override_to
@@ -276,9 +266,7 @@ def dependency(*, scope_class: type[Scope] = NullScope) -> Callable[[TC], TC]:
         _scopes[scope_class] = scope_class()
 
     def decorator(fn: TC) -> TC:
-        _internal_registry.add(
-            fn, scope_class=scope_class, in_use=False, override_scope=True
-        )
+        _internal_registry.add(fn, scope_class=scope_class, override_scope=True)
         return fn
 
     return decorator
@@ -291,7 +279,7 @@ def init_dependencies() -> Awaitable:
     """
     async_deps = []
     global_providers = _internal_registry.filter(
-        lambda p: p.in_use and issubclass(p.scope_class, GlobalScope)
+        lambda p: issubclass(p.scope_class, GlobalScope)
     )
     for provider in global_providers:
         if provider.is_async:
@@ -328,14 +316,12 @@ class Provider:
     dependency: DependencyCallable
     is_async: bool
     scope_class: type[Scope]
-    in_use: bool
 
     @classmethod
     def from_dependency(
         cls,
         dependency: DependencyCallable,
         scope_class: type[Scope],
-        in_use: bool,
     ) -> Provider:
         is_async = inspect.iscoroutinefunction(
             dependency
@@ -344,17 +330,12 @@ class Provider:
             dependency=dependency,
             is_async=is_async,
             scope_class=scope_class,
-            in_use=in_use,
         )
 
-    def replace(
-        self, scope_class: type[Scope] | None = None, in_use: bool | None = None
-    ) -> Provider:
+    def replace(self, scope_class: type[Scope] | None = None) -> Provider:
         kwargs = asdict(self)
         if scope_class is not None:
             kwargs["scope_class"] = scope_class
-        if in_use is not None:
-            kwargs["in_use"] = in_use
         return Provider(**kwargs)
 
     def get_scope(self) -> Scope:
