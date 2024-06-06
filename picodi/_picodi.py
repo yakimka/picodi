@@ -222,7 +222,7 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
     ```
     """
     signature = inspect.signature(fn)
-    dependant = _parse_depend_tree(Dependency(fn))
+    dependant = _build_depend_tree(Dependency(fn))
 
     if inspect.iscoroutinefunction(fn) or inspect.isasyncgenfunction(fn):
 
@@ -457,13 +457,13 @@ class DependNode:
     dependencies: list[DependNode]
 
 
-def _parse_depend_tree(dependency: Dependency, name: str | None = None) -> DependNode:
+def _build_depend_tree(dependency: Dependency, name: str | None = None) -> DependNode:
     signature = inspect.signature(dependency.call)
     dependencies = []
     for name_, value in signature.parameters.items():
         param_dep = _extract_dependency_from_parameter(value)
-        if isinstance(param_dep, Dependency):
-            dependencies.append(_parse_depend_tree(param_dep, name=name_))
+        if param_dep is not None:
+            dependencies.append(_build_depend_tree(param_dep, name=name_))
     return DependNode(value=dependency, dependencies=dependencies, name=name)
 
 

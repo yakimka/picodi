@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Annotated
+from typing import Annotated
 
 import pytest
 from fastapi import Depends, FastAPI
@@ -6,9 +6,6 @@ from fastapi.exceptions import FastAPIError
 from fastapi.testclient import TestClient
 
 from picodi import Provide, inject
-
-if TYPE_CHECKING:
-    from collections.abc import Generator
 
 
 class MyNumber:
