@@ -196,7 +196,6 @@ def Provide(dependency: DependencyCallable, /) -> Any:  # noqa: N802
         assert db == "db connection"
     ```
     """
-    _internal_registry.add(dependency)
     return Dependency(dependency)
 
 
@@ -461,14 +460,17 @@ def _build_depend_tree(dependency: Dependency, name: str | None = None) -> Depen
     signature = inspect.signature(dependency.call)
     dependencies = []
     for name_, value in signature.parameters.items():
-        param_dep = _extract_dependency_from_parameter(value)
+        param_dep = _extract_and_register_dependency_from_parameter(value)
         if param_dep is not None:
             dependencies.append(_build_depend_tree(param_dep, name=name_))
     return DependNode(value=dependency, dependencies=dependencies, name=name)
 
 
-def _extract_dependency_from_parameter(value: inspect.Parameter) -> Dependency | None:
+def _extract_and_register_dependency_from_parameter(
+    value: inspect.Parameter,
+) -> Dependency | None:
     if isinstance(value.default, Dependency):
+        _internal_registry.add(value.default.call)
         return value.default
 
     if fastapi is None:
@@ -482,7 +484,8 @@ def _extract_dependency_from_parameter(value: inspect.Parameter) -> Dependency |
                 fastapi_dependency = metadata.dependency
                 break
     if isinstance(fastapi_dependency, Dependency):
-        return fastapi_dependency  # type: ignore[unreachable]
+        _internal_registry.add(fastapi_dependency.call)  # type: ignore[unreachable]
+        return fastapi_dependency
     return None
 
 
