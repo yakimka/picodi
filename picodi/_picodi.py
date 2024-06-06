@@ -7,7 +7,7 @@ import threading
 from collections.abc import Awaitable, Callable, Generator, Iterable, Iterator
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import asdict, dataclass
-from typing import Any, NamedTuple, ParamSpec, TypeVar, cast
+from typing import Annotated, Any, NamedTuple, ParamSpec, TypeVar, cast, get_origin
 
 from picodi._internal import NullAwaitable
 from picodi._scopes import (
@@ -17,6 +17,12 @@ from picodi._scopes import (
     Scope,
     SingletonScope,
 )
+
+try:
+    import fastapi.params
+except ImportError:
+    fastapi = None  # type: ignore[assignment]
+
 
 DependencyCallable = Callable[..., Any]
 T = TypeVar("T")
@@ -449,9 +455,29 @@ def _parse_depend_tree(dependency: Dependency, name: str | None = None) -> Depen
     signature = inspect.signature(dependency.call)
     dependencies = []
     for name_, value in signature.parameters.items():
-        if isinstance(value.default, Dependency):
-            dependencies.append(_parse_depend_tree(value.default, name=name_))
+        param_dep = _extract_dependency_from_parameter(value)
+        if isinstance(param_dep, Dependency):
+            dependencies.append(_parse_depend_tree(param_dep, name=name_))
     return DependNode(value=dependency, dependencies=dependencies, name=name)
+
+
+def _extract_dependency_from_parameter(value: inspect.Parameter) -> Dependency | None:
+    if isinstance(value.default, Dependency):
+        return value.default
+
+    if fastapi is None:
+        return None  # type: ignore[unreachable]
+    fastapi_dependency = None
+    if isinstance(value.default, fastapi.params.Depends):
+        fastapi_dependency = value.default.dependency
+    elif get_origin(value.annotation) is Annotated:
+        for metadata in value.annotation.__metadata__:
+            if isinstance(metadata, fastapi.params.Depends):
+                fastapi_dependency = metadata.dependency
+                break
+    if isinstance(fastapi_dependency, Dependency):
+        return fastapi_dependency  # type: ignore[unreachable]
+    return None
 
 
 def _resolve_value(provider: Provider, **kwargs: Any) -> Any:
