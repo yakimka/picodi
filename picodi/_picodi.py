@@ -204,13 +204,19 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
     """
     Decorator to inject dependencies into a function.
     Use it in combination with `Provide` to declare dependencies.
-    Should be placed first in the decorator chain (on bottom).
+    Should be placed first in the decorator chain (on bottom),
+    exception is contextlib decorators.
 
     Example:
     ```
     from picodi import inject, Provide
 
     @inject
+    def my_service(db=Provide(some_dependency_func)):
+        ...
+
+    @inject
+    @contextmanager
     def my_service(db=Provide(some_dependency_func)):
         ...
     ```
