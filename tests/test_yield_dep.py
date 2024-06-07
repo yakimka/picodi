@@ -405,3 +405,110 @@ async def test_can_resolve_yield_in_yield_with_correct_scopes_async():
 
     assert result == ("a", "b")
     assert context_calls == ["get_a_dep", "get_b_dep", "close_b_dep", "close_a_dep"]
+
+
+async def test_resources_are_closed_even_if_exception_raised():
+    int_service = IntService.create()
+
+    def get_int_service():
+        try:
+            yield int_service
+        finally:
+            int_service.close()
+
+    @inject
+    def get_int(service: IntService = Provide(get_int_service)) -> IntService:
+        assert service.closed is False
+        raise ValueError("Something went wrong")
+
+    with pytest.raises(ValueError, match="Something went wrong"):
+        get_int()
+
+    assert int_service.closed is True
+
+
+async def test_resources_are_closed_even_if_exception_raised_async():
+    int_service = IntService.create()
+
+    async def get_int_service():
+        try:
+            yield int_service
+        finally:
+            await int_service.aclose()
+
+    @inject
+    async def get_int(service: IntService = Provide(get_int_service)) -> IntService:
+        assert service.closed is False
+        raise ValueError("Something went wrong")
+
+    with pytest.raises(ValueError, match="Something went wrong"):
+        await get_int()
+
+    assert int_service.closed is True
+
+
+def test_resources_closed_after_generator_consumed(closeable):
+    def get_yield_dep():
+        yield closeable
+        closeable.close()
+
+    @inject
+    def my_generator(dep=Provide(get_yield_dep)):
+        yield from range(3)
+        assert dep.is_closed is False
+
+    result = list(my_generator())
+
+    assert result == [0, 1, 2]
+    assert closeable.is_closed is True
+
+
+async def test_resources_closed_after_generator_consumed_async(closeable):
+    async def get_yield_dep():
+        yield closeable
+        closeable.close()
+
+    @inject
+    async def my_generator(dep=Provide(get_yield_dep)):
+        for i in range(3):
+            yield i
+        assert dep.is_closed is False
+
+    result = [i async for i in my_generator()]
+
+    assert result == [0, 1, 2]
+    assert closeable.is_closed is True
+
+
+async def test_resources_not_closed_without_finally_block():
+    int_service = IntService.create()
+
+    def get_int_service():
+        yield int_service
+
+    @inject
+    def get_int(service: IntService = Provide(get_int_service)) -> IntService:
+        assert service.closed is False
+        raise ValueError("Something went wrong")
+
+    with pytest.raises(ValueError, match="Something went wrong"):
+        get_int()
+
+    assert int_service.closed is False
+
+
+async def test_resources_not_closed_without_finally_block_async():
+    int_service = IntService.create()
+
+    async def get_int_service():
+        yield int_service
+
+    @inject
+    async def get_int(service: IntService = Provide(get_int_service)) -> IntService:
+        assert service.closed is False
+        raise ValueError("Something went wrong")
+
+    with pytest.raises(ValueError, match="Something went wrong"):
+        await get_int()
+
+    assert int_service.closed is False

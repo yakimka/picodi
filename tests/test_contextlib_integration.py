@@ -1,5 +1,7 @@
 from contextlib import asynccontextmanager, contextmanager
 
+import pytest
+
 from picodi import Provide, inject
 
 
@@ -8,8 +10,8 @@ def get_meaning_of_life() -> int:
 
 
 def test_using_inject_decorator_with_contextmanager():
-    @inject
     @contextmanager
+    @inject
     def my_manager(num: int = Provide(get_meaning_of_life)):
         yield num
 
@@ -18,10 +20,124 @@ def test_using_inject_decorator_with_contextmanager():
 
 
 async def test_using_inject_decorator_with_asynccontextmanager():
-    @inject
     @asynccontextmanager
+    @inject
     async def my_manager(num: int = Provide(get_meaning_of_life)):
         yield num
 
     async with my_manager() as num:
         assert num == 42
+
+
+def test_resources_closed_after_context_manager_close(closeable):
+    def get_yield_dep():
+        yield closeable
+        closeable.close()
+
+    @contextmanager
+    @inject
+    def my_manager(dep=Provide(get_yield_dep)):
+        yield
+        assert dep.is_closed is False
+
+    with my_manager():
+        assert closeable.is_closed is False
+
+    assert closeable.is_closed is True
+
+
+async def test_resources_closed_after_context_manager_close_async(closeable):
+    async def get_yield_dep():
+        yield closeable
+        closeable.close()
+
+    @asynccontextmanager
+    @inject
+    async def my_manager(dep=Provide(get_yield_dep)):
+        yield
+        assert dep.is_closed is False
+
+    async with my_manager():
+        assert closeable.is_closed is False
+
+    assert closeable.is_closed is True
+
+
+def test_resources_are_closed_even_if_exception_raised(closeable):
+    def get_yield_dep():
+        try:
+            yield closeable
+        finally:
+            closeable.close()
+
+    @contextmanager
+    @inject
+    def my_manager(dep=Provide(get_yield_dep)):
+        yield
+        assert dep.is_closed is False
+
+    with pytest.raises(ValueError, match="Something went wrong"):  # noqa: PT012, SIM117
+        with my_manager():
+            assert closeable.is_closed is False
+            raise ValueError("Something went wrong")
+
+    assert closeable.is_closed is True
+
+
+async def test_resources_are_closed_even_if_exception_raised_async(closeable):
+    async def get_yield_dep():
+        try:
+            yield closeable
+        finally:
+            closeable.close()
+
+    @asynccontextmanager
+    @inject
+    async def my_manager(dep=Provide(get_yield_dep)):
+        assert dep.is_closed is False
+        yield "my_manager_result"
+
+    with pytest.raises(ValueError, match="Something went wrong"):  # noqa: PT012
+        async with my_manager():
+            assert closeable.is_closed is False
+            raise ValueError("Something went wrong")
+
+    assert closeable.is_closed is True
+
+
+def test_resources_not_closed_without_finally_block(closeable):
+    def get_yield_dep():
+        yield closeable
+        closeable.close()
+
+    @contextmanager
+    @inject
+    def my_manager(dep=Provide(get_yield_dep)):
+        assert dep.is_closed is False
+        yield "my_manager_result"
+
+    with pytest.raises(ValueError, match="Something went wrong"):  # noqa: PT012, SIM117
+        with my_manager():
+            assert closeable.is_closed is False
+            raise ValueError("Something went wrong")
+
+    assert closeable.is_closed is False
+
+
+async def test_resources_not_closed_without_finally_block_async(closeable):
+    async def get_yield_dep():
+        yield closeable
+        closeable.close()
+
+    @asynccontextmanager
+    @inject
+    async def my_manager(dep=Provide(get_yield_dep)):
+        assert dep.is_closed is False
+        yield "my_manager_result"
+
+    with pytest.raises(ValueError, match="Something went wrong"):  # noqa: PT012
+        async with my_manager():
+            assert closeable.is_closed is False
+            raise ValueError("Something went wrong")
+
+    assert closeable.is_closed is False

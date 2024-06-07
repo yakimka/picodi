@@ -35,14 +35,14 @@ class Scope:
         """
         raise NotImplementedError
 
-    def close_local(self) -> Awaitable:
+    def close_local(self, exc: BaseException | None = None) -> Awaitable:  # noqa: U100
         """
         Hook for closing dependencies. Will be called automatically
         after executing a decorated function.
         """
         return NullAwaitable()
 
-    def close_global(self) -> Awaitable:
+    def close_global(self, exc: BaseException | None = None) -> Awaitable:  # noqa: U100
         """
         Hook for closing dependencies. Will be called from `shutdown_dependencies`.
         """
@@ -54,7 +54,7 @@ class Scope:
         """
         return None
 
-    def exit_decorator(self) -> None:
+    def exit_decorator(self, exc: BaseException | None = None) -> None:  # noqa: U100
         """
         Called before exiting a `inject` decorator.
         `close_local` will be called after this, e.g.:
@@ -69,8 +69,8 @@ class GlobalScope(Scope):
     Inherit this class for your custom global scope.
     """
 
-    def close_global(self) -> Awaitable:
-        return self.exit_stack.close()
+    def close_global(self, exc: BaseException | None = None) -> Awaitable:
+        return self.exit_stack.close(exc)
 
 
 class LocalScope(Scope):
@@ -78,11 +78,11 @@ class LocalScope(Scope):
     Inherit this class for your custom local scope.
     """
 
-    def close_local(self) -> Awaitable:
-        return self.exit_stack.close()
+    def close_local(self, exc: BaseException | None = None) -> Awaitable:
+        return self.exit_stack.close(exc)
 
-    def close_global(self) -> Awaitable:
-        return self.exit_stack.close()
+    def close_global(self, exc: BaseException | None = None) -> Awaitable:
+        return self.exit_stack.close(exc)
 
 
 class NullScope(LocalScope):
@@ -113,9 +113,9 @@ class SingletonScope(GlobalScope):
     def set(self, key: Hashable, value: Any) -> None:
         self._store[key] = value
 
-    def close_global(self) -> Awaitable:
+    def close_global(self, exc: BaseException | None = None) -> Awaitable:
         self._store.clear()
-        return super().close_global()
+        return super().close_global(exc)
 
 
 class ParentCallScope(LocalScope):
@@ -135,13 +135,13 @@ class ParentCallScope(LocalScope):
         with self._lock:
             self._stack.get().append({})
 
-    def exit_decorator(self) -> None:
+    def exit_decorator(self, exc: BaseException | None = None) -> None:  # noqa: U100
         with self._lock:
             self._stack.get().pop()
 
-    def close_local(self) -> Awaitable:
+    def close_local(self, exc: BaseException | None = None) -> Awaitable:
         if not self._stack.get():
-            return super().close_local()
+            return super().close_local(exc)
         return NullAwaitable()
 
     def get(self, key: Hashable) -> Any:

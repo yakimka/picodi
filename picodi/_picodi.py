@@ -3,8 +3,16 @@ from __future__ import annotations
 import asyncio
 import functools
 import inspect
+import logging
 import threading
-from collections.abc import Awaitable, Callable, Generator, Iterable, Iterator
+from collections.abc import (
+    AsyncGenerator,
+    Awaitable,
+    Callable,
+    Generator,
+    Iterable,
+    Iterator,
+)
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import asdict, dataclass
 from typing import Annotated, Any, NamedTuple, ParamSpec, TypeVar, cast, get_origin
@@ -22,6 +30,9 @@ try:
     import fastapi.params
 except ImportError:
     fastapi = None  # type: ignore[assignment] # pragma: no cover
+
+
+logger = logging.getLogger("picodi")
 
 
 DependencyCallable = Callable[..., Any]
@@ -157,8 +168,8 @@ _internal_registry = InternalRegistry(_registry_storage)
 registry = Registry(_registry_storage, _internal_registry)
 _scopes: dict[type[Scope], Scope] = {
     NullScope: NullScope(),
-    ParentCallScope: ParentCallScope(),
     SingletonScope: SingletonScope(),
+    ParentCallScope: ParentCallScope(),
 }
 _lock = threading.RLock()
 
@@ -193,8 +204,7 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
     """
     Decorator to inject dependencies into a function.
     Use it in combination with `Provide` to declare dependencies.
-    Should be placed first in the decorator chain (on bottom),
-    exception is contextlib decorators.
+    Should be placed first in the decorator chain (on bottom).
 
     Example:
     ```
@@ -216,15 +226,19 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
     if inspect.iscoroutinefunction(fn) or inspect.isasyncgenfunction(fn):
 
         @functools.wraps(fn)
-        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+        async def fun_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             gen = _wrapper_helper(
                 dependant, signature, is_async=True, args=args, kwargs=kwargs
             )
             value, action = next(gen)
             result = None
+            exceptions = []
             while True:
                 if inspect.iscoroutine(value):
-                    value = await value
+                    try:
+                        value = await value
+                    except Exception as e:  # noqa: PIE786
+                        exceptions.append(e)
 
                 if action == "result":
                     result = value
@@ -232,7 +246,30 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
                     value, action = gen.send(value)
                 except StopIteration:
                     break
+            if exceptions:
+                # TODO use `ExceptionGroup` after dropping 3.10 support
+                raise exceptions[0]
             return cast("T", result)
+
+        wrapper = fun_wrapper
+
+        if inspect.isasyncgenfunction(fn):
+
+            @functools.wraps(fn)
+            async def gen_wrapper(
+                *args: P.args, **kwargs: P.kwargs
+            ) -> AsyncGenerator[T, None]:
+                result = await fun_wrapper(*args, **kwargs)
+                async for value in result:  # type: ignore[attr-defined]
+                    try:
+                        yield value
+                    except Exception as e:  # noqa: PIE786
+                        try:
+                            await result.athrow(e)  # type: ignore[attr-defined]
+                        except StopAsyncIteration:
+                            break
+
+            wrapper = gen_wrapper  # type: ignore[assignment]
 
     else:
 
@@ -385,7 +422,55 @@ def _wrapper_helper(
         if isinstance(call, LazyCallable):
             value = yield call(), "dependency"
             bound.arguments[name] = value
-    yield dependant.value.call(*bound.args, **bound.kwargs), "result"
+
+    try:
+        result = dependant.value.call(*bound.args, **bound.kwargs)
+    except Exception as e:
+        for scope in scopes:
+            scope.exit_decorator(e)
+            yield scope.close_local(e), "close_scope"
+        raise
+
+    if inspect.isgenerator(result):
+
+        @functools.wraps(result)  # type: ignore[arg-type]
+        def gen() -> Generator[Any, None, None]:
+            exception = None
+            try:
+                yield from result
+            except Exception as e:
+                exception = e
+                raise
+            finally:
+                for scope in scopes:
+                    scope.exit_decorator(exception)
+                    scope.close_local(exception)
+
+        yield gen(), "result"
+        return
+    elif inspect.isasyncgen(result):
+
+        @functools.wraps(result)  # type: ignore[arg-type]
+        async def gen() -> AsyncGenerator[Any, None]:
+            exception = None
+            try:
+                async for item in result:
+                    yield item
+            except Exception as e:
+                exception = e
+                raise
+            # TODO use
+            #   https://flake8-async.readthedocs.io/en/latest/glossary.html#cancel-scope
+            #   https://docs.python.org/3/library/asyncio-task.html#task-cancellation
+            finally:
+                for scope in scopes:
+                    scope.exit_decorator(exception)
+                    await scope.close_local(exception)  # noqa: ASYNC102
+
+        yield gen(), "result"
+        return
+
+    yield result, "result"
     for scope in scopes:
         scope.exit_decorator()
         yield scope.close_local(), "close_scope"
