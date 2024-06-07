@@ -47,8 +47,9 @@ class ExitStack:
 
         raise TypeError(f"Unsupported context manager: {cm}")  # pragma: no cover
 
-    def close(self) -> Awaitable:
-        self.__exit__(None, None, None)
+    def close(self, exc: BaseException | None = None) -> Awaitable:
+        exc_type = type(exc) if exc is not None else None
+        self.__exit__(exc_type, exc, None)
         if (
             is_async_environment()
             # This is a workaround for the issue for RuntimeWarning
@@ -56,7 +57,7 @@ class ExitStack:
             # don't need to await for async exit if there are no async context managers.
             and self._async_stack._exit_callbacks  # type: ignore # noqa: SF01
         ):
-            return self.__aexit__(None, None, None)
+            return self.__aexit__(exc_type, exc, None)
         return NullAwaitable()
 
 
