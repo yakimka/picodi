@@ -4,7 +4,14 @@ import asyncio
 import functools
 import inspect
 import threading
-from collections.abc import Awaitable, Callable, Generator, Iterable, Iterator
+from collections.abc import (
+    AsyncGenerator,
+    Awaitable,
+    Callable,
+    Generator,
+    Iterable,
+    Iterator,
+)
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import asdict, dataclass
 from typing import Annotated, Any, NamedTuple, ParamSpec, TypeVar, cast, get_origin
@@ -157,8 +164,8 @@ _internal_registry = InternalRegistry(_registry_storage)
 registry = Registry(_registry_storage, _internal_registry)
 _scopes: dict[type[Scope], Scope] = {
     NullScope: NullScope(),
-    ParentCallScope: ParentCallScope(),
     SingletonScope: SingletonScope(),
+    ParentCallScope: ParentCallScope(),
 }
 _lock = threading.RLock()
 
@@ -193,8 +200,7 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
     """
     Decorator to inject dependencies into a function.
     Use it in combination with `Provide` to declare dependencies.
-    Should be placed first in the decorator chain (on bottom),
-    exception is contextlib decorators.
+    Should be placed first in the decorator chain (on bottom).
 
     Example:
     ```
@@ -216,7 +222,7 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
     if inspect.iscoroutinefunction(fn) or inspect.isasyncgenfunction(fn):
 
         @functools.wraps(fn)
-        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+        async def fun_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             gen = _wrapper_helper(
                 dependant, signature, is_async=True, args=args, kwargs=kwargs
             )
@@ -233,6 +239,20 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
                 except StopIteration:
                     break
             return cast("T", result)
+
+        wrapper = fun_wrapper
+
+        if inspect.isasyncgenfunction(fn):
+
+            @functools.wraps(fn)
+            async def gen_wrapper(
+                *args: P.args, **kwargs: P.kwargs
+            ) -> AsyncGenerator[T, None]:
+                result = await fun_wrapper(*args, **kwargs)
+                async for value in result:  # type: ignore[attr-defined]
+                    yield value
+
+            wrapper = gen_wrapper  # type: ignore[assignment]
 
     else:
 
@@ -385,7 +405,33 @@ def _wrapper_helper(
         if isinstance(call, LazyCallable):
             value = yield call(), "dependency"
             bound.arguments[name] = value
-    yield dependant.value.call(*bound.args, **bound.kwargs), "result"
+    result = dependant.value.call(*bound.args, **bound.kwargs)
+
+    if inspect.isgenerator(result):
+
+        @functools.wraps(result)  # type: ignore[arg-type]
+        def gen() -> Generator[Any, None, None]:
+            yield from result
+            for scope in scopes:
+                scope.exit_decorator()
+                scope.close_local()
+
+        yield gen(), "result"
+        return
+    elif inspect.isasyncgen(result):
+
+        @functools.wraps(result)  # type: ignore[arg-type]
+        async def gen() -> AsyncGenerator[Any, None]:
+            async for item in result:
+                yield item
+            for scope in scopes:
+                scope.exit_decorator()
+                await scope.close_local()
+
+        yield gen(), "result"
+        return
+
+    yield result, "result"
     for scope in scopes:
         scope.exit_decorator()
         yield scope.close_local(), "close_scope"

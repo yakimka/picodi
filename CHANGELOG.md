@@ -4,7 +4,8 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
--
+- `@inject` now can be placed on bottom with `@contxtlib.asyncontextmanager`
+- Fix scopes closing when injecting in generator functions
 
 ## Version 0.11.0
 

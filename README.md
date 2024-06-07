@@ -36,7 +36,6 @@ and offers features like lifecycle management.
   - [Global scoped dependencies not initialized with `init_dependencies()`](#global-scoped-dependencies-not-initialized-with-init_dependencies)
   - [flake8-bugbear throws `B008 Do not perform function calls in argument defaults`](#flake8-bugbear-throws-b008-do-not-perform-function-calls-in-argument-defaults)
   - [RuntimeError: Event loop is closed when using pytest-asyncio](#runtimeerror-event-loop-is-closed-when-using-pytest-asyncio)
-  - [`inject` does not work with `contextlib.asynccontextmanager` decorator](#inject-does-not-work-with-contextlibasynccontextmanager-decorator)
 - [API Reference](#api-reference)
 - [License](#license)
 - [Credits](#credits)
@@ -505,33 +504,6 @@ async def _setup_picodi():
     await picodi.shutdown_dependencies()
 ```
 
-### `inject` does not work with `contextlib.asynccontextmanager` decorator
-
-This is an exception to the rule that `inject` should be placed first in the decorator chain.
-`contextlib.asynccontextmanager` and similar decorators should be placed first.
-
-```python
-import asyncio
-from contextlib import asynccontextmanager
-
-from picodi import inject, Provide
-
-@inject
-@asynccontextmanager
-async def my_manager(some_value: int = Provide(lambda: 42)):
-    yield some_value
-    print("cleanup")
-
-
-async def main():
-    async with my_manager() as value:
-        print(value)
-
-asyncio.run(main())
-# -> 42
-# -> cleanup
-```
-
 ## API Reference
 
 ### `Provide(dependency)`
@@ -547,9 +519,7 @@ Decorator to automatically inject dependencies declared by `Provide` into a func
 It manages the lifecycle of the dependency,
 including initialization and teardown if the dependency is a generator.
 
-Should be placed first in the decorator chain (on bottom),
-exception is `contextlib.contextmanager`, `contextlib.asynccontextmanager`
-and similar decorators - they should be placed first.
+Should be placed first in the decorator chain (on bottom).
 
 - **Parameters**:
   - `fn`: The function into which dependencies will be injected.
