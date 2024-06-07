@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import functools
 import inspect
+import logging
 import threading
 from collections.abc import (
     AsyncGenerator,
@@ -29,6 +30,9 @@ try:
     import fastapi.params
 except ImportError:
     fastapi = None  # type: ignore[assignment] # pragma: no cover
+
+
+logger = logging.getLogger("picodi")
 
 
 DependencyCallable = Callable[..., Any]
@@ -228,9 +232,13 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
             )
             value, action = next(gen)
             result = None
+            exceptions = []
             while True:
                 if inspect.iscoroutine(value):
-                    value = await value
+                    try:
+                        value = await value
+                    except Exception as e:  # noqa: PIE786
+                        exceptions.append(e)
 
                 if action == "result":
                     result = value
@@ -238,6 +246,9 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
                     value, action = gen.send(value)
                 except StopIteration:
                     break
+            if exceptions:
+                # TODO use `ExceptionGroup` after dropping 3.10 support
+                raise exceptions[0]
             return cast("T", result)
 
         wrapper = fun_wrapper
@@ -250,7 +261,13 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
             ) -> AsyncGenerator[T, None]:
                 result = await fun_wrapper(*args, **kwargs)
                 async for value in result:  # type: ignore[attr-defined]
-                    yield value
+                    try:
+                        yield value
+                    except Exception as e:  # noqa: PIE786
+                        try:
+                            await result.athrow(e)  # type: ignore[attr-defined]
+                        except StopAsyncIteration:
+                            break
 
             wrapper = gen_wrapper  # type: ignore[assignment]
 
@@ -405,16 +422,29 @@ def _wrapper_helper(
         if isinstance(call, LazyCallable):
             value = yield call(), "dependency"
             bound.arguments[name] = value
-    result = dependant.value.call(*bound.args, **bound.kwargs)
+
+    try:
+        result = dependant.value.call(*bound.args, **bound.kwargs)
+    except Exception as e:
+        for scope in scopes:
+            scope.exit_decorator(e)
+            yield scope.close_local(e), "close_scope"
+        raise
 
     if inspect.isgenerator(result):
 
         @functools.wraps(result)  # type: ignore[arg-type]
         def gen() -> Generator[Any, None, None]:
-            yield from result
-            for scope in scopes:
-                scope.exit_decorator()
-                scope.close_local()
+            exception = None
+            try:
+                yield from result
+            except Exception as e:
+                exception = e
+                raise
+            finally:
+                for scope in scopes:
+                    scope.exit_decorator(exception)
+                    scope.close_local(exception)
 
         yield gen(), "result"
         return
@@ -422,11 +452,20 @@ def _wrapper_helper(
 
         @functools.wraps(result)  # type: ignore[arg-type]
         async def gen() -> AsyncGenerator[Any, None]:
-            async for item in result:
-                yield item
-            for scope in scopes:
-                scope.exit_decorator()
-                await scope.close_local()
+            exception = None
+            try:
+                async for item in result:
+                    yield item
+            except Exception as e:
+                exception = e
+                raise
+            # TODO use
+            #   https://flake8-async.readthedocs.io/en/latest/glossary.html#cancel-scope
+            #   https://docs.python.org/3/library/asyncio-task.html#task-cancellation
+            finally:
+                for scope in scopes:
+                    scope.exit_decorator(exception)
+                    await scope.close_local(exception)  # noqa: ASYNC102
 
         yield gen(), "result"
         return
