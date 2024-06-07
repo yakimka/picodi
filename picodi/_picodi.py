@@ -213,11 +213,6 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
     @inject
     def my_service(db=Provide(some_dependency_func)):
         ...
-
-    @inject
-    @contextmanager
-    def my_service(db=Provide(some_dependency_func)):
-        ...
     ```
     """
     signature = inspect.signature(fn)
