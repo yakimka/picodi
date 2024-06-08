@@ -6,6 +6,10 @@ We follow [Semantic Versions](https://semver.org/).
 
 -
 
+## Version 0.13.0
+
+- Fix async singleton through sync resolving
+
 ## Version 0.12.0
 
 - `@inject` now can be placed on bottom with `@contxtlib.asyncontextmanager`
