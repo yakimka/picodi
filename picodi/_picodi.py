@@ -314,10 +314,10 @@ def init_dependencies() -> Awaitable:
         lambda p: issubclass(p.scope_class, GlobalScope)
     )
     for provider in global_providers:
+        resolver = LazyResolver(provider)
+        value = resolver(provider.is_async)
         if provider.is_async:
-            async_deps.append(_resolve_value_async(provider))
-        else:
-            _resolve_value(provider)
+            async_deps.append(value)
 
     if async_deps:
         return asyncio.gather(*async_deps)
@@ -414,7 +414,7 @@ def _wrapper_helper(
     for scope in scopes:
         scope.enter_decorator()
     for name, call in arguments.items():
-        if isinstance(call, LazyCallable):
+        if isinstance(call, LazyResolver):
             value = yield call(is_async=is_async), "dependency"
             bound.arguments[name] = value
 
@@ -471,23 +471,9 @@ def _wrapper_helper(
         yield scope.close_local(), "close_scope"
 
 
-class LazyCallable:
-    def __init__(
-        self,
-        args: tuple[Any, ...],
-        kwargs: dict[str, Any],
-    ) -> None:
-        self.args = args
-        self.kwargs = kwargs
-
-    def __call__(self, is_async: bool) -> Any:
-        call = _resolve_value_async if is_async else _resolve_value
-        return call(*self.args, **self.kwargs)
-
-
 def _resolve_dependencies(
     dependant: DependNode,
-) -> tuple[dict[str, LazyCallable], list[Scope]]:
+) -> tuple[dict[str, LazyResolver], list[Scope]]:
     scopes = set()
     resolved_dependencies = {}
     for dep in dependant.dependencies:
@@ -499,8 +485,8 @@ def _resolve_dependencies(
         return resolved_dependencies, list(scopes)
 
     provider = dependant.value.get_provider()
-    value = LazyCallable(
-        args=(provider,),
+    value = LazyResolver(
+        provider=provider,
         kwargs=resolved_dependencies,
     )
     return {dependant.name: value}, [provider.get_scope()]
@@ -546,34 +532,46 @@ def _extract_and_register_dependency_from_parameter(
     return None
 
 
-def _resolve_value(provider: Provider, **kwargs: Any) -> Any:
-    scope = provider.get_scope()
-    try:
-        value = scope.get(provider.dependency)
-    except KeyError:
-        if provider.is_async:
-            value = provider.dependency()
-        else:
+class LazyResolver:
+    def __init__(
+        self,
+        provider: Provider,
+        kwargs: dict[str, Any] | None = None,
+    ) -> None:
+        self.provider = provider
+        self.kwargs = kwargs or {}
+
+    def __call__(self, is_async: bool) -> Any:
+        call = self._resolve_async if is_async else self._resolve
+        return call()
+
+    def _resolve(self) -> Any:
+        scope = self.provider.get_scope()
+        try:
+            value = scope.get(self.provider.dependency)
+        except KeyError:
+            if self.provider.is_async:
+                value = self.provider.dependency()
+            else:
+                with _lock:
+                    try:
+                        value = scope.get(self.provider.dependency)
+                    except KeyError:
+                        value = self.provider.resolve_value(**self.kwargs)
+                        scope.set(self.provider.dependency, value)
+        return value
+
+    async def _resolve_async(self) -> Any:
+        scope = self.provider.get_scope()
+        try:
+            value = scope.get(self.provider.dependency)
+        except KeyError:
             with _lock:
                 try:
-                    value = scope.get(provider.dependency)
+                    value = scope.get(self.provider.dependency)
                 except KeyError:
-                    value = provider.resolve_value(**kwargs)
-                    scope.set(provider.dependency, value)
-    return value
-
-
-async def _resolve_value_async(provider: Provider, **kwargs: Any) -> Any:
-    scope = provider.get_scope()
-    try:
-        value = scope.get(provider.dependency)
-    except KeyError:
-        with _lock:
-            try:
-                value = scope.get(provider.dependency)
-            except KeyError:
-                value = provider.resolve_value(**kwargs)
-                if provider.is_async:
-                    value = await value
-                scope.set(provider.dependency, value)
-    return value
+                    value = self.provider.resolve_value(**self.kwargs)
+                    if self.provider.is_async:
+                        value = await value
+                    scope.set(self.provider.dependency, value)
+        return value
