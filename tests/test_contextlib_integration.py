@@ -141,3 +141,43 @@ async def test_resources_not_closed_without_finally_block_async(closeable):
             raise ValueError("Something went wrong")
 
     assert closeable.is_closed is False
+
+
+def test_yield_dep_dont_close_while_parent_not_close(closeable):
+    def get_yield_dep():
+        yield "my_dep"
+        closeable.close()
+
+    @contextmanager
+    @inject
+    def my_manager(dep=Provide(get_yield_dep)):
+        assert closeable.is_closed is False
+        yield dep
+        raise ValueError("Should not be raised")
+
+    manager = my_manager()
+
+    result = manager.__enter__()
+
+    assert result == "my_dep"
+    assert closeable.is_closed is False
+
+
+async def test_yield_dep_dont_close_while_parent_not_close_async(closeable):
+    async def get_yield_dep():
+        yield "my_dep"
+        closeable.close()
+
+    @asynccontextmanager
+    @inject
+    async def my_manager(dep=Provide(get_yield_dep)):
+        assert closeable.is_closed is False
+        yield dep
+        raise ValueError("Should not be raised")
+
+    manager = my_manager()
+
+    result = await manager.__aenter__()
+
+    assert result == "my_dep"
+    assert closeable.is_closed is False
