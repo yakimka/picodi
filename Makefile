@@ -5,14 +5,6 @@ RUN=
 .PHONY: all
 all: help
 
-.PHONY: start-devtools
-start-devtools:  ## Start devtools container
-	docker compose up -d devtools
-
-.PHONY: stop-devtools
-stop-devtools:  ## Stop devtools container
-	docker compose stop devtools
-
 .PHONY: pre-commit
 pre-commit:  ## Run pre-commit with args
 	$(RUN) poetry run pre-commit $(args)
@@ -34,6 +26,10 @@ mypy:  ## Run mypy
 test:  ## Run tests
 	$(RUN) poetry run pytest --cov=tests --cov=picodi $(args)
 	$(RUN) poetry run pytest --dead-fixtures
+
+.PHONY: test-docs
+test-docs:  ## Check docs
+	$(RUN) poetry run pytest --markdown-docs -m markdown-docs $(args)
 
 .PHONY: package
 package:  ## Run packages (dependencies) checks

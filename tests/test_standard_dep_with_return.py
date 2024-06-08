@@ -86,7 +86,7 @@ async def test_resolve_async_dependency_multiple_times_return_different_results(
     _check_redis_string(results[0])
 
 
-def test_resolve_async_dependency_from_sync_function_return_coroutine():
+async def test_resolve_async_dependency_from_sync_function_return_coroutine():
     @inject
     def get_async_dep(port: int = Provide(get_random_int_async)):
         return port
@@ -95,6 +95,7 @@ def test_resolve_async_dependency_from_sync_function_return_coroutine():
 
     assert inspect.iscoroutine(result)
     assert result.__name__ == "get_random_int_async"
+    assert isinstance(await result, int)
 
 
 def test_can_pass_dependency(get_redis_string_dep):

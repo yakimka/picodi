@@ -316,6 +316,9 @@ Attempting to resolve async dependencies in sync functions may not work as expec
 resulting in unexpected behaviors like receiving a coroutine object instead of the actual value.
 
 ```python
+from picodi import Provide, inject
+
+
 async def get_db_port() -> int:
     return 8080
 
@@ -360,7 +363,11 @@ import pytest
 
 from picodi import registry
 
-from my_app.dependencies import get_settings
+
+# Dependency that return app settings
+#   usually it should be implemented in the app
+def get_settings():
+    ...
 
 
 def get_test_settings():
@@ -417,7 +424,7 @@ registry.override(get_abc_setting, get_setting)
 
 To clear a specific override, you can pass None as the new dependency.
 
-```python
+```python continuation
 from picodi import registry
 
 
@@ -678,7 +685,13 @@ Example:
 from picodi import inject, Provide
 from picodi.helpers import get_value
 
-from app import settings
+
+settings = {
+    "db": {
+        "host": "localhost",
+        "port": 5432,
+    }
+}
 
 
 def get_setting(path: str):
