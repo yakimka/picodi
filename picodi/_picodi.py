@@ -409,13 +409,13 @@ def _wrapper_helper(
     is_root = any(isinstance(value, Dependency) for value in bound.arguments.values())
 
     if is_root:
-        arguments, scopes = _resolve_dependencies(dependant, is_async=is_async)
+        arguments, scopes = _resolve_dependencies(dependant)
 
     for scope in scopes:
         scope.enter_decorator()
     for name, call in arguments.items():
         if isinstance(call, LazyCallable):
-            value = yield call(), "dependency"
+            value = yield call(is_async=is_async), "dependency"
             bound.arguments[name] = value
 
     try:
@@ -474,25 +474,24 @@ def _wrapper_helper(
 class LazyCallable:
     def __init__(
         self,
-        call: DependencyCallable,
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
     ) -> None:
-        self.call = call
         self.args = args
         self.kwargs = kwargs
 
-    def __call__(self) -> Any:
-        return self.call(*self.args, **self.kwargs)
+    def __call__(self, is_async: bool) -> Any:
+        call = _resolve_value_async if is_async else _resolve_value
+        return call(*self.args, **self.kwargs)
 
 
 def _resolve_dependencies(
-    dependant: DependNode, is_async: bool
+    dependant: DependNode,
 ) -> tuple[dict[str, LazyCallable], list[Scope]]:
     scopes = set()
     resolved_dependencies = {}
     for dep in dependant.dependencies:
-        values, dep_scopes = _resolve_dependencies(dep, is_async=is_async)
+        values, dep_scopes = _resolve_dependencies(dep)
         resolved_dependencies.update(values)
         scopes.update(dep_scopes)
 
@@ -501,7 +500,6 @@ def _resolve_dependencies(
 
     provider = dependant.value.get_provider()
     value = LazyCallable(
-        call=_resolve_value_async if is_async else _resolve_value,
         args=(provider,),
         kwargs=resolved_dependencies,
     )
