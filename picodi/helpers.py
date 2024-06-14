@@ -1,4 +1,14 @@
-from typing import Any
+from __future__ import annotations
+
+import asyncio
+import contextlib
+from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
+
+import picodi
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator, Callable, Generator
+    from types import TracebackType
 
 sentinel = object()
 
@@ -57,3 +67,67 @@ def _get_item(obj: Any, key: str) -> Any:
         return obj[key]
     except (KeyError, TypeError):
         return sentinel
+
+
+T = TypeVar("T")
+P = ParamSpec("P")
+
+
+class _Lifespan:
+    @overload
+    def __call__(self, fn: Callable[P, T]) -> Callable[P, T]:
+        pass
+
+    @overload
+    def __call__(self, fn: None = None) -> Callable[[Callable[P, T]], Callable[P, T]]:
+        pass
+
+    def __call__(
+        self, fn: Callable[P, T] | None = None
+    ) -> Callable[P, T] | Callable[[Callable[P, T]], Callable[P, T]]:
+        if fn is None:
+            return self
+        if asyncio.iscoroutinefunction(fn):
+            return self.async_()(fn)  # type: ignore[return-value]
+        return self.sync()(fn)
+
+    def __enter__(self) -> None:
+        picodi.init_dependencies()
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        picodi.shutdown_dependencies()
+
+    async def __aenter__(self) -> None:
+        await picodi.init_dependencies()
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        await picodi.shutdown_dependencies()
+
+    @contextlib.contextmanager
+    def sync(self) -> Generator[None, None, None]:
+        picodi.init_dependencies()
+        try:
+            yield
+        finally:
+            picodi.shutdown_dependencies()
+
+    @contextlib.asynccontextmanager
+    async def async_(self) -> AsyncGenerator[None, None]:
+        await picodi.init_dependencies()
+        try:
+            yield
+        finally:
+            await picodi.shutdown_dependencies()  # noqa: ASYNC102
+
+
+lifespan = _Lifespan()
