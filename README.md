@@ -707,6 +707,65 @@ def get_connection(
     print("connecting to", host, port)
 ```
 
+#### `helpers.lifespan(fn=None)`
+
+Decorator and context manager to manage the lifecycle of a dependencies.
+This is equivalent of:
+
+```python
+import picodi
+
+
+picodi.init_dependencies()
+# your code
+picodi.shutdown_dependencies()
+```
+
+Can be used as a decorator:
+
+```python
+from picodi.helpers import lifespan
+
+
+@lifespan
+def main():
+    # Depedencies will be initialized before this function call
+    # and closed after this function call
+    ...
+
+# or for async functions
+@lifespan
+async def async_main():
+    ...
+```
+
+Can be used as a context manager:
+
+```python
+from picodi.helpers import lifespan
+
+
+with lifespan():  # or `async with lifespan():` for async functions
+    ...
+```
+
+`lifespan` can automatically detect if the function is async or not.
+But if you want to force sync or async mode,
+you can use `lifespan.sync` or `lifespan.async_`:
+
+```python
+from picodi.helpers import lifespan
+
+
+with lifespan.sync():
+    ...
+
+
+@lifespan.async_()
+async def main():
+    ...
+```
+
 ## License
 
 [MIT](https://github.com/yakimka/picodi/blob/main/LICENSE)
