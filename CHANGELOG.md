@@ -6,6 +6,10 @@ We follow [Semantic Versions](https://semver.org/).
 
 -
 
+## Version 0.14.0
+
+- Added `helpers.lifespan` function for simple resource management
+
 ## Version 0.13.0
 
 - Fix async singleton through sync resolving
