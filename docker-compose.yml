@@ -15,9 +15,3 @@ services:
   devtools:
     <<: *common
     command: sleep infinity
-
-  app:
-    <<: *common
-    restart: "no"
-    ports:
-      - "8000:8000"

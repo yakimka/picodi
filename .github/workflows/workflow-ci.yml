@@ -26,7 +26,7 @@ env:
   CACHE_REGISTRY: "ghcr.io"
   CACHE_REGISTRY_USERNAME: "yakimka"
   CACHE_REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  DOCKER_COMPOSE_SERVICE_NAME: "app"
+  DOCKER_COMPOSE_SERVICE_NAME: "devtools"
   MAIN_PY_VERSION: "3.11"
   POETRY_DOCKER_IMAGE: "yakimka/poetry:1.8.2-py3.11-slim"
 

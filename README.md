@@ -31,6 +31,7 @@ and offers features like lifecycle management.
   - [Resolving async dependencies in sync functions](#resolving-async-dependencies-in-sync-functions)
   - [Overriding dependencies](#overriding-dependencies)
   - [Using Picodi with web frameworks](#using-picodi-with-web-frameworks)
+    - [Working with FastAPI dependency injection mechanism](#working-with-fastapi-dependency-injection-mechanism)
 - [Known Issues](#known-issues)
   - [Receiving a coroutine object instead of the actual value](#receiving-a-coroutine-object-instead-of-the-actual-value)
   - [Global scoped dependencies not initialized with `init_dependencies()`](#global-scoped-dependencies-not-initialized-with-init_dependencies)
@@ -59,6 +60,7 @@ pip install picodi
 - 🔄 Lifecycle management
 - 🔍 Type hints support
 - 🐍 Python & PyPy 3.10+ support
+- 🚀 Works well with [FastAPI](https://fastapi.tiangolo.com/)
 
 ## Quick Start
 
@@ -444,8 +446,14 @@ registry.clear_overrides()
 
 Picodi can be used with web frameworks like FastAPI or Django.
 
+
+#### Working with FastAPI dependency injection mechanism
+
+If you want to use Picody dependency in FastAPI view functions,
+you can use `Depends` with `Provide`.
+
 ```python
-import random
+# fastapi_di.py
 
 from fastapi import FastAPI, Depends
 from picodi import Provide, inject
@@ -453,12 +461,8 @@ from picodi import Provide, inject
 app = FastAPI()
 
 
-def get_random_int():
-    yield random.randint(1, 100)
-
-
 @inject
-async def get_redis_connection(port: int = Provide(get_random_int)) -> str:
+async def get_redis_connection(port: int = Provide(lambda: 8080)) -> str:
     return "http://redis:{}".format(port)
 
 
