@@ -93,8 +93,8 @@ class NullScope(LocalScope):
     def get(self, key: Hashable) -> Any:
         raise KeyError(key)
 
-    def set(self, key: Hashable, value: Any) -> None:
-        pass
+    def set(self, key: Hashable, value: Any) -> None:  # noqa: U100
+        return None
 
 
 class SingletonScope(GlobalScope):
@@ -114,6 +114,36 @@ class SingletonScope(GlobalScope):
         self._store[key] = value
 
     def close_global(self, exc: BaseException | None = None) -> Awaitable:
+        self._store.clear()
+        return super().close_global(exc)
+
+
+class ContextVarScope(GlobalScope):
+    """
+    ContextVar scope. Values cached in contextvars.
+    Dependencies closed only when user manually call `shutdown_dependencies`.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._store: dict[Any, ContextVar[Any]] = {}
+
+    def get(self, key: Hashable) -> Any:
+        try:
+            return self._store[key].get()
+        except LookupError:
+            raise KeyError(key) from None
+
+    def set(self, key: Hashable, value: Any) -> None:
+        try:
+            var = self._store[key]
+        except KeyError:
+            var = self._store[key] = ContextVar("picodi_FastApiScope_var")
+        var.set(value)
+
+    def close_global(self, exc: BaseException | None = None) -> Any:
+        for var in self._store.values():
+            var.set(None)
         self._store.clear()
         return super().close_global(exc)
 
