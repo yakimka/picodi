@@ -6,6 +6,10 @@ We follow [Semantic Versions](https://semver.org/).
 
 -
 
+## Version 0.15.0
+
+- Added ability to pass custom `scope_class` to `init_dependencies` and `shutdown_dependencies`
+
 ## Version 0.14.0
 
 - Added `helpers.lifespan` function for simple resource management

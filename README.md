@@ -605,18 +605,22 @@ Useful for managing resources like connections.
 Scope for dependencies that should be created once per parent call.
 Yield dependencies are closed after the parent function call.
 
-### `init_dependencies()`
+### `init_dependencies(scope_class)`
 
 Initializes all global scoped dependencies. Typically called at the startup of the application.
 
 Can be called as `init_dependencies()` in a sync context and `await init_dependencies()` in an async context.
 
-### `shutdown_dependencies()`
+You can pass a custom scope class to initialize only dependencies with that scope.
+
+### `shutdown_dependencies(scope_class)`
 
 Calls all dependency teardowns.
 It should be called when the application is shutting down to ensure proper cleanup.
 
 Can be called as `shutdown_dependencies()` in a sync context and `await shutdown_dependencies()` in an async context.
+
+You can pass a custom scope class to close only dependencies with that scope.
 
 ### `registry` object
 

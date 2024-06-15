@@ -304,14 +304,16 @@ def dependency(*, scope_class: type[Scope] = NullScope) -> Callable[[TC], TC]:
     return decorator
 
 
-def init_dependencies() -> Awaitable:
+def init_dependencies(
+    scope_class: type[Scope] | tuple[type[Scope]] = GlobalScope,
+) -> Awaitable:
     """
     Call this function to close dependencies. Usually, it should be called
     when your application is shutting down.
     """
     async_deps = []
     global_providers = _internal_registry.filter(
-        lambda p: issubclass(p.scope_class, GlobalScope)
+        lambda p: issubclass(p.scope_class, scope_class)
     )
     for provider in global_providers:
         resolver = LazyResolver(provider)
@@ -324,12 +326,18 @@ def init_dependencies() -> Awaitable:
     return NullAwaitable()
 
 
-def shutdown_dependencies() -> Awaitable:
+def shutdown_dependencies(
+    scope_class: type[Scope] | tuple[type[Scope]] = GlobalScope,
+) -> Awaitable:
     """
     Call this function to close dependencies. Usually, it should be called
     when your application is shut down.
     """
-    tasks = [scope.close_global() for scope in _scopes.values()]
+    tasks = [
+        instance.close_global()
+        for klass, instance in _scopes.items()
+        if issubclass(klass, scope_class)
+    ]
     return asyncio.gather(*tasks)
 
 

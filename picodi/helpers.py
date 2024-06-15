@@ -5,6 +5,7 @@ import contextlib
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
 
 import picodi
+from picodi import GlobalScope, Scope
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable, Generator
@@ -114,20 +115,24 @@ class _Lifespan:
         await picodi.shutdown_dependencies()
 
     @contextlib.contextmanager
-    def sync(self) -> Generator[None, None, None]:
-        picodi.init_dependencies()
+    def sync(
+        self, scope_class: type[Scope] | tuple[type[Scope]] = GlobalScope
+    ) -> Generator[None, None, None]:
+        picodi.init_dependencies(scope_class)
         try:
             yield
         finally:
-            picodi.shutdown_dependencies()
+            picodi.shutdown_dependencies(scope_class)
 
     @contextlib.asynccontextmanager
-    async def async_(self) -> AsyncGenerator[None, None]:
-        await picodi.init_dependencies()
+    async def async_(
+        self, scope_class: type[Scope] | tuple[type[Scope]] = GlobalScope
+    ) -> AsyncGenerator[None, None]:
+        await picodi.init_dependencies(scope_class)
         try:
             yield
         finally:
-            await picodi.shutdown_dependencies()  # noqa: ASYNC102
+            await picodi.shutdown_dependencies(scope_class)  # noqa: ASYNC102
 
 
 lifespan = _Lifespan()
