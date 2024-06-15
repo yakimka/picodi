@@ -39,6 +39,7 @@ and offers features like lifecycle management.
   - [RuntimeError: Event loop is closed when using pytest-asyncio](#runtimeerror-event-loop-is-closed-when-using-pytest-asyncio)
 - [API Reference](#api-reference)
 - [License](#license)
+- [Contributing](#contributing)
 - [Credits](#credits)
 
 ## Status
@@ -774,6 +775,10 @@ async def main():
 
 [MIT](https://github.com/yakimka/picodi/blob/main/LICENSE)
 
+## Contributing
+
+Contributions are welcome!
+Please read the [CONTRIBUTING.md](https://github.com/yakimka/picodi/blob/main/CONTRIBUTING.md) file for more information.
 
 ## Credits
 
