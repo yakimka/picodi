@@ -9,6 +9,9 @@ if TYPE_CHECKING:
     from collections.abc import Awaitable, Hashable
 
 
+unset = object()
+
+
 class Scope:
     """
     Base class for scopes.
@@ -130,9 +133,12 @@ class ContextVarScope(ManualScope):
 
     def get(self, key: Hashable) -> Any:
         try:
-            return self._store[key].get()
+            value = self._store[key].get()
         except LookupError:
             raise KeyError(key) from None
+        if value is unset:
+            raise KeyError(key)
+        return value
 
     def set(self, key: Hashable, value: Any) -> None:
         try:
@@ -143,6 +149,5 @@ class ContextVarScope(ManualScope):
 
     def shutdown(self, exc: BaseException | None = None) -> Any:
         for var in self._store.values():
-            var.set(None)
-        self._store.clear()
+            var.set(unset)
         return super().shutdown(exc)
