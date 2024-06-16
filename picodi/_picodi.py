@@ -420,7 +420,7 @@ def _wrapper_helper(
         arguments, scopes = _resolve_dependencies(dependant)
 
     for scope in scopes:
-        scope.enter_decorator()
+        scope.enter_inject()
     for name, call in arguments.items():
         if isinstance(call, LazyResolver):
             value = yield call(is_async=is_async), "dependency"
@@ -430,7 +430,7 @@ def _wrapper_helper(
         result = dependant.value.call(*bound.args, **bound.kwargs)
     except Exception as e:
         for scope in scopes:
-            scope.exit_decorator(e)
+            scope.exit_inject(e)
             yield scope.close_local(e), "close_scope"
         raise
 
@@ -446,7 +446,7 @@ def _wrapper_helper(
                 raise
             finally:
                 for scope in scopes:
-                    scope.exit_decorator(exception)
+                    scope.exit_inject(exception)
                     scope.close_local(exception)
 
         yield gen(), "result"
@@ -467,7 +467,7 @@ def _wrapper_helper(
             #   https://docs.python.org/3/library/asyncio-task.html#task-cancellation
             finally:
                 for scope in scopes:
-                    scope.exit_decorator(exception)
+                    scope.exit_inject(exception)
                     await scope.close_local(exception)  # noqa: ASYNC102
 
         yield gen(), "result"
@@ -475,7 +475,7 @@ def _wrapper_helper(
 
     yield result, "result"
     for scope in scopes:
-        scope.exit_decorator()
+        scope.exit_inject()
         yield scope.close_local(), "close_scope"
 
 

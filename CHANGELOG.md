@@ -9,7 +9,9 @@ We follow [Semantic Versions](https://semver.org/).
 ## Version 0.15.0
 
 - Added ability to pass custom `scope_class` to `init_dependencies` and `shutdown_dependencies`
-- Remove `ParentCallScope`
+- Breaking changes:
+  - Removed `ParentCallScope`
+  - Renamed `enter_decorator` and `exit_decorator` to `enter_inject` and ``exit_inject`
 
 ## Version 0.14.0
 

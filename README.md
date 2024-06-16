@@ -532,12 +532,11 @@ after executing a decorated function.
 
 Hook for closing dependencies. Will be called from `shutdown_dependencies`.
 
-#### `Scope.enter_decorator()`
+#### `Scope.enter_inject()`
 
 Called when entering an `inject` decorator for dependencies with this scope.
-With `Scope.exit_decorator()`, it can be used for tracking decorator nesting.
 
-#### `Scope.exit_decorator()`
+#### `Scope.exit_inject(exc)`
 
 Called when exiting an `inject` decorator for dependencies with this scope.
 

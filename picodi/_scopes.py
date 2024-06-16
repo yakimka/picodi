@@ -47,17 +47,17 @@ class Scope:
         """
         return NullAwaitable()
 
-    def enter_decorator(self) -> None:
+    def enter_inject(self) -> None:
         """
         Called when entering a `inject` decorator.
         """
         return None
 
-    def exit_decorator(self, exc: BaseException | None = None) -> None:  # noqa: U100
+    def exit_inject(self, exc: BaseException | None = None) -> None:  # noqa: U100
         """
         Called before exiting a `inject` decorator.
         `close_local` will be called after this, e.g.:
-            `exit_decorator` -> `close_local` -> `inject` wrapper returns.
+            `exit_inject` -> `close_local` -> `inject` wrapper returns.
         """
         return None
 
