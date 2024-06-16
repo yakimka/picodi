@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from contextvars import ContextVar
-from multiprocessing import RLock
 from typing import TYPE_CHECKING, Any
 
 from picodi._internal import ExitStack, NullAwaitable
@@ -59,7 +58,6 @@ class Scope:
         Called before exiting a `inject` decorator.
         `close_local` will be called after this, e.g.:
             `exit_decorator` -> `close_local` -> `inject` wrapper returns.
-        Can be used for tracking the number of decorators.
         """
         return None
 
@@ -146,42 +144,3 @@ class ContextVarScope(GlobalScope):
             var.set(None)
         self._store.clear()
         return super().close_global(exc)
-
-
-class ParentCallScope(LocalScope):
-    """
-    ParentCall scope. Values cached for the lifetime of the top function call.
-    Dependencies are closed after top function call executed.
-    """
-
-    def __init__(self) -> None:
-        super().__init__()
-        self._lock = RLock()
-        self._stack: ContextVar[list[dict[Hashable, Any]]] = ContextVar(
-            "picodi_ParentCallScope_stack", default=[]
-        )
-
-    def enter_decorator(self) -> None:
-        with self._lock:
-            self._stack.get().append({})
-
-    def exit_decorator(self, exc: BaseException | None = None) -> None:  # noqa: U100
-        with self._lock:
-            self._stack.get().pop()
-
-    def close_local(self, exc: BaseException | None = None) -> Awaitable:
-        if not self._stack.get():
-            return super().close_local(exc)
-        return NullAwaitable()
-
-    def get(self, key: Hashable) -> Any:
-        for frame in self._stack.get():
-            if key in frame:
-                return frame[key]
-        raise KeyError(key)
-
-    def set(self, key: Hashable, value: Any) -> None:
-        for frame in self._stack.get():
-            if key not in frame:
-                frame[key] = value
-                break

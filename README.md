@@ -26,7 +26,6 @@ and offers features like lifecycle management.
   - [Scopes](#scopes)
     - [NullScope](#nullscope)
     - [SingletonScope](#singletonscope)
-    - [ParentCallScope](#parentcallscope)
     - [Defining custom scopes](#defining-custom-scopes)
   - [Resolving async dependencies in sync functions](#resolving-async-dependencies-in-sync-functions)
   - [Overriding dependencies](#overriding-dependencies)
@@ -239,7 +238,7 @@ def process_data(db: str = Provide(get_db)) -> None:
 ### Scopes
 
 Scopes define the lifecycle of a dependency.
-Picodi provides three scopes: `NullScope`, `SingletonScope`, and `ParentCallScope`.
+Picodi provides three scopes: `NullScope`, `SingletonScope`, and `ContextVarScope`.
 You can create your own scopes by inheriting from the `LocalScope` or `GlobalScope` class.
 
 Use the `dependency` decorator to specify the scope of a dependency.
@@ -267,43 +266,8 @@ Yield dependencies are closed after every call.
 Scope for dependencies that should be created once and reused for all injections.
 Closes the dependency when `shutdown_dependencies` is called.
 
-#### ParentCallScope
+#### ContextVarScope
 
-Scope for dependencies that should be created once per parent call.
-Yield dependencies are closed after the parent function call.
-
-Example:
-
-```python
-import random
-
-from picodi import dependency, ParentCallScope, Provide, inject
-
-
-@dependency(scope_class=ParentCallScope)
-async def get_db_port():
-    yield random.randint(1024, 49151)
-    print("closing db port")
-
-
-@inject
-async def get_a(port: int = Provide(get_db_port)):
-    print("A port:", port)
-    return port
-
-
-@inject
-async def get_b(port: int = Provide(get_db_port)):
-    print("B port:", port)
-    return port
-
-
-@inject
-async def parent_call(a: int = Provide(get_a), b: int = Provide(get_b)):
-    # a == b because they are called in the same parent function
-    # "closing db port" will be printed only once after `parent_call` call
-    print("parent call", a, b)
-```
 
 #### Defining custom scopes
 
@@ -544,7 +508,7 @@ Should be placed first in the decorator chain (on top).
 
 - **Parameters**:
   - `scope_class`: A class that defines the scope of the dependency.
-    Available scopes are `NullScope` (default), `SingletonScope`, and `ParentCallScope`.
+    Available scopes are `NullScope` (default), `SingletonScope`, and `ContextVarScope`.
 
 ### `Scope` class
 
@@ -600,10 +564,7 @@ Scope for dependencies that should be created once and reused for all injections
 Closes the dependency when `shutdown_dependencies` is called.
 Useful for managing resources like connections.
 
-### `ParentCallScope` class
-
-Scope for dependencies that should be created once per parent call.
-Yield dependencies are closed after the parent function call.
+### `ContextVarScope` class
 
 ### `init_dependencies(scope_class)`
 

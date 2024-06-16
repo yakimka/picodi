@@ -7,19 +7,19 @@ from picodi._picodi import (
     shutdown_dependencies,
 )
 from picodi._scopes import (
+    ContextVarScope,
     GlobalScope,
     LocalScope,
     NullScope,
-    ParentCallScope,
     Scope,
     SingletonScope,
 )
 
 __all__ = [
+    "ContextVarScope",
     "GlobalScope",
     "LocalScope",
     "NullScope",
-    "ParentCallScope",
     "Provide",
     "Scope",
     "SingletonScope",

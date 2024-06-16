@@ -19,9 +19,9 @@ from typing import Annotated, Any, NamedTuple, ParamSpec, TypeVar, cast, get_ori
 
 from picodi._internal import NullAwaitable
 from picodi._scopes import (
+    ContextVarScope,
     GlobalScope,
     NullScope,
-    ParentCallScope,
     Scope,
     SingletonScope,
 )
@@ -169,7 +169,7 @@ registry = Registry(_registry_storage, _internal_registry)
 _scopes: dict[type[Scope], Scope] = {
     NullScope: NullScope(),
     SingletonScope: SingletonScope(),
-    ParentCallScope: ParentCallScope(),
+    ContextVarScope: ContextVarScope(),
 }
 _lock = threading.RLock()
 
