@@ -239,7 +239,7 @@ def process_data(db: str = Provide(get_db)) -> None:
 
 Scopes define the lifecycle of a dependency.
 Picodi provides three scopes: `NullScope`, `SingletonScope`, and `ContextVarScope`.
-You can create your own scopes by inheriting from the `LocalScope` or `GlobalScope` class.
+You can create your own scopes by inheriting from the `AutoScope` or `ManualScope` class.
 
 Use the `dependency` decorator to specify the scope of a dependency.
 
@@ -271,11 +271,11 @@ Closes the dependency when `shutdown_dependencies` is called.
 
 #### Defining custom scopes
 
-You can define custom scopes by inheriting from the `LocalScope` or `GlobalScope` class
+You can define custom scopes by inheriting from the `AutoScope` or `ManualScope` class
 and implementing the required methods.
 
-Inherit from `GlobalScope` to manage dependencies that should be created once and reused for all injections.
-Otherwise, inherit from `LocalScope` to manage dependencies that should be created once per injection.
+Inherit from `ManualScope` to manage dependencies that should be created once and reused for all injections.
+Otherwise, inherit from `AutoScope` to manage dependencies that should be created once per injection.
 
 ### Resolving async dependencies in sync functions
 
@@ -296,7 +296,7 @@ def print_port(port: int = Provide(get_db_port)) -> None:
     # -> port is: <coroutine object get_db_port at 0x1037741a0>
 ```
 
-However, if your dependency is declared with a `GlobalScope` like `SingletonScope`,
+However, if your dependency is declared with a `ManualScope` like `SingletonScope`,
 you can use `init_dependencies` on startup to resolve dependencies and then use cached values,
 even in sync functions.
 Regular async functions will still need to be used only in async contexts.
@@ -446,7 +446,7 @@ async def read_root(redis: str = Depends(Provide(get_redis_connection))):
 
 If you are trying to resolve async dependencies in sync functions, you will receive a coroutine object.
 For regular dependencies, this is intended behavior, so only use async dependencies in async functions.
-However, if your dependency uses a scope inherited from `GlobalScope`,
+However, if your dependency uses a scope inherited from `ManualScope`,
 you can use `init_dependencies` on app startup to resolve dependencies,
 and then Picodi will use cached values, even in sync functions.
 
@@ -540,12 +540,12 @@ Called when entering an `inject` decorator for dependencies with this scope.
 
 Called when exiting an `inject` decorator for dependencies with this scope.
 
-### `LocalScope` class
+### `AutoScope` class
 
 Base class for defining local dependency scopes. A local dependency scope
 calls `close_local` after each function call.
 
-### `GlobalScope` class
+### `ManualScope` class
 
 Base class for defining global dependency scopes. A global dependency scope
 calls `close_global` from the `shutdown_dependencies` function.

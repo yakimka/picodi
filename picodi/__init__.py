@@ -7,9 +7,9 @@ from picodi._picodi import (
     shutdown_dependencies,
 )
 from picodi._scopes import (
+    AutoScope,
     ContextVarScope,
-    GlobalScope,
-    LocalScope,
+    ManualScope,
     NullScope,
     Scope,
     SingletonScope,
@@ -17,8 +17,8 @@ from picodi._scopes import (
 
 __all__ = [
     "ContextVarScope",
-    "GlobalScope",
-    "LocalScope",
+    "ManualScope",
+    "AutoScope",
     "NullScope",
     "Provide",
     "Scope",

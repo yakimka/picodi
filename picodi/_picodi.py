@@ -20,7 +20,7 @@ from typing import Annotated, Any, NamedTuple, ParamSpec, TypeVar, cast, get_ori
 from picodi._internal import NullAwaitable
 from picodi._scopes import (
     ContextVarScope,
-    GlobalScope,
+    ManualScope,
     NullScope,
     Scope,
     SingletonScope,
@@ -305,7 +305,7 @@ def dependency(*, scope_class: type[Scope] = NullScope) -> Callable[[TC], TC]:
 
 
 def init_dependencies(
-    scope_class: type[Scope] | tuple[type[Scope]] = GlobalScope,
+    scope_class: type[Scope] | tuple[type[Scope]] = ManualScope,
 ) -> Awaitable:
     """
     Call this function to close dependencies. Usually, it should be called
@@ -327,7 +327,7 @@ def init_dependencies(
 
 
 def shutdown_dependencies(
-    scope_class: type[Scope] | tuple[type[Scope]] = GlobalScope,
+    scope_class: type[Scope] | tuple[type[Scope]] = ManualScope,
 ) -> Awaitable:
     """
     Call this function to close dependencies. Usually, it should be called

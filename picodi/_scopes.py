@@ -62,7 +62,7 @@ class Scope:
         return None
 
 
-class GlobalScope(Scope):
+class ManualScope(Scope):
     """
     Inherit this class for your custom global scope.
     """
@@ -71,7 +71,7 @@ class GlobalScope(Scope):
         return self.exit_stack.close(exc)
 
 
-class LocalScope(Scope):
+class AutoScope(Scope):
     """
     Inherit this class for your custom local scope.
     """
@@ -83,7 +83,7 @@ class LocalScope(Scope):
         return self.exit_stack.close(exc)
 
 
-class NullScope(LocalScope):
+class NullScope(AutoScope):
     """
     Null scope. Values not cached, dependencies closed after every function call.
     """
@@ -95,7 +95,7 @@ class NullScope(LocalScope):
         return None
 
 
-class SingletonScope(GlobalScope):
+class SingletonScope(ManualScope):
     """
     Singleton scope. Values cached for the lifetime of the application.
     Dependencies closed only when user manually call `shutdown_dependencies`.
@@ -116,7 +116,7 @@ class SingletonScope(GlobalScope):
         return super().close_global(exc)
 
 
-class ContextVarScope(GlobalScope):
+class ContextVarScope(ManualScope):
     """
     ContextVar scope. Values cached in contextvars.
     Dependencies closed only when user manually call `shutdown_dependencies`.
