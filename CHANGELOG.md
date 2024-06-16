@@ -13,6 +13,7 @@ We follow [Semantic Versions](https://semver.org/).
   - Removed `ParentCallScope`
   - Renamed `enter_decorator` and `exit_decorator` to `enter_inject` and `exit_inject`
   - Renamed `LocalScope` and `GlobalScope` to `AutoScope` and `ManualScope`
+  - Renamed `close_local` and `close_global` to `shutdown_auto` and `shutdown`
 
 ## Version 0.14.0
 

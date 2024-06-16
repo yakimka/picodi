@@ -334,7 +334,7 @@ def shutdown_dependencies(
     when your application is shut down.
     """
     tasks = [
-        instance.close_global()
+        instance.shutdown()
         for klass, instance in _scopes.items()
         if issubclass(klass, scope_class)
     ]
@@ -431,7 +431,7 @@ def _wrapper_helper(
     except Exception as e:
         for scope in scopes:
             scope.exit_inject(e)
-            yield scope.close_local(e), "close_scope"
+            yield scope.shutdown_auto(e), "close_scope"
         raise
 
     if inspect.isgenerator(result):
@@ -447,7 +447,7 @@ def _wrapper_helper(
             finally:
                 for scope in scopes:
                     scope.exit_inject(exception)
-                    scope.close_local(exception)
+                    scope.shutdown_auto(exception)
 
         yield gen(), "result"
         return
@@ -468,7 +468,7 @@ def _wrapper_helper(
             finally:
                 for scope in scopes:
                     scope.exit_inject(exception)
-                    await scope.close_local(exception)  # noqa: ASYNC102
+                    await scope.shutdown_auto(exception)  # noqa: ASYNC102
 
         yield gen(), "result"
         return
@@ -476,7 +476,7 @@ def _wrapper_helper(
     yield result, "result"
     for scope in scopes:
         scope.exit_inject()
-        yield scope.close_local(), "close_scope"
+        yield scope.shutdown_auto(), "close_scope"
 
 
 def _resolve_dependencies(

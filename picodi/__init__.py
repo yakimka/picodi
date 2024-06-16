@@ -16,9 +16,9 @@ from picodi._scopes import (
 )
 
 __all__ = [
+    "AutoScope",
     "ContextVarScope",
     "ManualScope",
-    "AutoScope",
     "NullScope",
     "Provide",
     "Scope",

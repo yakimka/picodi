@@ -523,12 +523,12 @@ If the value does not exist, it must raise KeyError.
 
 Set a dependency by key. Key is a dependency function.
 
-#### `Scope.close_local()`
+#### `Scope.shutdown_auto()`
 
 Hook for closing dependencies. Will be called automatically
 after executing a decorated function.
 
-#### `Scope.close_global()`
+#### `Scope.shutdown()`
 
 Hook for closing dependencies. Will be called from `shutdown_dependencies`.
 
@@ -543,12 +543,12 @@ Called when exiting an `inject` decorator for dependencies with this scope.
 ### `AutoScope` class
 
 Base class for defining local dependency scopes. A local dependency scope
-calls `close_local` after each function call.
+calls `shutdown_auto` after each function call.
 
 ### `ManualScope` class
 
 Base class for defining global dependency scopes. A global dependency scope
-calls `close_global` from the `shutdown_dependencies` function.
+calls `shutdown` from the `shutdown_dependencies` function.
 
 Global scoped dependencies can be managed by `init_dependencies` and `shutdown_dependencies`.
 

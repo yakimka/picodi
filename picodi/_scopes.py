@@ -34,14 +34,16 @@ class Scope:
         """
         raise NotImplementedError
 
-    def close_local(self, exc: BaseException | None = None) -> Awaitable:  # noqa: U100
+    def shutdown_auto(
+        self, exc: BaseException | None = None  # noqa: U100
+    ) -> Awaitable:
         """
         Hook for closing dependencies. Will be called automatically
         after executing a decorated function.
         """
         return NullAwaitable()
 
-    def close_global(self, exc: BaseException | None = None) -> Awaitable:  # noqa: U100
+    def shutdown(self, exc: BaseException | None = None) -> Awaitable:  # noqa: U100
         """
         Hook for closing dependencies. Will be called from `shutdown_dependencies`.
         """
@@ -56,8 +58,8 @@ class Scope:
     def exit_inject(self, exc: BaseException | None = None) -> None:  # noqa: U100
         """
         Called before exiting a `inject` decorator.
-        `close_local` will be called after this, e.g.:
-            `exit_inject` -> `close_local` -> `inject` wrapper returns.
+        `shutdown_auto` will be called after this, e.g.:
+            `exit_inject` -> `shutdown_auto` -> `inject` wrapper returns.
         """
         return None
 
@@ -67,7 +69,7 @@ class ManualScope(Scope):
     Inherit this class for your custom global scope.
     """
 
-    def close_global(self, exc: BaseException | None = None) -> Awaitable:
+    def shutdown(self, exc: BaseException | None = None) -> Awaitable:
         return self.exit_stack.close(exc)
 
 
@@ -76,11 +78,11 @@ class AutoScope(Scope):
     Inherit this class for your custom local scope.
     """
 
-    def close_local(self, exc: BaseException | None = None) -> Awaitable:
+    def shutdown(self, exc: BaseException | None = None) -> Awaitable:
         return self.exit_stack.close(exc)
 
-    def close_global(self, exc: BaseException | None = None) -> Awaitable:
-        return self.exit_stack.close(exc)
+    def shutdown_auto(self, exc: BaseException | None = None) -> Awaitable:
+        return self.shutdown(exc)
 
 
 class NullScope(AutoScope):
@@ -111,9 +113,9 @@ class SingletonScope(ManualScope):
     def set(self, key: Hashable, value: Any) -> None:
         self._store[key] = value
 
-    def close_global(self, exc: BaseException | None = None) -> Awaitable:
+    def shutdown(self, exc: BaseException | None = None) -> Awaitable:
         self._store.clear()
-        return super().close_global(exc)
+        return super().shutdown(exc)
 
 
 class ContextVarScope(ManualScope):
@@ -139,8 +141,8 @@ class ContextVarScope(ManualScope):
             var = self._store[key] = ContextVar("picodi_FastApiScope_var")
         var.set(value)
 
-    def close_global(self, exc: BaseException | None = None) -> Any:
+    def shutdown(self, exc: BaseException | None = None) -> Any:
         for var in self._store.values():
             var.set(None)
         self._store.clear()
-        return super().close_global(exc)
+        return super().shutdown(exc)
