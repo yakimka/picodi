@@ -66,7 +66,7 @@ class Scope:
 
 class ManualScope(Scope):
     """
-    Inherit this class for your custom global scope.
+    Inherit this class for your custom scope that you need to clear automatically.
     """
 
     def shutdown(self, exc: BaseException | None = None) -> Awaitable:
@@ -75,7 +75,7 @@ class ManualScope(Scope):
 
 class AutoScope(Scope):
     """
-    Inherit this class for your custom local scope.
+    Inherit this class for your custom scope.
     """
 
     def shutdown(self, exc: BaseException | None = None) -> Awaitable:

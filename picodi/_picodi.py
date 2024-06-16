@@ -312,10 +312,10 @@ def init_dependencies(
     when your application is shutting down.
     """
     async_deps = []
-    global_providers = _internal_registry.filter(
+    filtered_providers = _internal_registry.filter(
         lambda p: issubclass(p.scope_class, scope_class)
     )
-    for provider in global_providers:
+    for provider in filtered_providers:
         resolver = LazyResolver(provider)
         value = resolver(provider.is_async)
         if provider.is_async:

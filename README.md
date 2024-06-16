@@ -33,7 +33,7 @@ and offers features like lifecycle management.
     - [Working with FastAPI dependency injection mechanism](#working-with-fastapi-dependency-injection-mechanism)
 - [Known Issues](#known-issues)
   - [Receiving a coroutine object instead of the actual value](#receiving-a-coroutine-object-instead-of-the-actual-value)
-  - [Global scoped dependencies not initialized with `init_dependencies()`](#global-scoped-dependencies-not-initialized-with-init_dependencies)
+  - [Dependencies not initialized with `init_dependencies()`](#dependencies-not-initialized-with-init_dependencies)
   - [flake8-bugbear throws `B008 Do not perform function calls in argument defaults`](#flake8-bugbear-throws-b008-do-not-perform-function-calls-in-argument-defaults)
   - [RuntimeError: Event loop is closed when using pytest-asyncio](#runtimeerror-event-loop-is-closed-when-using-pytest-asyncio)
 - [API Reference](#api-reference)
@@ -450,10 +450,11 @@ However, if your dependency uses a scope inherited from `ManualScope`,
 you can use `init_dependencies` on app startup to resolve dependencies,
 and then Picodi will use cached values, even in sync functions.
 
-### Global scoped dependencies not initialized with `init_dependencies()`
+### Dependencies not initialized with `init_dependencies()`
 
-1. If you have async dependencies, ensure that you are calling `await init_dependencies()` in an async context.
-2. Ensure that modules with your global scoped functions are imported (e.g., registered) before calling `init_dependencies()`.
+1. Ensure that your dependencies defined with scopes inherited from `ManualScope`.
+2. If you have async dependencies, ensure that you are calling `await init_dependencies()` in an async context.
+3. Ensure that modules with your dependencies are imported (e.g., registered) before calling `init_dependencies()`.
 
 ### flake8-bugbear throws `B008 Do not perform function calls in argument defaults`
 
@@ -464,7 +465,7 @@ Edit `extend-immutable-calls` in your `setup.cfg`:
 ### RuntimeError: Event loop is closed when using pytest-asyncio
 
 This error occurs because pytest-asyncio closes the event loop after the test finishes
-and you are using global scoped dependencies.
+and you are using `ManualScope` scoped dependencies.
 
 To fix this, you need to close all resources after the test finishes.
 Add `await shutdown_dependencies()` at the end of your tests.
@@ -542,15 +543,15 @@ Called when exiting an `inject` decorator for dependencies with this scope.
 
 ### `AutoScope` class
 
-Base class for defining local dependency scopes. A local dependency scope
-calls `shutdown_auto` after each function call.
+Base class for defining dependency scopes that will be cleared after dependant function call.
+Picodi will call `shutdown_auto` after each function call.
 
 ### `ManualScope` class
 
-Base class for defining global dependency scopes. A global dependency scope
-calls `shutdown` from the `shutdown_dependencies` function.
+Base class for defining dependency scopes that need to be cleared manually.
+`ManualScope.shutdown` will be called for each dependency from the `shutdown_dependencies` function.
 
-Global scoped dependencies can be managed by `init_dependencies` and `shutdown_dependencies`.
+`ManualScope` scoped dependencies can be managed by `init_dependencies` and `shutdown_dependencies`.
 
 ### `NullScope` class
 
@@ -567,7 +568,7 @@ Useful for managing resources like connections.
 
 ### `init_dependencies(scope_class)`
 
-Initializes all global scoped dependencies. Typically called at the startup of the application.
+Initializes all `ManualScope` scoped dependencies. Typically called at the startup of the application.
 
 Can be called as `init_dependencies()` in a sync context and `await init_dependencies()` in an async context.
 
