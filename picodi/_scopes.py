@@ -3,7 +3,7 @@ from __future__ import annotations
 from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any, AsyncContextManager, ContextManager, TypeAlias
 
-from picodi._internal import ExitStack, NullAwaitable
+from picodi.support import ExitStack, NullAwaitable
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Hashable

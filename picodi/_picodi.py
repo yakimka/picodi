@@ -17,7 +17,7 @@ from contextlib import asynccontextmanager, contextmanager
 from dataclasses import asdict, dataclass
 from typing import Annotated, Any, NamedTuple, ParamSpec, TypeVar, cast, get_origin
 
-from picodi._internal import ExitStack, NullAwaitable
+from picodi.support import ExitStack, NullAwaitable
 from picodi._scopes import (
     AutoScope,
     ContextVarScope,

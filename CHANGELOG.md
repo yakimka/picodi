@@ -10,6 +10,7 @@ We follow [Semantic Versions](https://semver.org/).
 
 - Added ability to pass custom `scope_class` to `init_dependencies` and `shutdown_dependencies`
 - Added `ContextVarScope` for storing dependencies in `contextvars`
+- Renamed `_internal` module to `support`
 - Breaking changes:
   - Removed `ParentCallScope`
   - Renamed `enter_decorator` and `exit_decorator` to `enter_inject` and `exit_inject`
