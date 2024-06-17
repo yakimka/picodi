@@ -68,6 +68,8 @@ async def test_shutdown_from_one_task_dont_affect_another_task(sut):
 async def test_closing_dependencies_in_one_task_dont_affect_another(make_closeable):
     closeables = [make_closeable() for _ in range(2)]
     closeable_gen = iter(closeables)
+    first_shutdown = asyncio.Event()
+    lock = asyncio.Lock()
 
     @dependency(scope_class=ContextVarScope)
     async def dummy_dep():
@@ -83,15 +85,24 @@ async def test_closing_dependencies_in_one_task_dont_affect_another(make_closeab
     async def task2(dep: str = Provide(dummy_dep)):  # noqa: U100
         return None
 
-    async def manager(task, closeable, sleep: float = 0):
-        await task
-        await asyncio.sleep(sleep)
+    async def manager1(closeable):
+        await task1()
+        assert closeable.is_closed is False
+        async with lock:
+            await shutdown_dependencies()
+            first_shutdown.set()
+
+    async def manager2(closeable):
+        async with lock:
+            await task2()
+            await first_shutdown.wait()
         assert closeable.is_closed is False
         await shutdown_dependencies()
 
     closeable_task1, closeable_task2 = closeables
     await asyncio.gather(
-        manager(task1(), closeable_task1), manager(task2(), closeable_task2, 0.2)
+        asyncio.create_task(manager1(closeable_task1)),
+        asyncio.create_task(manager2(closeable_task2)),
     )
 
     assert closeable_task1.close_call_count == 1

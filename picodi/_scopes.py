@@ -128,8 +128,17 @@ class ContextVarScope(ManualScope):
     """
 
     def __init__(self) -> None:
-        super().__init__()
+        self._exit_stack = ContextVar("picodi_ContextVarScope_exit_stack")
         self._store: dict[Any, ContextVar[Any]] = {}
+
+    @property
+    def exit_stack(self) -> ExitStack:
+        try:
+            stack = self._exit_stack.get()
+        except LookupError:
+            stack = ExitStack()
+            self._exit_stack.set(stack)
+        return stack
 
     def get(self, key: Hashable) -> Any:
         try:

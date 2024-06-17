@@ -17,8 +17,9 @@ from contextlib import asynccontextmanager, contextmanager
 from dataclasses import asdict, dataclass
 from typing import Annotated, Any, NamedTuple, ParamSpec, TypeVar, cast, get_origin
 
-from picodi._internal import NullAwaitable
+from picodi._internal import ExitStack, NullAwaitable
 from picodi._scopes import (
+    AutoScope,
     ContextVarScope,
     ManualScope,
     NullScope,
@@ -222,8 +223,14 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
 
         @functools.wraps(fn)
         async def fun_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            exit_stack = ExitStack()
             gen = _wrapper_helper(
-                dependant, signature, is_async=True, args=args, kwargs=kwargs
+                dependant,
+                signature,
+                exit_stack=exit_stack,
+                is_async=True,
+                args=args,
+                kwargs=kwargs,
             )
             value, action = next(gen)
             result = None
@@ -270,8 +277,14 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
 
         @functools.wraps(fn)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            exit_stack = ExitStack()
             gen = _wrapper_helper(
-                dependant, signature, is_async=False, args=args, kwargs=kwargs
+                dependant,
+                signature,
+                exit_stack=exit_stack,
+                is_async=False,
+                args=args,
+                kwargs=kwargs,
             )
             value, action = next(gen)
             result = None
@@ -379,7 +392,7 @@ class Provider:
     def get_scope(self) -> Scope:
         return _scopes[self.scope_class]
 
-    def resolve_value(self, **kwargs: Any) -> Any:
+    def resolve_value(self, exit_stack: ExitStack, **kwargs: Any) -> Any:
         scope = self.get_scope()
         value_or_gen = self.dependency(**kwargs)
         if self.is_async:
@@ -392,6 +405,8 @@ class Provider:
                     context_manager = asynccontextmanager(
                         lambda *args, **kwargs: value_or_gen_
                     )
+                    if isinstance(scope, AutoScope):
+                        return await exit_stack.enter_context(context_manager())
                     return await scope.exit_stack.enter_context(context_manager())
                 return value_or_gen_
 
@@ -399,6 +414,8 @@ class Provider:
 
         if inspect.isgenerator(value_or_gen):
             context_manager = contextmanager(lambda *args, **kwargs: value_or_gen)
+            if isinstance(scope, AutoScope):
+                return exit_stack.enter_context(context_manager())
             return scope.exit_stack.enter_context(context_manager())
         return value_or_gen
 
@@ -406,6 +423,7 @@ class Provider:
 def _wrapper_helper(
     dependant: DependNode,
     signature: inspect.Signature,
+    exit_stack: ExitStack,
     is_async: bool,
     args: tuple[Any, ...],
     kwargs: dict[str, Any],
@@ -417,7 +435,7 @@ def _wrapper_helper(
     is_root = any(isinstance(value, Dependency) for value in bound.arguments.values())
 
     if is_root:
-        arguments, scopes = _resolve_dependencies(dependant)
+        arguments, scopes = _resolve_dependencies(dependant, exit_stack)
 
     for scope in scopes:
         scope.enter_inject()
@@ -431,7 +449,8 @@ def _wrapper_helper(
     except Exception as e:
         for scope in scopes:
             scope.exit_inject(e)
-            yield scope.shutdown_auto(e), "close_scope"
+            if isinstance(scope, AutoScope):
+                yield exit_stack.close(e), "close_scope"
         raise
 
     if inspect.isgenerator(result):
@@ -447,7 +466,8 @@ def _wrapper_helper(
             finally:
                 for scope in scopes:
                     scope.exit_inject(exception)
-                    scope.shutdown_auto(exception)
+                    if isinstance(scope, AutoScope):
+                        exit_stack.close(exception)
 
         yield gen(), "result"
         return
@@ -468,7 +488,8 @@ def _wrapper_helper(
             finally:
                 for scope in scopes:
                     scope.exit_inject(exception)
-                    await scope.shutdown_auto(exception)  # noqa: ASYNC102
+                    if isinstance(scope, AutoScope):
+                        await exit_stack.close(exception)  # noqa: ASYNC102
 
         yield gen(), "result"
         return
@@ -476,16 +497,17 @@ def _wrapper_helper(
     yield result, "result"
     for scope in scopes:
         scope.exit_inject()
-        yield scope.shutdown_auto(), "close_scope"
+        if isinstance(scope, AutoScope):
+            yield exit_stack.close(), "close_scope"
 
 
 def _resolve_dependencies(
-    dependant: DependNode,
+    dependant: DependNode, exit_stack: ExitStack
 ) -> tuple[dict[str, LazyResolver], list[Scope]]:
     scopes = set()
     resolved_dependencies = {}
     for dep in dependant.dependencies:
-        values, dep_scopes = _resolve_dependencies(dep)
+        values, dep_scopes = _resolve_dependencies(dep, exit_stack)
         resolved_dependencies.update(values)
         scopes.update(dep_scopes)
 
@@ -496,6 +518,7 @@ def _resolve_dependencies(
     value = LazyResolver(
         provider=provider,
         kwargs=resolved_dependencies,
+        exit_stack=exit_stack,
     )
     return {dependant.name: value}, [provider.get_scope()]
 
@@ -545,9 +568,11 @@ class LazyResolver:
         self,
         provider: Provider,
         kwargs: dict[str, Any] | None = None,
+        exit_stack: ExitStack | None = None,
     ) -> None:
         self.provider = provider
         self.kwargs = kwargs or {}
+        self.exit_stack = exit_stack
 
     def __call__(self, is_async: bool) -> Any:
         call = self._resolve_async if is_async else self._resolve
@@ -565,7 +590,9 @@ class LazyResolver:
                     try:
                         value = scope.get(self.provider.dependency)
                     except KeyError:
-                        value = self.provider.resolve_value(**self.kwargs)
+                        value = self.provider.resolve_value(
+                            self.exit_stack, **self.kwargs
+                        )
                         scope.set(self.provider.dependency, value)
         return value
 
@@ -578,7 +605,7 @@ class LazyResolver:
                 try:
                     value = scope.get(self.provider.dependency)
                 except KeyError:
-                    value = self.provider.resolve_value(**self.kwargs)
+                    value = self.provider.resolve_value(self.exit_stack, **self.kwargs)
                     if self.provider.is_async:
                         value = await value
                     scope.set(self.provider.dependency, value)
