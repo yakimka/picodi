@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from picodi import Provide, Scope, dependency, inject
+from picodi import AutoScope, Provide, dependency, inject
 
 if TYPE_CHECKING:
     from collections.abc import Hashable
 
 
-class IntMultiplierScope(Scope):
+class IntMultiplierScope(AutoScope):
     def __init__(self) -> None:
         super().__init__()
         self._store: dict[Hashable, Any] = {}

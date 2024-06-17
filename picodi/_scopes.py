@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextvars import ContextVar
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeAlias
 
 from picodi._internal import ExitStack, NullAwaitable
 
@@ -21,9 +21,6 @@ class Scope:
     inherit from this class and implement the abstract methods.
     """
 
-    def __init__(self) -> None:
-        self.exit_stack = ExitStack()
-
     def get(self, key: Hashable) -> Any:
         """
         Get a value by key.
@@ -36,21 +33,6 @@ class Scope:
         Set a value by key.
         """
         raise NotImplementedError
-
-    def shutdown_auto(
-        self, exc: BaseException | None = None  # noqa: U100
-    ) -> Awaitable:
-        """
-        Hook for closing dependencies. Will be called automatically
-        after executing a decorated function.
-        """
-        return NullAwaitable()
-
-    def shutdown(self, exc: BaseException | None = None) -> Awaitable:  # noqa: U100
-        """
-        Hook for closing dependencies. Will be called from `shutdown_dependencies`.
-        """
-        return NullAwaitable()
 
     def enter_inject(self) -> None:
         """
@@ -67,25 +49,48 @@ class Scope:
         return None
 
 
-class ManualScope(Scope):
-    """
-    Inherit this class for your custom scope that you need to clear automatically.
-    """
-
-    def shutdown(self, exc: BaseException | None = None) -> Awaitable:
-        return self.exit_stack.close(exc)
-
-
 class AutoScope(Scope):
     """
     Inherit this class for your custom scope.
     """
 
-    def shutdown(self, exc: BaseException | None = None) -> Awaitable:
-        return self.exit_stack.close(exc)
+    def enter(self, exit_stack: ExitStack, context_manager) -> Awaitable:
+        """
+        Hook for entering yielded dependencies context. Will be called automatically
+        by picodi.
+        """
+        return exit_stack.enter_context(context_manager)
 
-    def shutdown_auto(self, exc: BaseException | None = None) -> Awaitable:
-        return self.shutdown(exc)
+    def shutdown(
+        self, exit_stack: ExitStack, exc: BaseException | None = None
+    ) -> Awaitable:
+        """
+        Hook for closing dependencies. Will be called automatically by picodi.
+        """
+        return exit_stack.close(exc)
+
+
+class ManualScope(Scope):
+    """
+    Inherit this class for your custom scope that you need to clear automatically.
+    """
+
+    def enter(self, context_manager) -> Awaitable:  # noqa: U100
+        """
+        Hook for entering yielded dependencies context. Will be called automatically
+        by picodi or when you call `init_dependencies`.
+        """
+        return NullAwaitable()
+
+    def shutdown(self, exc: BaseException | None = None) -> Awaitable:  # noqa: U100
+        """
+        Hook for shutdown dependencies.
+        Will be called when you call `shutdown_dependencies`
+        """
+        return NullAwaitable()
+
+
+ScopeType: TypeAlias = AutoScope | ManualScope
 
 
 class NullScope(AutoScope):
@@ -107,7 +112,7 @@ class SingletonScope(ManualScope):
     """
 
     def __init__(self) -> None:
-        super().__init__()
+        self._exit_stack = ExitStack()
         self._store: dict[Hashable, Any] = {}
 
     def get(self, key: Hashable) -> Any:
@@ -116,9 +121,12 @@ class SingletonScope(ManualScope):
     def set(self, key: Hashable, value: Any) -> None:
         self._store[key] = value
 
+    def enter(self, context_manager) -> Awaitable:
+        return self._exit_stack.enter_context(context_manager)
+
     def shutdown(self, exc: BaseException | None = None) -> Awaitable:
         self._store.clear()
-        return super().shutdown(exc)
+        return self._exit_stack.close(exc)
 
 
 class ContextVarScope(ManualScope):
@@ -130,15 +138,6 @@ class ContextVarScope(ManualScope):
     def __init__(self) -> None:
         self._exit_stack = ContextVar("picodi_ContextVarScope_exit_stack")
         self._store: dict[Any, ContextVar[Any]] = {}
-
-    @property
-    def exit_stack(self) -> ExitStack:
-        try:
-            stack = self._exit_stack.get()
-        except LookupError:
-            stack = ExitStack()
-            self._exit_stack.set(stack)
-        return stack
 
     def get(self, key: Hashable) -> Any:
         try:
@@ -156,7 +155,20 @@ class ContextVarScope(ManualScope):
             var = self._store[key] = ContextVar("picodi_FastApiScope_var")
         var.set(value)
 
+    def enter(self, context_manager) -> Awaitable:
+        exit_stack = self._get_exit_stack()
+        return exit_stack.enter_context(context_manager)
+
     def shutdown(self, exc: BaseException | None = None) -> Any:
         for var in self._store.values():
             var.set(unset)
-        return super().shutdown(exc)
+        exit_stack = self._get_exit_stack()
+        return exit_stack.close(exc)
+
+    def _get_exit_stack(self) -> ExitStack:
+        try:
+            stack = self._exit_stack.get()
+        except LookupError:
+            stack = ExitStack()
+            self._exit_stack.set(stack)
+        return stack

@@ -1,3 +1,4 @@
+from picodi._internal import ExitStack
 from picodi._picodi import (
     Provide,
     dependency,
@@ -11,17 +12,18 @@ from picodi._scopes import (
     ContextVarScope,
     ManualScope,
     NullScope,
-    Scope,
+    ScopeType,
     SingletonScope,
 )
 
 __all__ = [
     "AutoScope",
     "ContextVarScope",
+    "ExitStack",
     "ManualScope",
     "NullScope",
     "Provide",
-    "Scope",
+    "ScopeType",
     "SingletonScope",
     "dependency",
     "init_dependencies",

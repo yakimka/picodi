@@ -5,7 +5,6 @@ import contextlib
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
 
 import picodi
-from picodi import ManualScope, Scope
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable, Generator
@@ -116,7 +115,10 @@ class _Lifespan:
 
     @contextlib.contextmanager
     def sync(
-        self, scope_class: type[Scope] | tuple[type[Scope]] = ManualScope
+        self,
+        scope_class: (
+            type[picodi.ScopeType] | tuple[type[picodi.ScopeType]]
+        ) = picodi.ManualScope,
     ) -> Generator[None, None, None]:
         picodi.init_dependencies(scope_class)
         try:
@@ -126,7 +128,10 @@ class _Lifespan:
 
     @contextlib.asynccontextmanager
     async def async_(
-        self, scope_class: type[Scope] | tuple[type[Scope]] = ManualScope
+        self,
+        scope_class: (
+            type[picodi.ScopeType] | tuple[type[picodi.ScopeType]]
+        ) = picodi.ManualScope,
     ) -> AsyncGenerator[None, None]:
         await picodi.init_dependencies(scope_class)
         try:

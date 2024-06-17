@@ -23,7 +23,7 @@ from picodi._scopes import (
     ContextVarScope,
     ManualScope,
     NullScope,
-    Scope,
+    ScopeType,
     SingletonScope,
 )
 
@@ -61,7 +61,7 @@ class InternalRegistry:
     def add(
         self,
         dependency: DependencyCallable,
-        scope_class: type[Scope] = NullScope,
+        scope_class: type[ScopeType] = NullScope,
         override_scope: bool = False,
     ) -> None:
         """
@@ -167,7 +167,7 @@ class Registry:
 _registry_storage = RegistryStorage()
 _internal_registry = InternalRegistry(_registry_storage)
 registry = Registry(_registry_storage, _internal_registry)
-_scopes: dict[type[Scope], Scope] = {
+_scopes: dict[type[ScopeType], ScopeType] = {
     NullScope: NullScope(),
     SingletonScope: SingletonScope(),
     ContextVarScope: ContextVarScope(),
@@ -300,7 +300,7 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
     return wrapper  # type: ignore[return-value]
 
 
-def dependency(*, scope_class: type[Scope] = NullScope) -> Callable[[TC], TC]:
+def dependency(*, scope_class: type[ScopeType] = NullScope) -> Callable[[TC], TC]:
     """
     Decorator to declare a dependency. You don't need to use it with default arguments,
     use it only if you want to change the scope of the dependency.
@@ -318,7 +318,7 @@ def dependency(*, scope_class: type[Scope] = NullScope) -> Callable[[TC], TC]:
 
 
 def init_dependencies(
-    scope_class: type[Scope] | tuple[type[Scope]] = ManualScope,
+    scope_class: type[ScopeType] | tuple[type[ScopeType]] = ManualScope,
 ) -> Awaitable:
     """
     Call this function to close dependencies. Usually, it should be called
@@ -340,7 +340,7 @@ def init_dependencies(
 
 
 def shutdown_dependencies(
-    scope_class: type[Scope] | tuple[type[Scope]] = ManualScope,
+    scope_class: type[ScopeType] | tuple[type[ScopeType]] = ManualScope,
 ) -> Awaitable:
     """
     Call this function to close dependencies. Usually, it should be called
@@ -368,11 +368,11 @@ class Dependency(NamedTuple):
 class Provider:
     dependency: DependencyCallable
     is_async: bool
-    scope_class: type[Scope]
+    scope_class: type[ScopeType]
 
     @classmethod
     def from_dependency(
-        cls, dependency: DependencyCallable, scope_class: type[Scope]
+        cls, dependency: DependencyCallable, scope_class: type[ScopeType]
     ) -> Provider:
         is_async = inspect.iscoroutinefunction(
             dependency
@@ -383,13 +383,13 @@ class Provider:
             scope_class=scope_class,
         )
 
-    def replace(self, scope_class: type[Scope] | None = None) -> Provider:
+    def replace(self, scope_class: type[ScopeType] | None = None) -> Provider:
         kwargs = asdict(self)
         if scope_class is not None:
             kwargs["scope_class"] = scope_class
         return Provider(**kwargs)
 
-    def get_scope(self) -> Scope:
+    def get_scope(self) -> ScopeType:
         return _scopes[self.scope_class]
 
     def resolve_value(self, exit_stack: ExitStack, **kwargs: Any) -> Any:
@@ -406,8 +406,8 @@ class Provider:
                         lambda *args, **kwargs: value_or_gen_
                     )
                     if isinstance(scope, AutoScope):
-                        return await exit_stack.enter_context(context_manager())
-                    return await scope.exit_stack.enter_context(context_manager())
+                        return await scope.enter(exit_stack, context_manager())
+                    return await scope.enter(context_manager())
                 return value_or_gen_
 
             return resolve_value_inner()
@@ -415,8 +415,8 @@ class Provider:
         if inspect.isgenerator(value_or_gen):
             context_manager = contextmanager(lambda *args, **kwargs: value_or_gen)
             if isinstance(scope, AutoScope):
-                return exit_stack.enter_context(context_manager())
-            return scope.exit_stack.enter_context(context_manager())
+                return scope.enter(exit_stack, context_manager())
+            return scope.enter(context_manager())
         return value_or_gen
 
 
@@ -431,7 +431,7 @@ def _wrapper_helper(
     bound = signature.bind(*args, **kwargs)
     bound.apply_defaults()
     arguments: dict[str, Any] = bound.arguments
-    scopes: list[Scope] = []
+    scopes: list[ScopeType] = []
     is_root = any(isinstance(value, Dependency) for value in bound.arguments.values())
 
     if is_root:
@@ -450,7 +450,7 @@ def _wrapper_helper(
         for scope in scopes:
             scope.exit_inject(e)
             if isinstance(scope, AutoScope):
-                yield exit_stack.close(e), "close_scope"
+                yield scope.shutdown(exit_stack, e), "close_scope"
         raise
 
     if inspect.isgenerator(result):
@@ -467,7 +467,7 @@ def _wrapper_helper(
                 for scope in scopes:
                     scope.exit_inject(exception)
                     if isinstance(scope, AutoScope):
-                        exit_stack.close(exception)
+                        scope.shutdown(exit_stack, exception)
 
         yield gen(), "result"
         return
@@ -489,7 +489,7 @@ def _wrapper_helper(
                 for scope in scopes:
                     scope.exit_inject(exception)
                     if isinstance(scope, AutoScope):
-                        await exit_stack.close(exception)  # noqa: ASYNC102
+                        await scope.shutdown(exit_stack, exception)  # noqa: ASYNC102
 
         yield gen(), "result"
         return
@@ -498,12 +498,12 @@ def _wrapper_helper(
     for scope in scopes:
         scope.exit_inject()
         if isinstance(scope, AutoScope):
-            yield exit_stack.close(), "close_scope"
+            yield scope.shutdown(exit_stack), "close_scope"
 
 
 def _resolve_dependencies(
     dependant: DependNode, exit_stack: ExitStack
-) -> tuple[dict[str, LazyResolver], list[Scope]]:
+) -> tuple[dict[str, LazyResolver], list[ScopeType]]:
     scopes = set()
     resolved_dependencies = {}
     for dep in dependant.dependencies:
