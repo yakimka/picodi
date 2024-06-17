@@ -17,7 +17,6 @@ from contextlib import asynccontextmanager, contextmanager
 from dataclasses import asdict, dataclass
 from typing import Annotated, Any, NamedTuple, ParamSpec, TypeVar, cast, get_origin
 
-from picodi.support import ExitStack, NullAwaitable
 from picodi._scopes import (
     AutoScope,
     ContextVarScope,
@@ -26,6 +25,7 @@ from picodi._scopes import (
     ScopeType,
     SingletonScope,
 )
+from picodi.support import ExitStack, NullAwaitable
 
 try:
     import fastapi.params
