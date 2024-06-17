@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 from contextvars import ContextVar
-from multiprocessing import RLock
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, AsyncContextManager, ContextManager, TypeAlias
 
-from picodi._internal import ExitStack, NullAwaitable
+from picodi.support import ExitStack, NullAwaitable
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Hashable
+
+
+unset = object()
 
 
 class Scope:
@@ -18,9 +20,6 @@ class Scope:
     For implementing a custom scope,
     inherit from this class and implement the abstract methods.
     """
-
-    def __init__(self) -> None:
-        self.exit_stack = ExitStack()
 
     def get(self, key: Hashable) -> Any:
         """
@@ -35,57 +34,74 @@ class Scope:
         """
         raise NotImplementedError
 
-    def close_local(self, exc: BaseException | None = None) -> Awaitable:  # noqa: U100
-        """
-        Hook for closing dependencies. Will be called automatically
-        after executing a decorated function.
-        """
-        return NullAwaitable()
-
-    def close_global(self, exc: BaseException | None = None) -> Awaitable:  # noqa: U100
-        """
-        Hook for closing dependencies. Will be called from `shutdown_dependencies`.
-        """
-        return NullAwaitable()
-
-    def enter_decorator(self) -> None:
+    def enter_inject(self) -> None:
         """
         Called when entering a `inject` decorator.
         """
         return None
 
-    def exit_decorator(self, exc: BaseException | None = None) -> None:  # noqa: U100
+    def exit_inject(self, exc: BaseException | None = None) -> None:  # noqa: U100
         """
         Called before exiting a `inject` decorator.
-        `close_local` will be called after this, e.g.:
-            `exit_decorator` -> `close_local` -> `inject` wrapper returns.
-        Can be used for tracking the number of decorators.
+        `shutdown_auto` will be called after this, e.g.:
+            `exit_inject` -> `shutdown_auto` -> `inject` wrapper returns.
         """
         return None
 
 
-class GlobalScope(Scope):
+class AutoScope(Scope):
     """
-    Inherit this class for your custom global scope.
-    """
-
-    def close_global(self, exc: BaseException | None = None) -> Awaitable:
-        return self.exit_stack.close(exc)
-
-
-class LocalScope(Scope):
-    """
-    Inherit this class for your custom local scope.
+    Inherit this class for your custom scope.
     """
 
-    def close_local(self, exc: BaseException | None = None) -> Awaitable:
-        return self.exit_stack.close(exc)
+    def enter(
+        self,
+        exit_stack: ExitStack,
+        context_manager: AsyncContextManager | ContextManager,
+    ) -> Awaitable:
+        """
+        Hook for entering yielded dependencies context. Will be called automatically
+        by picodi.
+        Usually you don't need to override this method.
+        """
+        return exit_stack.enter_context(context_manager)
 
-    def close_global(self, exc: BaseException | None = None) -> Awaitable:
-        return self.exit_stack.close(exc)
+    def shutdown(
+        self, exit_stack: ExitStack, exc: BaseException | None = None
+    ) -> Awaitable:
+        """
+        Hook for closing dependencies. Will be called automatically by picodi.
+        Usually you don't need to override this method.
+        """
+        return exit_stack.close(exc)
 
 
-class NullScope(LocalScope):
+class ManualScope(Scope):
+    """
+    Inherit this class for your custom scope that you need to clear automatically.
+    """
+
+    def enter(
+        self, context_manager: AsyncContextManager | ContextManager  # noqa: U100
+    ) -> Awaitable:
+        """
+        Hook for entering yielded dependencies context. Will be called automatically
+        by picodi or when you call `init_dependencies`.
+        """
+        return NullAwaitable()
+
+    def shutdown(self, exc: BaseException | None = None) -> Awaitable:  # noqa: U100
+        """
+        Hook for shutdown dependencies.
+        Will be called when you call `shutdown_dependencies`
+        """
+        return NullAwaitable()
+
+
+ScopeType: TypeAlias = AutoScope | ManualScope
+
+
+class NullScope(AutoScope):
     """
     Null scope. Values not cached, dependencies closed after every function call.
     """
@@ -93,18 +109,18 @@ class NullScope(LocalScope):
     def get(self, key: Hashable) -> Any:
         raise KeyError(key)
 
-    def set(self, key: Hashable, value: Any) -> None:
-        pass
+    def set(self, key: Hashable, value: Any) -> None:  # noqa: U100
+        return None
 
 
-class SingletonScope(GlobalScope):
+class SingletonScope(ManualScope):
     """
     Singleton scope. Values cached for the lifetime of the application.
     Dependencies closed only when user manually call `shutdown_dependencies`.
     """
 
     def __init__(self) -> None:
-        super().__init__()
+        self._exit_stack = ExitStack()
         self._store: dict[Hashable, Any] = {}
 
     def get(self, key: Hashable) -> Any:
@@ -113,45 +129,56 @@ class SingletonScope(GlobalScope):
     def set(self, key: Hashable, value: Any) -> None:
         self._store[key] = value
 
-    def close_global(self, exc: BaseException | None = None) -> Awaitable:
+    def enter(self, context_manager: AsyncContextManager | ContextManager) -> Awaitable:
+        return self._exit_stack.enter_context(context_manager)
+
+    def shutdown(self, exc: BaseException | None = None) -> Awaitable:
         self._store.clear()
-        return super().close_global(exc)
+        return self._exit_stack.close(exc)
 
 
-class ParentCallScope(LocalScope):
+class ContextVarScope(ManualScope):
     """
-    ParentCall scope. Values cached for the lifetime of the top function call.
-    Dependencies are closed after top function call executed.
+    ContextVar scope. Values cached in contextvars.
+    Dependencies closed only when user manually call `shutdown_dependencies`.
     """
 
     def __init__(self) -> None:
-        super().__init__()
-        self._lock = RLock()
-        self._stack: ContextVar[list[dict[Hashable, Any]]] = ContextVar(
-            "picodi_ParentCallScope_stack", default=[]
+        self._exit_stack: ContextVar[ExitStack] = ContextVar(
+            "picodi_ContextVarScope_exit_stack"
         )
-
-    def enter_decorator(self) -> None:
-        with self._lock:
-            self._stack.get().append({})
-
-    def exit_decorator(self, exc: BaseException | None = None) -> None:  # noqa: U100
-        with self._lock:
-            self._stack.get().pop()
-
-    def close_local(self, exc: BaseException | None = None) -> Awaitable:
-        if not self._stack.get():
-            return super().close_local(exc)
-        return NullAwaitable()
+        self._store: dict[Any, ContextVar[Any]] = {}
 
     def get(self, key: Hashable) -> Any:
-        for frame in self._stack.get():
-            if key in frame:
-                return frame[key]
-        raise KeyError(key)
+        try:
+            value = self._store[key].get()
+        except LookupError:
+            raise KeyError(key) from None
+        if value is unset:
+            raise KeyError(key)
+        return value
 
     def set(self, key: Hashable, value: Any) -> None:
-        for frame in self._stack.get():
-            if key not in frame:
-                frame[key] = value
-                break
+        try:
+            var = self._store[key]
+        except KeyError:
+            var = self._store[key] = ContextVar("picodi_FastApiScope_var")
+        var.set(value)
+
+    def enter(self, context_manager: AsyncContextManager | ContextManager) -> Awaitable:
+        exit_stack = self._get_exit_stack()
+        return exit_stack.enter_context(context_manager)
+
+    def shutdown(self, exc: BaseException | None = None) -> Any:
+        for var in self._store.values():
+            var.set(unset)
+        exit_stack = self._get_exit_stack()
+        return exit_stack.close(exc)
+
+    def _get_exit_stack(self) -> ExitStack:
+        try:
+            stack = self._exit_stack.get()
+        except LookupError:
+            stack = ExitStack()
+            self._exit_stack.set(stack)
+        return stack

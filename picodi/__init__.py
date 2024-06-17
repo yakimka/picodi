@@ -7,21 +7,21 @@ from picodi._picodi import (
     shutdown_dependencies,
 )
 from picodi._scopes import (
-    GlobalScope,
-    LocalScope,
+    AutoScope,
+    ContextVarScope,
+    ManualScope,
     NullScope,
-    ParentCallScope,
-    Scope,
+    ScopeType,
     SingletonScope,
 )
 
 __all__ = [
-    "GlobalScope",
-    "LocalScope",
+    "AutoScope",
+    "ContextVarScope",
+    "ManualScope",
     "NullScope",
-    "ParentCallScope",
     "Provide",
-    "Scope",
+    "ScopeType",
     "SingletonScope",
     "dependency",
     "init_dependencies",

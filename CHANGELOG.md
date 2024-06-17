@@ -6,6 +6,18 @@ We follow [Semantic Versions](https://semver.org/).
 
 -
 
+## Version 0.15.0
+
+- Added ability to pass custom `scope_class` to `init_dependencies` and `shutdown_dependencies`
+- Added `ContextVarScope` for storing dependencies in `contextvars`
+- Renamed `_internal` module to `support`
+- Breaking changes:
+  - Removed `ParentCallScope`
+  - Renamed `enter_decorator` and `exit_decorator` to `enter_inject` and `exit_inject`
+  - Renamed `LocalScope` and `GlobalScope` to `AutoScope` and `ManualScope`
+  - `Scope` now can't be imported, instead use `AutoScope` or `ManualScope`
+  - Replaced `Scope.close_local` and `Scope.close_global` with `[AutoScope | ManualScope].enter` and `[AutoScope | ManualScope].shutdown`
+
 ## Version 0.14.0
 
 - Added `helpers.lifespan` function for simple resource management

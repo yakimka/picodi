@@ -26,7 +26,6 @@ and offers features like lifecycle management.
   - [Scopes](#scopes)
     - [NullScope](#nullscope)
     - [SingletonScope](#singletonscope)
-    - [ParentCallScope](#parentcallscope)
     - [Defining custom scopes](#defining-custom-scopes)
   - [Resolving async dependencies in sync functions](#resolving-async-dependencies-in-sync-functions)
   - [Overriding dependencies](#overriding-dependencies)
@@ -34,7 +33,7 @@ and offers features like lifecycle management.
     - [Working with FastAPI dependency injection mechanism](#working-with-fastapi-dependency-injection-mechanism)
 - [Known Issues](#known-issues)
   - [Receiving a coroutine object instead of the actual value](#receiving-a-coroutine-object-instead-of-the-actual-value)
-  - [Global scoped dependencies not initialized with `init_dependencies()`](#global-scoped-dependencies-not-initialized-with-init_dependencies)
+  - [Dependencies not initialized with `init_dependencies()`](#dependencies-not-initialized-with-init_dependencies)
   - [flake8-bugbear throws `B008 Do not perform function calls in argument defaults`](#flake8-bugbear-throws-b008-do-not-perform-function-calls-in-argument-defaults)
   - [RuntimeError: Event loop is closed when using pytest-asyncio](#runtimeerror-event-loop-is-closed-when-using-pytest-asyncio)
 - [API Reference](#api-reference)
@@ -239,8 +238,8 @@ def process_data(db: str = Provide(get_db)) -> None:
 ### Scopes
 
 Scopes define the lifecycle of a dependency.
-Picodi provides three scopes: `NullScope`, `SingletonScope`, and `ParentCallScope`.
-You can create your own scopes by inheriting from the `LocalScope` or `GlobalScope` class.
+Picodi provides three scopes: `NullScope`, `SingletonScope`, and `ContextVarScope`.
+You can create your own scopes by inheriting from the `AutoScope` or `ManualScope` class.
 
 Use the `dependency` decorator to specify the scope of a dependency.
 
@@ -267,51 +266,18 @@ Yield dependencies are closed after every call.
 Scope for dependencies that should be created once and reused for all injections.
 Closes the dependency when `shutdown_dependencies` is called.
 
-#### ParentCallScope
+#### ContextVarScope
 
-Scope for dependencies that should be created once per parent call.
-Yield dependencies are closed after the parent function call.
-
-Example:
-
-```python
-import random
-
-from picodi import dependency, ParentCallScope, Provide, inject
-
-
-@dependency(scope_class=ParentCallScope)
-async def get_db_port():
-    yield random.randint(1024, 49151)
-    print("closing db port")
-
-
-@inject
-async def get_a(port: int = Provide(get_db_port)):
-    print("A port:", port)
-    return port
-
-
-@inject
-async def get_b(port: int = Provide(get_db_port)):
-    print("B port:", port)
-    return port
-
-
-@inject
-async def parent_call(a: int = Provide(get_a), b: int = Provide(get_b)):
-    # a == b because they are called in the same parent function
-    # "closing db port" will be printed only once after `parent_call` call
-    print("parent call", a, b)
-```
+Scope for dependencies that should live within a contextvar.
+Dependencies closed only when user manually call `shutdown_dependencies`.
 
 #### Defining custom scopes
 
-You can define custom scopes by inheriting from the `LocalScope` or `GlobalScope` class
+You can define custom scopes by inheriting from the `AutoScope` or `ManualScope` class
 and implementing the required methods.
 
-Inherit from `GlobalScope` to manage dependencies that should be created once and reused for all injections.
-Otherwise, inherit from `LocalScope` to manage dependencies that should be created once per injection.
+Inherit from `ManualScope` to manage dependencies that should be created once and reused for all injections.
+Otherwise, inherit from `AutoScope` to manage dependencies that should be created once per injection.
 
 ### Resolving async dependencies in sync functions
 
@@ -332,7 +298,7 @@ def print_port(port: int = Provide(get_db_port)) -> None:
     # -> port is: <coroutine object get_db_port at 0x1037741a0>
 ```
 
-However, if your dependency is declared with a `GlobalScope` like `SingletonScope`,
+However, if your dependency is declared with a `ManualScope` like `SingletonScope`,
 you can use `init_dependencies` on startup to resolve dependencies and then use cached values,
 even in sync functions.
 Regular async functions will still need to be used only in async contexts.
@@ -482,14 +448,15 @@ async def read_root(redis: str = Depends(Provide(get_redis_connection))):
 
 If you are trying to resolve async dependencies in sync functions, you will receive a coroutine object.
 For regular dependencies, this is intended behavior, so only use async dependencies in async functions.
-However, if your dependency uses a scope inherited from `GlobalScope`,
+However, if your dependency uses a scope inherited from `ManualScope`,
 you can use `init_dependencies` on app startup to resolve dependencies,
 and then Picodi will use cached values, even in sync functions.
 
-### Global scoped dependencies not initialized with `init_dependencies()`
+### Dependencies not initialized with `init_dependencies()`
 
-1. If you have async dependencies, ensure that you are calling `await init_dependencies()` in an async context.
-2. Ensure that modules with your global scoped functions are imported (e.g., registered) before calling `init_dependencies()`.
+1. Ensure that your dependencies defined with scopes inherited from `ManualScope`.
+2. If you have async dependencies, ensure that you are calling `await init_dependencies()` in an async context.
+3. Ensure that modules with your dependencies are imported (e.g., registered) before calling `init_dependencies()`.
 
 ### flake8-bugbear throws `B008 Do not perform function calls in argument defaults`
 
@@ -500,7 +467,7 @@ Edit `extend-immutable-calls` in your `setup.cfg`:
 ### RuntimeError: Event loop is closed when using pytest-asyncio
 
 This error occurs because pytest-asyncio closes the event loop after the test finishes
-and you are using global scoped dependencies.
+and you are using `ManualScope` scoped dependencies.
 
 To fix this, you need to close all resources after the test finishes.
 Add `await shutdown_dependencies()` at the end of your tests.
@@ -544,11 +511,13 @@ Should be placed first in the decorator chain (on top).
 
 - **Parameters**:
   - `scope_class`: A class that defines the scope of the dependency.
-    Available scopes are `NullScope` (default), `SingletonScope`, and `ParentCallScope`.
+    Available scopes are `NullScope` (default), `SingletonScope`, and `ContextVarScope`.
 
 ### `Scope` class
 
 Base class for defining dependency scopes.
+This class can't be used or inherited directly,
+you should inherit from `AutoScope` or `ManualScope`.
 
 #### `Scope.get(key)`
 
@@ -559,35 +528,32 @@ If the value does not exist, it must raise KeyError.
 
 Set a dependency by key. Key is a dependency function.
 
-#### `Scope.close_local()`
-
-Hook for closing dependencies. Will be called automatically
-after executing a decorated function.
-
-#### `Scope.close_global()`
-
-Hook for closing dependencies. Will be called from `shutdown_dependencies`.
-
-#### `Scope.enter_decorator()`
+#### `Scope.enter_inject()`
 
 Called when entering an `inject` decorator for dependencies with this scope.
-With `Scope.exit_decorator()`, it can be used for tracking decorator nesting.
 
-#### `Scope.exit_decorator()`
+#### `Scope.exit_inject(exc)`
 
 Called when exiting an `inject` decorator for dependencies with this scope.
 
-### `LocalScope` class
+### `AutoScope` class
 
-Base class for defining local dependency scopes. A local dependency scope
-calls `close_local` after each function call.
+Base class for defining dependency scopes that will be cleared after dependant function call.
 
-### `GlobalScope` class
+### `ManualScope` class
 
-Base class for defining global dependency scopes. A global dependency scope
-calls `close_global` from the `shutdown_dependencies` function.
+Base class for defining dependency scopes that need to be cleared manually.
+`ManualScope.shutdown` will be called for each dependency from the `shutdown_dependencies` function.
 
-Global scoped dependencies can be managed by `init_dependencies` and `shutdown_dependencies`.
+`ManualScope` scoped dependencies can be managed by `init_dependencies` and `shutdown_dependencies`.
+
+#### `ManualScope.enter(context_manager)`
+
+Hook for entering yielded dependencies context
+
+#### `ManualScope.shutdown(exc)`
+
+Hook for shutdown dependencies. Called by `shutdown_dependencies`.
 
 ### `NullScope` class
 
@@ -600,23 +566,27 @@ Scope for dependencies that should be created once and reused for all injections
 Closes the dependency when `shutdown_dependencies` is called.
 Useful for managing resources like connections.
 
-### `ParentCallScope` class
+### `ContextVarScope` class
 
-Scope for dependencies that should be created once per parent call.
-Yield dependencies are closed after the parent function call.
+Scope for dependencies that should live within a contextvar.
+Useful for implementing request-scoped dependencies.
 
-### `init_dependencies()`
+### `init_dependencies(scope_class)`
 
-Initializes all global scoped dependencies. Typically called at the startup of the application.
+Initializes all `ManualScope` scoped dependencies. Typically called at the startup of the application.
 
 Can be called as `init_dependencies()` in a sync context and `await init_dependencies()` in an async context.
 
-### `shutdown_dependencies()`
+You can pass a custom scope class to initialize only dependencies with that scope.
+
+### `shutdown_dependencies(scope_class)`
 
 Calls all dependency teardowns.
 It should be called when the application is shutting down to ensure proper cleanup.
 
 Can be called as `shutdown_dependencies()` in a sync context and `await shutdown_dependencies()` in an async context.
+
+You can pass a custom scope class to close only dependencies with that scope.
 
 ### `registry` object
 

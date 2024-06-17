@@ -17,14 +17,15 @@ from contextlib import asynccontextmanager, contextmanager
 from dataclasses import asdict, dataclass
 from typing import Annotated, Any, NamedTuple, ParamSpec, TypeVar, cast, get_origin
 
-from picodi._internal import NullAwaitable
 from picodi._scopes import (
-    GlobalScope,
+    AutoScope,
+    ContextVarScope,
+    ManualScope,
     NullScope,
-    ParentCallScope,
-    Scope,
+    ScopeType,
     SingletonScope,
 )
+from picodi.support import ExitStack, NullAwaitable
 
 try:
     import fastapi.params
@@ -60,7 +61,7 @@ class InternalRegistry:
     def add(
         self,
         dependency: DependencyCallable,
-        scope_class: type[Scope] = NullScope,
+        scope_class: type[ScopeType] = NullScope,
         override_scope: bool = False,
     ) -> None:
         """
@@ -166,10 +167,10 @@ class Registry:
 _registry_storage = RegistryStorage()
 _internal_registry = InternalRegistry(_registry_storage)
 registry = Registry(_registry_storage, _internal_registry)
-_scopes: dict[type[Scope], Scope] = {
+_scopes: dict[type[ScopeType], ScopeType] = {
     NullScope: NullScope(),
     SingletonScope: SingletonScope(),
-    ParentCallScope: ParentCallScope(),
+    ContextVarScope: ContextVarScope(),
 }
 _lock = threading.RLock()
 
@@ -223,7 +224,11 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
         @functools.wraps(fn)
         async def fun_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             gen = _wrapper_helper(
-                dependant, signature, is_async=True, args=args, kwargs=kwargs
+                dependant,
+                signature,
+                is_async=True,
+                args=args,
+                kwargs=kwargs,
             )
             value, action = next(gen)
             result = None
@@ -271,7 +276,11 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
         @functools.wraps(fn)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             gen = _wrapper_helper(
-                dependant, signature, is_async=False, args=args, kwargs=kwargs
+                dependant,
+                signature,
+                is_async=False,
+                args=args,
+                kwargs=kwargs,
             )
             value, action = next(gen)
             result = None
@@ -287,7 +296,7 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
     return wrapper  # type: ignore[return-value]
 
 
-def dependency(*, scope_class: type[Scope] = NullScope) -> Callable[[TC], TC]:
+def dependency(*, scope_class: type[ScopeType] = NullScope) -> Callable[[TC], TC]:
     """
     Decorator to declare a dependency. You don't need to use it with default arguments,
     use it only if you want to change the scope of the dependency.
@@ -304,16 +313,18 @@ def dependency(*, scope_class: type[Scope] = NullScope) -> Callable[[TC], TC]:
     return decorator
 
 
-def init_dependencies() -> Awaitable:
+def init_dependencies(
+    scope_class: type[ManualScope] | tuple[type[ManualScope]] = ManualScope,
+) -> Awaitable:
     """
     Call this function to close dependencies. Usually, it should be called
     when your application is shutting down.
     """
     async_deps = []
-    global_providers = _internal_registry.filter(
-        lambda p: issubclass(p.scope_class, GlobalScope)
+    filtered_providers = _internal_registry.filter(
+        lambda p: issubclass(p.scope_class, scope_class)
     )
-    for provider in global_providers:
+    for provider in filtered_providers:
         resolver = LazyResolver(provider)
         value = resolver(provider.is_async)
         if provider.is_async:
@@ -324,12 +335,18 @@ def init_dependencies() -> Awaitable:
     return NullAwaitable()
 
 
-def shutdown_dependencies() -> Awaitable:
+def shutdown_dependencies(
+    scope_class: type[ManualScope] | tuple[type[ManualScope]] = ManualScope,
+) -> Awaitable:
     """
     Call this function to close dependencies. Usually, it should be called
     when your application is shut down.
     """
-    tasks = [scope.close_global() for scope in _scopes.values()]
+    tasks = [
+        instance.shutdown()  # type: ignore[call-arg]
+        for klass, instance in _scopes.items()
+        if issubclass(klass, scope_class)
+    ]
     return asyncio.gather(*tasks)
 
 
@@ -347,11 +364,11 @@ class Dependency(NamedTuple):
 class Provider:
     dependency: DependencyCallable
     is_async: bool
-    scope_class: type[Scope]
+    scope_class: type[ScopeType]
 
     @classmethod
     def from_dependency(
-        cls, dependency: DependencyCallable, scope_class: type[Scope]
+        cls, dependency: DependencyCallable, scope_class: type[ScopeType]
     ) -> Provider:
         is_async = inspect.iscoroutinefunction(
             dependency
@@ -362,16 +379,16 @@ class Provider:
             scope_class=scope_class,
         )
 
-    def replace(self, scope_class: type[Scope] | None = None) -> Provider:
+    def replace(self, scope_class: type[ScopeType] | None = None) -> Provider:
         kwargs = asdict(self)
         if scope_class is not None:
             kwargs["scope_class"] = scope_class
         return Provider(**kwargs)
 
-    def get_scope(self) -> Scope:
+    def get_scope(self) -> ScopeType:
         return _scopes[self.scope_class]
 
-    def resolve_value(self, **kwargs: Any) -> Any:
+    def resolve_value(self, exit_stack: ExitStack | None, **kwargs: Any) -> Any:
         scope = self.get_scope()
         value_or_gen = self.dependency(**kwargs)
         if self.is_async:
@@ -384,14 +401,20 @@ class Provider:
                     context_manager = asynccontextmanager(
                         lambda *args, **kwargs: value_or_gen_
                     )
-                    return await scope.exit_stack.enter_context(context_manager())
+                    if isinstance(scope, AutoScope):
+                        assert exit_stack is not None, "exit_stack is required"
+                        return await scope.enter(exit_stack, context_manager())
+                    return await scope.enter(context_manager())
                 return value_or_gen_
 
             return resolve_value_inner()
 
         if inspect.isgenerator(value_or_gen):
             context_manager = contextmanager(lambda *args, **kwargs: value_or_gen)
-            return scope.exit_stack.enter_context(context_manager())
+            if isinstance(scope, AutoScope):
+                assert exit_stack is not None, "exit_stack is required"
+                return scope.enter(exit_stack, context_manager())
+            return scope.enter(context_manager())
         return value_or_gen
 
 
@@ -402,17 +425,18 @@ def _wrapper_helper(
     args: tuple[Any, ...],
     kwargs: dict[str, Any],
 ) -> Generator[Any, None, None]:
+    exit_stack = ExitStack()
     bound = signature.bind(*args, **kwargs)
     bound.apply_defaults()
     arguments: dict[str, Any] = bound.arguments
-    scopes: list[Scope] = []
+    scopes: list[ScopeType] = []
     is_root = any(isinstance(value, Dependency) for value in bound.arguments.values())
 
     if is_root:
-        arguments, scopes = _resolve_dependencies(dependant)
+        arguments, scopes = _resolve_dependencies(dependant, exit_stack)
 
     for scope in scopes:
-        scope.enter_decorator()
+        scope.enter_inject()
     for name, call in arguments.items():
         if isinstance(call, LazyResolver):
             value = yield call(is_async=is_async), "dependency"
@@ -422,8 +446,9 @@ def _wrapper_helper(
         result = dependant.value.call(*bound.args, **bound.kwargs)
     except Exception as e:
         for scope in scopes:
-            scope.exit_decorator(e)
-            yield scope.close_local(e), "close_scope"
+            scope.exit_inject(e)
+            if isinstance(scope, AutoScope):
+                yield scope.shutdown(exit_stack, e), "close_scope"
         raise
 
     if inspect.isgenerator(result):
@@ -438,8 +463,9 @@ def _wrapper_helper(
                 raise
             finally:
                 for scope in scopes:
-                    scope.exit_decorator(exception)
-                    scope.close_local(exception)
+                    scope.exit_inject(exception)
+                    if isinstance(scope, AutoScope):
+                        scope.shutdown(exit_stack, exception)
 
         yield gen(), "result"
         return
@@ -459,25 +485,27 @@ def _wrapper_helper(
             #   https://docs.python.org/3/library/asyncio-task.html#task-cancellation
             finally:
                 for scope in scopes:
-                    scope.exit_decorator(exception)
-                    await scope.close_local(exception)  # noqa: ASYNC102
+                    scope.exit_inject(exception)
+                    if isinstance(scope, AutoScope):
+                        await scope.shutdown(exit_stack, exception)  # noqa: ASYNC102
 
         yield gen(), "result"
         return
 
     yield result, "result"
     for scope in scopes:
-        scope.exit_decorator()
-        yield scope.close_local(), "close_scope"
+        scope.exit_inject()
+        if isinstance(scope, AutoScope):
+            yield scope.shutdown(exit_stack), "close_scope"
 
 
 def _resolve_dependencies(
-    dependant: DependNode,
-) -> tuple[dict[str, LazyResolver], list[Scope]]:
+    dependant: DependNode, exit_stack: ExitStack
+) -> tuple[dict[str, LazyResolver], list[ScopeType]]:
     scopes = set()
     resolved_dependencies = {}
     for dep in dependant.dependencies:
-        values, dep_scopes = _resolve_dependencies(dep)
+        values, dep_scopes = _resolve_dependencies(dep, exit_stack)
         resolved_dependencies.update(values)
         scopes.update(dep_scopes)
 
@@ -488,6 +516,7 @@ def _resolve_dependencies(
     value = LazyResolver(
         provider=provider,
         kwargs=resolved_dependencies,
+        exit_stack=exit_stack,
     )
     return {dependant.name: value}, [provider.get_scope()]
 
@@ -537,9 +566,11 @@ class LazyResolver:
         self,
         provider: Provider,
         kwargs: dict[str, Any] | None = None,
+        exit_stack: ExitStack | None = None,
     ) -> None:
         self.provider = provider
         self.kwargs = kwargs or {}
+        self.exit_stack = exit_stack
 
     def __call__(self, is_async: bool) -> Any:
         call = self._resolve_async if is_async else self._resolve
@@ -557,7 +588,9 @@ class LazyResolver:
                     try:
                         value = scope.get(self.provider.dependency)
                     except KeyError:
-                        value = self.provider.resolve_value(**self.kwargs)
+                        value = self.provider.resolve_value(
+                            self.exit_stack, **self.kwargs
+                        )
                         scope.set(self.provider.dependency, value)
         return value
 
@@ -570,7 +603,7 @@ class LazyResolver:
                 try:
                     value = scope.get(self.provider.dependency)
                 except KeyError:
-                    value = self.provider.resolve_value(**self.kwargs)
+                    value = self.provider.resolve_value(self.exit_stack, **self.kwargs)
                     if self.provider.is_async:
                         value = await value
                     scope.set(self.provider.dependency, value)
