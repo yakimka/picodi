@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextvars import ContextVar
-from typing import TYPE_CHECKING, Any, TypeAlias
+from typing import TYPE_CHECKING, Any, AsyncContextManager, ContextManager, TypeAlias
 
 from picodi._internal import ExitStack, NullAwaitable
 
@@ -54,10 +54,15 @@ class AutoScope(Scope):
     Inherit this class for your custom scope.
     """
 
-    def enter(self, exit_stack: ExitStack, context_manager) -> Awaitable:
+    def enter(
+        self,
+        exit_stack: ExitStack,
+        context_manager: AsyncContextManager | ContextManager,
+    ) -> Awaitable:
         """
         Hook for entering yielded dependencies context. Will be called automatically
         by picodi.
+        Usually you don't need to override this method.
         """
         return exit_stack.enter_context(context_manager)
 
@@ -66,6 +71,7 @@ class AutoScope(Scope):
     ) -> Awaitable:
         """
         Hook for closing dependencies. Will be called automatically by picodi.
+        Usually you don't need to override this method.
         """
         return exit_stack.close(exc)
 
@@ -75,7 +81,9 @@ class ManualScope(Scope):
     Inherit this class for your custom scope that you need to clear automatically.
     """
 
-    def enter(self, context_manager) -> Awaitable:  # noqa: U100
+    def enter(
+        self, context_manager: AsyncContextManager | ContextManager  # noqa: U100
+    ) -> Awaitable:
         """
         Hook for entering yielded dependencies context. Will be called automatically
         by picodi or when you call `init_dependencies`.
@@ -121,7 +129,7 @@ class SingletonScope(ManualScope):
     def set(self, key: Hashable, value: Any) -> None:
         self._store[key] = value
 
-    def enter(self, context_manager) -> Awaitable:
+    def enter(self, context_manager: AsyncContextManager | ContextManager) -> Awaitable:
         return self._exit_stack.enter_context(context_manager)
 
     def shutdown(self, exc: BaseException | None = None) -> Awaitable:
@@ -136,7 +144,9 @@ class ContextVarScope(ManualScope):
     """
 
     def __init__(self) -> None:
-        self._exit_stack = ContextVar("picodi_ContextVarScope_exit_stack")
+        self._exit_stack: ContextVar[ExitStack] = ContextVar(
+            "picodi_ContextVarScope_exit_stack"
+        )
         self._store: dict[Any, ContextVar[Any]] = {}
 
     def get(self, key: Hashable) -> Any:
@@ -155,7 +165,7 @@ class ContextVarScope(ManualScope):
             var = self._store[key] = ContextVar("picodi_FastApiScope_var")
         var.set(value)
 
-    def enter(self, context_manager) -> Awaitable:
+    def enter(self, context_manager: AsyncContextManager | ContextManager) -> Awaitable:
         exit_stack = self._get_exit_stack()
         return exit_stack.enter_context(context_manager)
 

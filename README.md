@@ -268,6 +268,8 @@ Closes the dependency when `shutdown_dependencies` is called.
 
 #### ContextVarScope
 
+Scope for dependencies that should live within a contextvar.
+Dependencies closed only when user manually call `shutdown_dependencies`.
 
 #### Defining custom scopes
 
@@ -514,6 +516,8 @@ Should be placed first in the decorator chain (on top).
 ### `Scope` class
 
 Base class for defining dependency scopes.
+This class can't be used or inherited directly,
+you should inherit from `AutoScope` or `ManualScope`.
 
 #### `Scope.get(key)`
 
@@ -523,15 +527,6 @@ If the value does not exist, it must raise KeyError.
 #### `Scope.set(key, value)`
 
 Set a dependency by key. Key is a dependency function.
-
-#### `Scope.shutdown_auto()`
-
-Hook for closing dependencies. Will be called automatically
-after executing a decorated function.
-
-#### `Scope.shutdown()`
-
-Hook for closing dependencies. Will be called from `shutdown_dependencies`.
 
 #### `Scope.enter_inject()`
 
@@ -544,7 +539,6 @@ Called when exiting an `inject` decorator for dependencies with this scope.
 ### `AutoScope` class
 
 Base class for defining dependency scopes that will be cleared after dependant function call.
-Picodi will call `shutdown_auto` after each function call.
 
 ### `ManualScope` class
 
@@ -552,6 +546,14 @@ Base class for defining dependency scopes that need to be cleared manually.
 `ManualScope.shutdown` will be called for each dependency from the `shutdown_dependencies` function.
 
 `ManualScope` scoped dependencies can be managed by `init_dependencies` and `shutdown_dependencies`.
+
+#### `ManualScope.enter(context_manager)`
+
+Hook for entering yielded dependencies context
+
+#### `ManualScope.shutdown(exc)`
+
+Hook for shutdown dependencies. Called by `shutdown_dependencies`.
 
 ### `NullScope` class
 
@@ -565,6 +567,9 @@ Closes the dependency when `shutdown_dependencies` is called.
 Useful for managing resources like connections.
 
 ### `ContextVarScope` class
+
+Scope for dependencies that should live within a contextvar.
+Useful for implementing request-scoped dependencies.
 
 ### `init_dependencies(scope_class)`
 

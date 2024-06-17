@@ -223,11 +223,9 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
 
         @functools.wraps(fn)
         async def fun_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-            exit_stack = ExitStack()
             gen = _wrapper_helper(
                 dependant,
                 signature,
-                exit_stack=exit_stack,
                 is_async=True,
                 args=args,
                 kwargs=kwargs,
@@ -277,11 +275,9 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
 
         @functools.wraps(fn)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-            exit_stack = ExitStack()
             gen = _wrapper_helper(
                 dependant,
                 signature,
-                exit_stack=exit_stack,
                 is_async=False,
                 args=args,
                 kwargs=kwargs,
@@ -318,7 +314,7 @@ def dependency(*, scope_class: type[ScopeType] = NullScope) -> Callable[[TC], TC
 
 
 def init_dependencies(
-    scope_class: type[ScopeType] | tuple[type[ScopeType]] = ManualScope,
+    scope_class: type[ManualScope] | tuple[type[ManualScope]] = ManualScope,
 ) -> Awaitable:
     """
     Call this function to close dependencies. Usually, it should be called
@@ -340,14 +336,14 @@ def init_dependencies(
 
 
 def shutdown_dependencies(
-    scope_class: type[ScopeType] | tuple[type[ScopeType]] = ManualScope,
+    scope_class: type[ManualScope] | tuple[type[ManualScope]] = ManualScope,
 ) -> Awaitable:
     """
     Call this function to close dependencies. Usually, it should be called
     when your application is shut down.
     """
     tasks = [
-        instance.shutdown()
+        instance.shutdown()  # type: ignore[call-arg]
         for klass, instance in _scopes.items()
         if issubclass(klass, scope_class)
     ]
@@ -392,7 +388,7 @@ class Provider:
     def get_scope(self) -> ScopeType:
         return _scopes[self.scope_class]
 
-    def resolve_value(self, exit_stack: ExitStack, **kwargs: Any) -> Any:
+    def resolve_value(self, exit_stack: ExitStack | None, **kwargs: Any) -> Any:
         scope = self.get_scope()
         value_or_gen = self.dependency(**kwargs)
         if self.is_async:
@@ -406,6 +402,7 @@ class Provider:
                         lambda *args, **kwargs: value_or_gen_
                     )
                     if isinstance(scope, AutoScope):
+                        assert exit_stack is not None, "exit_stack is required"
                         return await scope.enter(exit_stack, context_manager())
                     return await scope.enter(context_manager())
                 return value_or_gen_
@@ -415,6 +412,7 @@ class Provider:
         if inspect.isgenerator(value_or_gen):
             context_manager = contextmanager(lambda *args, **kwargs: value_or_gen)
             if isinstance(scope, AutoScope):
+                assert exit_stack is not None, "exit_stack is required"
                 return scope.enter(exit_stack, context_manager())
             return scope.enter(context_manager())
         return value_or_gen
@@ -423,11 +421,11 @@ class Provider:
 def _wrapper_helper(
     dependant: DependNode,
     signature: inspect.Signature,
-    exit_stack: ExitStack,
     is_async: bool,
     args: tuple[Any, ...],
     kwargs: dict[str, Any],
 ) -> Generator[Any, None, None]:
+    exit_stack = ExitStack()
     bound = signature.bind(*args, **kwargs)
     bound.apply_defaults()
     arguments: dict[str, Any] = bound.arguments
