@@ -77,11 +77,11 @@ P = ParamSpec("P")
 class _Lifespan:
     @overload
     def __call__(self, fn: Callable[P, T]) -> Callable[P, T]:
-        pass
+        """Decorator for functions"""
 
     @overload
     def __call__(self, fn: None = None) -> Callable[[Callable[P, T]], Callable[P, T]]:
-        pass
+        """Sync and Async context manager"""
 
     def __call__(
         self, fn: Callable[P, T] | None = None
