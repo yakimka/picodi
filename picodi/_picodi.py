@@ -182,23 +182,25 @@ def Provide(dependency: DependencyCallable, /) -> Any:  # noqa: N802
     Declare a provider.
     It takes a single "dependency" callable (like a function).
     Don't call it directly, picodi will call it for you.
-    DependencyCallable can be a regular function or a generator with one yield.
-    If the dependency is a generator, it will be used as a context manager.
-    Any generator that is valid for `contextlib.contextmanager`
-    can be used as a dependency.
 
-    Example:
-    ```
-    from picodi import Provide, inject
+    :param dependency: can be a regular function or a generator with one yield.
+        If the dependency is a generator, it will be used as a context manager.
+        Any generator that is valid for `contextlib.contextmanager`
+        can be used as a dependency.
 
-    def get_db():
-        yield "db connection"
-        print("closing db connection")
+    Example
+    -------
+    .. code-block:: python
 
-    @inject
-    def my_service(db: str = Provide(get_db)):
-        assert db == "db connection"
-    ```
+        from picodi import Provide, inject
+
+        def get_db():
+            yield "db connection"
+            print("closing db connection")
+
+        @inject
+        def my_service(db: str = Provide(get_db)):
+            assert db == "db connection"
     """
     return Dependency(dependency)
 
@@ -206,17 +208,20 @@ def Provide(dependency: DependencyCallable, /) -> Any:  # noqa: N802
 def inject(fn: Callable[P, T]) -> Callable[P, T]:
     """
     Decorator to inject dependencies into a function.
-    Use it in combination with `Provide` to declare dependencies.
+    Use it in combination with :func:`Provide` to declare dependencies.
     Should be placed first in the decorator chain (on bottom).
 
-    Example:
-    ```
-    from picodi import inject, Provide
+    :param fn: function to decorate.
 
-    @inject
-    def my_service(db=Provide(some_dependency_func)):
-        ...
-    ```
+    Example
+    -------
+    .. code-block:: python
+
+        from picodi import inject, Provide
+
+        @inject
+        def my_service(db=Provide(some_dependency_func)):
+            ...
     """
     signature = inspect.signature(fn)
     dependant = _build_depend_tree(Dependency(fn))
@@ -305,6 +310,13 @@ def dependency(
     Decorator to declare a dependency. You don't need to use it with default arguments,
     use it only if you want to change the scope of the dependency.
     Should be placed last in the decorator chain (on top).
+
+    :param scope_class: specify the scope class to use for the dependency. Default is
+        :class:`NullScope`.
+        Picodi additionally provides a few built-in scopes:
+        :class:`SingletonScope`, :class:`ContextVarScope`.
+    :param ignore_manual_init: if set to True, the dependency will be skipped when
+        calling :func:`init_dependencies`.
     """
 
     if scope_class not in _scopes:
@@ -327,7 +339,10 @@ def init_dependencies(
 ) -> Awaitable:
     """
     Call this function to close dependencies. Usually, it should be called
-    when your application is shutting down.
+    when your application is starting up.
+
+    :param scope_class: you can specify the scope class to initialize. If passed -
+        only dependencies of this scope class and its subclasses will be initialized.
     """
     async_deps = []
     filtered_providers = _internal_registry.filter(
@@ -350,6 +365,9 @@ def shutdown_dependencies(
     """
     Call this function to close dependencies. Usually, it should be called
     when your application is shut down.
+
+    :param scope_class: you can specify the scope class to shutdown. If passed -
+        only dependencies of this scope class and its subclasses will be shutdown.
     """
     tasks = [
         instance.shutdown()  # type: ignore[call-arg]
