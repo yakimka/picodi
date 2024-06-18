@@ -26,6 +26,7 @@ and offers features like lifecycle management.
   - [Scopes](#scopes)
     - [NullScope](#nullscope)
     - [SingletonScope](#singletonscope)
+    - [ContextVarScope](#contextvarscope)
     - [Defining custom scopes](#defining-custom-scopes)
   - [Resolving async dependencies in sync functions](#resolving-async-dependencies-in-sync-functions)
   - [Overriding dependencies](#overriding-dependencies)

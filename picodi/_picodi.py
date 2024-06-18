@@ -29,7 +29,7 @@ from picodi.support import ExitStack, NullAwaitable
 
 try:
     import fastapi.params
-except ImportError:
+except ImportError:  # pragma: no cover
     fastapi = None  # type: ignore[assignment] # pragma: no cover
 
 
@@ -546,7 +546,7 @@ def _extract_and_register_dependency_from_parameter(
         return value.default
 
     if fastapi is None:
-        return None  # type: ignore[unreachable]
+        return None  # type: ignore[unreachable]  # pragma: no cover
     fastapi_dependency = None
     if isinstance(value.default, fastapi.params.Depends):
         fastapi_dependency = value.default.dependency
