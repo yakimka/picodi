@@ -29,6 +29,7 @@ Key Features
    :caption: Contents:
 
    quickstart
+   scopes
 
 .. toctree::
     :hidden:
