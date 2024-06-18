@@ -504,7 +504,7 @@ Should be placed first in the decorator chain (on bottom).
 - **Parameters**:
   - `fn`: The function into which dependencies will be injected.
 
-### `dependency(*, scope_class)`
+### `dependency(*, scope_class, ignore_manual_init)`
 
 Decorator to declare a dependency with a specific scope.
 
@@ -513,6 +513,9 @@ Should be placed first in the decorator chain (on top).
 - **Parameters**:
   - `scope_class`: A class that defines the scope of the dependency.
     Available scopes are `NullScope` (default), `SingletonScope`, and `ContextVarScope`.
+  - `ignore_manual_init`: A flag to ignore manual initialization of the dependency.
+    If set to `True`, the dependency will not be initialized with `init_dependencies`.
+    Default is `False`.
 
 ### `Scope` class
 

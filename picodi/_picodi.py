@@ -63,6 +63,7 @@ class InternalRegistry:
         dependency: DependencyCallable,
         scope_class: type[ScopeType] = NullScope,
         override_scope: bool = False,
+        ignore_manual_init: bool = False,
     ) -> None:
         """
         Add a dependency to the registry.
@@ -79,6 +80,7 @@ class InternalRegistry:
                 self._storage.deps[dependency] = Provider.from_dependency(
                     dependency=dependency,
                     scope_class=scope_class,
+                    ignore_manual_init=ignore_manual_init,
                 )
 
     def get(self, dependency: DependencyCallable) -> Provider:
@@ -296,7 +298,9 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
     return wrapper  # type: ignore[return-value]
 
 
-def dependency(*, scope_class: type[ScopeType] = NullScope) -> Callable[[TC], TC]:
+def dependency(
+    *, scope_class: type[ScopeType] = NullScope, ignore_manual_init: bool = False
+) -> Callable[[TC], TC]:
     """
     Decorator to declare a dependency. You don't need to use it with default arguments,
     use it only if you want to change the scope of the dependency.
@@ -307,7 +311,12 @@ def dependency(*, scope_class: type[ScopeType] = NullScope) -> Callable[[TC], TC
         _scopes[scope_class] = scope_class()
 
     def decorator(fn: TC) -> TC:
-        _internal_registry.add(fn, scope_class=scope_class, override_scope=True)
+        _internal_registry.add(
+            fn,
+            scope_class=scope_class,
+            override_scope=True,
+            ignore_manual_init=ignore_manual_init,
+        )
         return fn
 
     return decorator
@@ -322,7 +331,7 @@ def init_dependencies(
     """
     async_deps = []
     filtered_providers = _internal_registry.filter(
-        lambda p: issubclass(p.scope_class, scope_class)
+        lambda p: not p.ignore_manual_init and issubclass(p.scope_class, scope_class)
     )
     for provider in filtered_providers:
         resolver = LazyResolver(provider)
@@ -365,10 +374,14 @@ class Provider:
     dependency: DependencyCallable
     is_async: bool
     scope_class: type[ScopeType]
+    ignore_manual_init: bool
 
     @classmethod
     def from_dependency(
-        cls, dependency: DependencyCallable, scope_class: type[ScopeType]
+        cls,
+        dependency: DependencyCallable,
+        scope_class: type[ScopeType],
+        ignore_manual_init: bool,
     ) -> Provider:
         is_async = inspect.iscoroutinefunction(
             dependency
@@ -377,6 +390,7 @@ class Provider:
             dependency=dependency,
             is_async=is_async,
             scope_class=scope_class,
+            ignore_manual_init=ignore_manual_init,
         )
 
     def replace(self, scope_class: type[ScopeType] | None = None) -> Provider:
