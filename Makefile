@@ -53,6 +53,7 @@ clean:  ## Clean up
 	rm -rf dist
 	rm -rf htmlcov
 	rm -f .coverage coverage.xml
+	$(MAKE) -C docs clean
 
 .PHONY: clean-all
 clean-all:  ## Clean up all
@@ -60,6 +61,10 @@ clean-all:  ## Clean up all
 	rm -rf .cache
 	rm -rf .mypy_cache
 	rm -rf .pytest_cache
+
+.PHONY: docs
+docs:
+	$(MAKE) -C docs html
 
 .PHONY: help
 help:
