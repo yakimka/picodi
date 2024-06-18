@@ -6,6 +6,10 @@ We follow [Semantic Versions](https://semver.org/).
 
 -
 
+## Version 0.16.0
+
+- Added `ignore_manual_init` option to `dependency` decorator
+
 ## Version 0.15.0
 
 - Added ability to pass custom `scope_class` to `init_dependencies` and `shutdown_dependencies`
