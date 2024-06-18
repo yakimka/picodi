@@ -29,6 +29,8 @@ run_ci () {
   poetry export --format=requirements.txt --output=dist/requirements.txt
   # print shasum of the built packages
   shasum dist/*
+  # trying to build the docs
+  make docs
 
   set +x
   echo '[ci finished]'
