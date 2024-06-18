@@ -1,4 +1,4 @@
-picodi package
+Module Index
 ==============
 
 Module contents

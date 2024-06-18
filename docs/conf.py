@@ -41,13 +41,15 @@ html_static_path = ["_static"]
 
 
 signatures_for_replace = {
-    "picodi._scopes.AutoScope": "AutoScope",
-    "picodi._scopes.ContextVarScope": "ContextVarScope",
-    "picodi._scopes.ManualScope": "ManualScope",
-    "picodi._scopes.NullScope": "NullScope",
-    "picodi._scopes.ScopeType": "ScopeType",
-    "picodi._scopes.Scope": "Scope",
-    "picodi._scopes.SingletonScope": "SingletonScope",
+    "~picodi._scopes.AutoScope": "AutoScope",
+    "~picodi._scopes.ContextVarScope": "ContextVarScope",
+    "~picodi._scopes.ManualScope": "ManualScope",
+    "~picodi._scopes.NullScope": "NullScope",
+    "~picodi._scopes.ScopeType": "ScopeType",
+    "~picodi._scopes.Scope": "Scope",
+    "~picodi._scopes.SingletonScope": "SingletonScope",
+    "<class 'picodi._scopes.ManualScope'>": "ManualScope",
+    "<class 'picodi._scopes.NullScope'>": "NullScope",
 }
 
 
