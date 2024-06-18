@@ -1,3 +1,7 @@
+"""
+Helper functions and classes for picodi.
+"""
+
 from __future__ import annotations
 
 import asyncio
@@ -24,16 +28,27 @@ class PathNotFoundError(Exception):
 def get_value(path: str, obj: Any, *, default: Any = sentinel) -> Any:
     """
     Get attribute from nested objects.
-    If the attribute is not found, raise an AttributeError if default is not provided.
-    If default is provided, return it.
+    Can be useful to avoid passing entire objects like
+    settings to functions that only need a small part of it.
 
-    Example:
-    ```
-    obj = SimpleNamespace(foo=SimpleNamespace(bar={"baz": 42}))
-    get_value("foo.bar.baz", obj)  # 42
-    get_value("foo.bar.baz2", obj)  # AttributeError
-    get_value("foo.bar.baz2", obj, default=12)  # 12
-    ```
+    :param path: path to the attribute, separated by dots.
+    :param obj: object to search the attribute in.
+    :param default: default value to return if the attribute is not found.
+        If not provided, an :exc:`PathNotFoundError` is raised.
+
+    :raises PathNotFoundError: if the path is not found in the object
+        and default is not provided.
+
+    Example
+    -------
+    .. code-block:: python
+
+        obj = SimpleNamespace(foo=SimpleNamespace(bar={"baz": 42}))
+
+        get_value("foo.bar.baz", obj)  # Output: 42
+        get_value("foo.bar.baz2", obj)  # Output: AttributeError
+        get_value("foo.bar.baz2", obj, default=12)  # Output: 12
+
     """
     if not path:
         raise ValueError("Empty path")
@@ -74,10 +89,20 @@ T = TypeVar("T")
 P = ParamSpec("P")
 
 
-class _Lifespan:
+class Lifespan:
+    """
+    Lifespan manager for dependencies.
+
+    Don't instantiate this class directly. Use the :attr:`lifespan` instance instead.
+    """
+
     @overload
     def __call__(self, fn: Callable[P, T]) -> Callable[P, T]:
-        """Decorator for functions"""
+        """
+        Decorator for functions
+
+        :param fn: function to decorate.
+        """
 
     @overload
     def __call__(self, fn: None = None) -> Callable[[Callable[P, T]], Callable[P, T]]:
@@ -86,6 +111,12 @@ class _Lifespan:
     def __call__(
         self, fn: Callable[P, T] | None = None
     ) -> Callable[P, T] | Callable[[Callable[P, T]], Callable[P, T]]:
+        """
+        Can be used as a decorator or a context manager.
+
+        :param fn: function to decorate (if used as a decorator).
+        :return: decorated function or context manager.
+        """
         if fn is None:
             return self
         if asyncio.iscoroutinefunction(fn):
@@ -93,6 +124,7 @@ class _Lifespan:
         return self.sync()(fn)
 
     def __enter__(self) -> None:
+        """Initialize sync dependencies."""
         picodi.init_dependencies()
 
     def __exit__(
@@ -101,9 +133,11 @@ class _Lifespan:
         exc: BaseException | None,
         traceback: TracebackType | None,
     ) -> None:
+        """Shutdown sync dependencies."""
         picodi.shutdown_dependencies()
 
     async def __aenter__(self) -> None:
+        """Initialize async dependencies."""
         await picodi.init_dependencies()
 
     async def __aexit__(
@@ -112,6 +146,7 @@ class _Lifespan:
         exc: BaseException | None,
         traceback: TracebackType | None,
     ) -> None:
+        """Shutdown async dependencies."""
         await picodi.shutdown_dependencies()
 
     @contextlib.contextmanager
@@ -119,6 +154,13 @@ class _Lifespan:
         self,
         scope_class: type[ManualScope] | tuple[type[ManualScope]] = ManualScope,
     ) -> Generator[None, None, None]:
+        """
+        :attr:`lifespan` can automatically detect if the decorated function
+        is async or not. But if you want to force sync behavior, `lifespan.sync`.
+
+        :param scope_class: optionally you can specify the scope class
+            to initialize and shutdown.
+        """
         picodi.init_dependencies(scope_class)
         try:
             yield
@@ -130,6 +172,14 @@ class _Lifespan:
         self,
         scope_class: type[ManualScope] | tuple[type[ManualScope]] = ManualScope,
     ) -> AsyncGenerator[None, None]:
+        """
+        :attr:`lifespan` can automatically detect if the decorated function
+        is async or not.
+        But if you want to force async behavior, `lifespan.async_`.
+
+        :param scope_class: optionally you can specify the scope class
+            to initialize and shutdown.
+        """
         await picodi.init_dependencies(scope_class)
         try:
             yield
@@ -137,4 +187,42 @@ class _Lifespan:
             await picodi.shutdown_dependencies(scope_class)  # noqa: ASYNC102
 
 
-lifespan = _Lifespan()
+lifespan = Lifespan()
+"""
+lifespan: An instance of `Lifespan` class to manage dependencies lifecycle.
+
+Example
+-------
+.. code-block:: python
+
+    from picodi.helpers import lifespan
+
+
+    @lifespan
+    def main():
+        ...
+
+    @lifespan
+    async def async_main():
+        ...
+
+    with lifespan():
+        ...
+
+    async with lifespan():
+        ...
+
+    @lifespan.sync()
+    def main():
+        ...
+
+    @lifespan.async_()
+    async def async_main():
+        ...
+
+    with lifespan.sync():
+        ...
+
+    async with lifespan.async_():
+        ...
+"""

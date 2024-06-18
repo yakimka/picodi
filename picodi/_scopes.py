@@ -14,44 +14,54 @@ unset = object()
 
 class Scope:
     """
-    Base class for scopes.
-
     Scopes are used to store and retrieve values by key and for closing dependencies.
-    For implementing a custom scope,
-    inherit from this class and implement the abstract methods.
+
+    Don't use this class directly and don't inherit from it.
+    Inherit from :class:`AutoScope` or :class:`ManualScope`.
     """
 
     def get(self, key: Hashable) -> Any:
         """
         Get a value by key.
         If value is not exists must raise KeyError.
+
+        :param key: key to get value, typically a dependency function.
+        :raises KeyError: if value not exists.
         """
         raise NotImplementedError
 
     def set(self, key: Hashable, value: Any) -> None:
         """
         Set a value by key.
+
+        :param key: key to set value, typically a dependency function.
+        :param value: value to set, typically a dependency instance.
         """
         raise NotImplementedError
 
     def enter_inject(self) -> None:
         """
-        Called when entering a `inject` decorator.
+        Called when entering an `inject` decorator.
         """
         return None
 
     def exit_inject(self, exc: BaseException | None = None) -> None:  # noqa: U100
         """
         Called before exiting a `inject` decorator.
-        `shutdown_auto` will be called after this, e.g.:
-            `exit_inject` -> `shutdown_auto` -> `inject` wrapper returns.
+
+        `shutdown` will be called after this, e.g.:
+            `exit_inject` -> `shutdown` -> `inject` wrapper returns.
         """
         return None
 
 
 class AutoScope(Scope):
     """
-    Inherit this class for your custom scope.
+    AutoScope is a scope that automatically closes dependencies
+    after exiting the context.
+
+    Don't use this class directly.
+    Usually, you don't want to inherit this class, but you can.
     """
 
     def enter(
@@ -63,6 +73,10 @@ class AutoScope(Scope):
         Hook for entering yielded dependencies context. Will be called automatically
         by picodi.
         Usually you don't need to override this method.
+
+        :param exit_stack: :class:`support.ExitStack` instance. Instance of ExitStack
+            will be created automatically in :func:`inject` decorator.
+        :param context_manager: context manager created from yield dependency.
         """
         return exit_stack.enter_context(context_manager)
 
@@ -72,13 +86,24 @@ class AutoScope(Scope):
         """
         Hook for closing dependencies. Will be called automatically by picodi.
         Usually you don't need to override this method.
+
+        :param exit_stack: :class:`support.ExitStack` instance. Instance of ExitStack
+            will be created automatically in :func:`inject` decorator.
+        :param exc: exception that was raised in the context.
         """
         return exit_stack.close(exc)
 
 
 class ManualScope(Scope):
     """
-    Inherit this class for your custom scope that you need to clear automatically.
+    ManualScope is a scope that requires manual closing of dependencies.
+    For example :class:`SingletonScope` or :class:`ContextVarScope` use this scope.
+    You can close dependencies by calling `shutdown_dependencies()` or
+    `shutdown_dependencies(scope_class=MyCustomScope)`
+    for shutdown only dependencies that uses `MyCustomScope` scope.
+
+    Don't use this class directly.
+    Inherit this class for your custom scope.
     """
 
     def enter(
@@ -87,13 +112,17 @@ class ManualScope(Scope):
         """
         Hook for entering yielded dependencies context. Will be called automatically
         by picodi or when you call `init_dependencies`.
+
+        :param context_manager: context manager created from yield dependency.
         """
         return NullAwaitable()
 
     def shutdown(self, exc: BaseException | None = None) -> Awaitable:  # noqa: U100
         """
         Hook for shutdown dependencies.
-        Will be called when you call `shutdown_dependencies`
+        Will be called when you call :func:`shutdown_dependencies`
+
+        :param exc: exception that was raised in the context.
         """
         return NullAwaitable()
 
@@ -103,7 +132,9 @@ ScopeType: TypeAlias = AutoScope | ManualScope
 
 class NullScope(AutoScope):
     """
-    Null scope. Values not cached, dependencies closed after every function call.
+    Null scope.
+    Values aren't cached, dependencies closed automatically after function call.
+    This is the default scope.
     """
 
     def get(self, key: Hashable) -> Any:
@@ -116,7 +147,7 @@ class NullScope(AutoScope):
 class SingletonScope(ManualScope):
     """
     Singleton scope. Values cached for the lifetime of the application.
-    Dependencies closed only when user manually call `shutdown_dependencies`.
+    Dependencies closed only when user manually call :func:`shutdown_dependencies`.
     """
 
     def __init__(self) -> None:
@@ -140,7 +171,7 @@ class SingletonScope(ManualScope):
 class ContextVarScope(ManualScope):
     """
     ContextVar scope. Values cached in contextvars.
-    Dependencies closed only when user manually call `shutdown_dependencies`.
+    Dependencies closed only when user manually call :func:`shutdown_dependencies`.
     """
 
     def __init__(self) -> None:

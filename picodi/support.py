@@ -1,3 +1,9 @@
+"""
+Support module for picodi package.
+
+May be useful for writing your own scopes or other customizations.
+"""
+
 from __future__ import annotations
 
 import asyncio
@@ -11,12 +17,21 @@ if TYPE_CHECKING:
 
 
 class NullAwaitable:
+    """Dummy awaitable that does nothing."""
+
     def __await__(self) -> Generator[None, None, None]:
         yield
         return None
 
 
 class ExitStack:
+    """
+    A context manager that combines multiple context managers - both sync and async.
+
+    Under the hood, it uses :class:`python:contextlib.ExitStack`
+    for sync context managers and :class:`python:contextlib.AsyncExitStack` for async
+    """
+
     def __init__(self) -> None:
         self._sync_stack = SyncExitStack()
         self._async_stack = AsyncExitStack()
@@ -40,6 +55,15 @@ class ExitStack:
         return res_sync and res_async
 
     def enter_context(self, cm: AsyncContextManager | ContextManager) -> Any:
+        """
+        Enters a new context manager and adds its `__[a]exit__()`
+        method to the callback stack.
+        The return value is the result of the context manager’s
+        own __[a]enter__() method.
+
+        :param cm: context manager to enter.
+        :return: Result of the context manager's `__[a]enter__` method.
+        """
         if isinstance(cm, ContextManager):
             return self._sync_stack.enter_context(cm)
         elif isinstance(cm, AsyncContextManager):
@@ -48,6 +72,12 @@ class ExitStack:
         raise TypeError(f"Unsupported context manager: {cm}")  # pragma: no cover
 
     def close(self, exc: BaseException | None = None) -> Awaitable:
+        """
+        Immediately unwinds the callback stack,
+        invoking callbacks in the reverse order of registration.
+
+        :param exc: exception to be passed to the `__[a]exit__` method.
+        """
         exc_type = type(exc) if exc is not None else None
         self.__exit__(exc_type, exc, None)
         if (
@@ -62,6 +92,11 @@ class ExitStack:
 
 
 def is_async_environment() -> bool:
+    """
+    Check if we are in async environment.
+
+    :return: True if we are in async environment, False otherwise.
+    """
     try:
         asyncio.get_running_loop()
     except RuntimeError:
