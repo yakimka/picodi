@@ -346,7 +346,7 @@ def dependency(
 
 
 def init_dependencies(
-    scope_class: type[ManualScope] | tuple[type[ManualScope]] = ManualScope,
+    scope_class: type[ManualScope] | tuple[type[ManualScope], ...] = ManualScope,
 ) -> Awaitable:
     """
     Call this function to close dependencies. Usually, it should be called
@@ -376,7 +376,7 @@ def init_dependencies(
 
 
 def shutdown_dependencies(
-    scope_class: type[ManualScope] | tuple[type[ManualScope]] = ManualScope,
+    scope_class: type[ManualScope] | tuple[type[ManualScope], ...] = ManualScope,
 ) -> Awaitable:
     """
     Call this function to close dependencies. Usually, it should be called

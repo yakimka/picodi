@@ -6,6 +6,10 @@ We follow [Semantic Versions](https://semver.org/).
 
 -
 
+## Version 0.18.0
+
+- Fixed typehints 
+
 ## Version 0.17.0
 
 - Updated docstrings
