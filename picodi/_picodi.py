@@ -352,6 +352,11 @@ def init_dependencies(
     Call this function to close dependencies. Usually, it should be called
     when your application is starting up.
 
+    This function works both for synchronous and asynchronous dependencies.
+    If you call it without ``await``, it will initialize only sync dependencies.
+    If you call it ``await init_dependencies()``, it will initialize both sync and async
+    dependencies.
+
     :param scope_class: you can specify the scope class to initialize. If passed -
         only dependencies of this scope class and its subclasses will be initialized.
     """
@@ -376,6 +381,11 @@ def shutdown_dependencies(
     """
     Call this function to close dependencies. Usually, it should be called
     when your application is shut down.
+
+    This function works both for synchronous and asynchronous dependencies.
+    If you call it without ``await``, it will shutdown only sync dependencies.
+    If you call it ``await shutdown_dependencies()``, it will shutdown both
+    sync and async dependencies.
 
     :param scope_class: you can specify the scope class to shutdown. If passed -
         only dependencies of this scope class and its subclasses will be shutdown.
