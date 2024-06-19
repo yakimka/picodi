@@ -17,7 +17,7 @@ Dependencies
 Dependency in terms of Picodi is an any function without required arguments.
 So this simple function is a Picodi dependency:
 
-.. code-block:: python
+.. testcode::
 
     def simple_function() -> int:
         return 42
@@ -25,18 +25,21 @@ So this simple function is a Picodi dependency:
 You can inject this dependency into your function or class by using
 the :func:`picodi.inject` decorator and the :func:`picodi.Provide` marker.
 
-.. code-block:: python
+.. testcode::
 
     from picodi import Provide, inject
 
+
     @inject
-    def my_function(meaning_of_life: int = Provide(simple_function)) -> None:
+    def my_function(meaning_of_life: int = Provide(simple_function)) -> int:
         return meaning_of_life
+
 
     class MyClass:
         @inject
         def __init__(self, meaning_of_life: int = Provide(simple_function)) -> None:
             self.meaning_of_life = meaning_of_life
+
 
     assert my_function() == 42
     assert MyClass().meaning_of_life == 42
@@ -47,32 +50,36 @@ You can tell that the ``my_function`` is a function without required arguments s
 it can also be a dependency. And you are right! You can inject ``my_function`` into
 another function or class.
 
-.. code-block:: python
+.. testcode::
 
     from picodi import Provide, inject
 
+
     @inject
-    def another_function(meaning_of_life: int = Provide(my_function)) -> None:
+    def another_function(meaning_of_life: int = Provide(my_function)) -> int:
         return meaning_of_life
 
-    assert another_function() == 42
 
+    assert another_function() == 42
 
 So if dependency is just a function, you can use closures to parametrize dependencies
 or use them as a factory.
 
-.. code-block:: python
+.. testcode::
 
     from picodi import Provide, inject
+
 
     def get_number(number: int):
         def number_factory() -> int:
             return number
         return number_factory
 
+
     @inject
-    def my_function(value: int = Provide(factory(42))) -> int:
+    def my_function(value: int = Provide(get_number(42))) -> int:
         return value
+
 
     assert my_function() == 42
 
@@ -83,9 +90,10 @@ Returning a values from dependencies is not enough. Sometimes you need not only 
 initialize dependency but also to clean it up. For this purpose, you can use
 functions that yield value.
 
-.. code-block:: python
+.. testcode::
 
     from picodi import Provide, inject
+
 
     def get_file_for_read():
         file = open("file.txt")
@@ -95,22 +103,30 @@ functions that yield value.
             file.close()
             print("File closed")
 
+
     @inject
     def read_file(file=Provide(get_file_for_read)) -> str:
         return file.read()
 
+
     with open("file.txt", "w") as file:
         file.write("Hello, World!")
+
 
     assert read_file() == "Hello, World!"
     # Output: File closed
 
+.. testoutput::
+
+    File closed
+
 Manually calling ``close`` method on the file object is not necessary in this case,
 you can use context manager to handle it.
 
-.. code-block:: python
+.. testcode::
 
     from picodi import Provide, inject
+
 
     def get_file_for_read():
         with open("file.txt") as file:
@@ -130,17 +146,21 @@ you can use async functions.
 
 Some examples of async dependencies:
 
-.. code-block:: python
+.. testcode::
 
     import asyncio
+
     from picodi import Provide, inject
+
 
     async def simple_async_dependency() -> int:
         return 42
 
+
     async def yield_async_dependency():
         yield 42
         print("Async dependency closed")
+
 
     @inject
     async def async_function(
@@ -149,4 +169,9 @@ Some examples of async dependencies:
     ) -> int:
         return simple + yield_
 
+
     assert asyncio.run(async_function()) == 84
+
+.. testoutput::
+
+    Async dependency closed

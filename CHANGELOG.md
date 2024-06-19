@@ -6,6 +6,11 @@ We follow [Semantic Versions](https://semver.org/).
 
 -
 
+## Version 0.17.1
+
+- Fixed typehints
+- Fixed rare error when `shutdown_dependencies` raises "RuntimeError: There is no current event loop"
+
 ## Version 0.17.0
 
 - Updated docstrings

@@ -56,13 +56,13 @@ class ExitStack:
 
     def enter_context(self, cm: AsyncContextManager | ContextManager) -> Any:
         """
-        Enters a new context manager and adds its `__[a]exit__()`
+        Enters a new context manager and adds its ``__[a]exit__()``
         method to the callback stack.
         The return value is the result of the context manager’s
-        own __[a]enter__() method.
+        own ``__[a]enter__()`` method.
 
         :param cm: context manager to enter.
-        :return: Result of the context manager's `__[a]enter__` method.
+        :return: Result of the context manager's ``__[a]enter__`` method.
         """
         if isinstance(cm, ContextManager):
             return self._sync_stack.enter_context(cm)
@@ -76,7 +76,7 @@ class ExitStack:
         Immediately unwinds the callback stack,
         invoking callbacks in the reverse order of registration.
 
-        :param exc: exception to be passed to the `__[a]exit__` method.
+        :param exc: exception to be passed to the ``__[a]exit__`` method.
         """
         exc_type = type(exc) if exc is not None else None
         self.__exit__(exc_type, exc, None)

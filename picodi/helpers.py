@@ -189,7 +189,7 @@ class _Lifespan:
     ) -> Generator[None, None, None]:
         """
         :attr:`lifespan` can automatically detect if the decorated function
-        is async or not. But if you want to force sync behavior, `lifespan.sync`.
+        is async or not. But if you want to force sync behavior, ``lifespan.sync``.
 
         :param scope_class: optionally you can specify the scope class
             to initialize and shutdown.
@@ -208,7 +208,7 @@ class _Lifespan:
         """
         :attr:`lifespan` can automatically detect if the decorated function
         is async or not.
-        But if you want to force async behavior, `lifespan.async_`.
+        But if you want to force async behavior, ``lifespan.async_``.
 
         :param scope_class: optionally you can specify the scope class
             to initialize and shutdown.

@@ -29,6 +29,7 @@ test:  ## Run tests
 
 .PHONY: test-docs
 test-docs:  ## Check docs
+	$(MAKE) -C docs test
 	$(RUN) poetry run pytest --markdown-docs -m markdown-docs $(args)
 
 .PHONY: package

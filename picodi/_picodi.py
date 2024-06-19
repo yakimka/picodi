@@ -115,7 +115,7 @@ class Registry:
         added to the registry.
 
         :param dependency: dependency to override
-        :param new_dependency: new dependency to use. If explicitly set to `None`,
+        :param new_dependency: new dependency to use. If explicitly set to ``None``,
             it will remove the override.
 
         Examples
@@ -196,7 +196,7 @@ def Provide(dependency: DependencyCallable, /) -> Any:  # noqa: N802
 
     :param dependency: can be a regular function or a generator with one yield.
         If the dependency is a generator, it will be used as a context manager.
-        Any generator that is valid for `contextlib.contextmanager`
+        Any generator that is valid for :func:`python:contextlib.contextmanager`
         can be used as a dependency.
 
     Example
@@ -346,11 +346,16 @@ def dependency(
 
 
 def init_dependencies(
-    scope_class: type[ManualScope] | tuple[type[ManualScope]] = ManualScope,
+    scope_class: type[ManualScope] | tuple[type[ManualScope], ...] = ManualScope,
 ) -> Awaitable:
     """
     Call this function to close dependencies. Usually, it should be called
     when your application is starting up.
+
+    This function works both for synchronous and asynchronous dependencies.
+    If you call it without ``await``, it will initialize only sync dependencies.
+    If you call it ``await init_dependencies()``, it will initialize both sync and async
+    dependencies.
 
     :param scope_class: you can specify the scope class to initialize. If passed -
         only dependencies of this scope class and its subclasses will be initialized.
@@ -371,11 +376,16 @@ def init_dependencies(
 
 
 def shutdown_dependencies(
-    scope_class: type[ManualScope] | tuple[type[ManualScope]] = ManualScope,
+    scope_class: type[ManualScope] | tuple[type[ManualScope], ...] = ManualScope,
 ) -> Awaitable:
     """
     Call this function to close dependencies. Usually, it should be called
     when your application is shut down.
+
+    This function works both for synchronous and asynchronous dependencies.
+    If you call it without ``await``, it will shutdown only sync dependencies.
+    If you call it ``await shutdown_dependencies()``, it will shutdown both
+    sync and async dependencies.
 
     :param scope_class: you can specify the scope class to shutdown. If passed -
         only dependencies of this scope class and its subclasses will be shutdown.
@@ -385,6 +395,8 @@ def shutdown_dependencies(
         for klass, instance in _scopes.items()
         if issubclass(klass, scope_class)
     ]
+    if all(isinstance(task, NullAwaitable) for task in tasks):
+        return NullAwaitable()
     return asyncio.gather(*tasks)
 
 
