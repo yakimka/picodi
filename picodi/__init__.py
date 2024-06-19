@@ -22,7 +22,6 @@ __all__ = [
     "dependency",
     "init_dependencies",
     "shutdown_dependencies",
-    "registry",
     "NullScope",
     "SingletonScope",
     "ContextVarScope",
@@ -30,4 +29,5 @@ __all__ = [
     "Scope",
     "ManualScope",
     "AutoScope",
+    "registry",
 ]

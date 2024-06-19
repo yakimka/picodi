@@ -1,20 +1,49 @@
-.. Picodi documentation master file, created by
-   sphinx-quickstart on Tue Jun 18 15:59:13 2024.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+Picodi
+======
 
-Welcome to Picodi's documentation!
-==================================
+Picodi simplifies Dependency Injection (DI) for Python applications.
+
+`DI <https://en.wikipedia.org/wiki/Dependency_injection>`_ is a design pattern
+that allows objects to receive their dependencies from
+an external source rather than creating them internally.
+
+This library supports both synchronous and asynchronous contexts,
+and offers features like scopes and lifecycle management.
+
+Picodi is inspired by FastAPI's dependency injection system, but it's
+a standalone library that can be used in any Python application.
+
+Key Features
+------------
+
+- 🌟 Simple and lightweight
+- 📦 Zero dependencies
+- ⏱️ Supports both sync and async contexts
+- 🔄 Lifecycle management
+- 🔍 Type hints support
+- 🐍 Python & PyPy 3.10+ support
+- 🚀 Works well with `FastAPI <https://fastapi.tiangolo.com/>`_
 
 .. toctree::
-   :maxdepth: 2
+   :hidden:
    :caption: Contents:
 
+   quickstart
+   scopes
+   overriding
+   fastapi
+   knownissues
 
+.. toctree::
+    :hidden:
+    :caption: Indices and tables
 
-Indices and tables
-==================
+    genindex
+    picodi
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+.. toctree::
+    :hidden:
+    :caption: Project links
+
+    GitHub <https://github.com/yakimka/picodi>
+    PyPI <https://pypi.org/project/picodi/>

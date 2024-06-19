@@ -14,7 +14,16 @@ sys.path.insert(0, os.path.abspath("../"))
 project = "Picodi"
 copyright = "2024, yakimka"
 author = "yakimka"
-release = "0.16.0"
+
+with open("../pyproject.toml") as f:
+    for line in f:
+        if line.startswith("version"):
+            version = line.split("=")[1].strip().strip('"')
+            break
+    else:
+        raise ValueError("Version not found in pyproject.toml")
+
+release = version
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -41,13 +50,15 @@ html_static_path = ["_static"]
 
 
 signatures_for_replace = {
-    "picodi._scopes.AutoScope": "AutoScope",
-    "picodi._scopes.ContextVarScope": "ContextVarScope",
-    "picodi._scopes.ManualScope": "ManualScope",
-    "picodi._scopes.NullScope": "NullScope",
-    "picodi._scopes.ScopeType": "ScopeType",
-    "picodi._scopes.Scope": "Scope",
-    "picodi._scopes.SingletonScope": "SingletonScope",
+    "~picodi._scopes.AutoScope": "AutoScope",
+    "~picodi._scopes.ContextVarScope": "ContextVarScope",
+    "~picodi._scopes.ManualScope": "ManualScope",
+    "~picodi._scopes.NullScope": "NullScope",
+    "~picodi._scopes.ScopeType": "ScopeType",
+    "~picodi._scopes.Scope": "Scope",
+    "~picodi._scopes.SingletonScope": "SingletonScope",
+    "<class 'picodi._scopes.ManualScope'>": "ManualScope",
+    "<class 'picodi._scopes.NullScope'>": "NullScope",
 }
 
 

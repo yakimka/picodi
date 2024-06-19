@@ -6,6 +6,10 @@ We follow [Semantic Versions](https://semver.org/).
 
 -
 
+## Version 0.17.0
+
+- Updated docstrings
+
 ## Version 0.16.0
 
 - Added `ignore_manual_init` option to `dependency` decorator

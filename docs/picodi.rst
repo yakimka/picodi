@@ -1,4 +1,4 @@
-picodi package
+Module Index
 ==============
 
 Module contents
@@ -9,6 +9,13 @@ Module contents
    :no-undoc-members:
    :show-inheritance:
 
+.. autodata:: picodi.registry
+    :no-value:
+
+    .. automethod:: picodi.registry.override
+    .. automethod:: picodi.registry.clear_overrides
+    .. automethod:: picodi.registry.clear
+
 Submodules
 ----------
 
@@ -17,9 +24,13 @@ picodi.helpers module
 
 .. automodule:: picodi.helpers
    :members:
-   :undoc-members:
+   :no-undoc-members:
    :show-inheritance:
-   :special-members: __call__,__enter__,__exit__,__aenter__,__aexit__
+
+.. autofunction:: picodi.helpers.lifespan
+
+    .. automethod:: picodi.helpers.lifespan.sync
+    .. automethod:: picodi.helpers.lifespan.async_
 
 picodi.support module
 ---------------------

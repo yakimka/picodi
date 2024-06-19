@@ -10,7 +10,7 @@ Thank you for considering contributing to Picodi! Below are some guidelines to h
 3. If you are adding new functionality, add tests for it.
 4. Run tests with `make test`.
 5. Run linters with `make lint`.
-6. If you are making changes to the documentation, run `make test-docs` to make sure that examples in the documentation are correct.
+6. If you are making changes to the readme or documentation, run `make test-docs` and `make docs`.
 
 ## Reporting Issues
 
