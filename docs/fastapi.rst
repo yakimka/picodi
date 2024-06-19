@@ -13,8 +13,7 @@ you can use ``Depends`` with :func:`picodi.Provide`.
 
 .. code-block:: python
 
-    # fastapi_di.py
-    from fastapi import FastAPI, Depends
+    from fastapi import Depends, FastAPI
     from picodi import Provide, inject
 
     app = FastAPI()
@@ -30,8 +29,10 @@ you can use ``Depends`` with :func:`picodi.Provide`.
     async def read_root(redis: str = Depends(Provide(get_redis_connection))):
         return {"redis": redis}
 
-    # uvicorn fastapi_di:app --reload
 
+    # uvicorn fastapi_di:app --reload
+    # curl http://localhost:8000/
+    # Output: {"redis":"http://redis:8080"}
 
 Combining Picodi with FastAPI dependency injection system
 ----------------------------------------------------------
@@ -44,14 +45,15 @@ So you can combine Picodi with FastAPI dependency injection system.
 
     # picodi_deps.py
     import abc
+    from dataclasses import dataclass
 
-    from picodi import Provide, inject
-
-    logger = logging.getLogger(__name__)
+    from picodi import inject
 
 
+    @dataclass
     class User:
-        ...
+        id: str
+        nickname: str
 
 
     class IUserRepository(abc.ABC):
@@ -60,10 +62,14 @@ So you can combine Picodi with FastAPI dependency injection system.
             pass
 
 
+    class DummyUserRepository(IUserRepository):
+        async def get_user_by_nickname(self, nickname: str) -> User | None:
+            return User(id="1", nickname=nickname)
+
+
     @inject
     def get_user_repository() -> IUserRepository:
-        ...
-
+        return DummyUserRepository()
 
 .. code-block:: python
 
@@ -94,14 +100,11 @@ So you can combine Picodi with FastAPI dependency injection system.
 .. code-block:: python
 
     # fastapi_app.py
-    import picodi
     from fastapi import Depends, FastAPI
     from pydantic import BaseModel
 
     from fastapi_deps import get_current_user
     from picodi_deps import User
-
-    logging.basicConfig(level=logging.INFO)
 
     app = FastAPI()
 
@@ -117,4 +120,7 @@ So you can combine Picodi with FastAPI dependency injection system.
     def whoami(current_user: User = Depends(get_current_user)) -> UserResp:
         return UserResp(id=current_user.id, nickname=current_user.nickname)
 
+
     # uvicorn fastapi_app:app --reload
+    # curl http://localhost:8000/whoami -u "It\'s me Mario:password"
+    # Output: {"id":"1","nickname":"It\\'s me Mario"}%
