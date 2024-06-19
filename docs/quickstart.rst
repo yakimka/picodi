@@ -44,7 +44,6 @@ the :func:`picodi.inject` decorator and the :func:`picodi.Provide` marker.
     assert my_function() == 42
     assert MyClass().meaning_of_life == 42
 
-
 ``my_function`` and ``MyClass`` will be injected with the ``simple_function`` dependency.
 
 You can tell that the ``my_function`` is a function without required arguments so
@@ -62,7 +61,6 @@ another function or class.
 
 
     assert another_function() == 42
-
 
 So if dependency is just a function, you can use closures to parametrize dependencies
 or use them as a factory.

@@ -14,7 +14,8 @@ with the ``scope_class`` argument. Example:
 
 .. code-block:: python
 
-    from picodi import dependency, SingletonScope
+    from picodi import SingletonScope, dependency
+
 
     @dependency(scope_class=SingletonScope)
     def get_singleton():
@@ -87,20 +88,25 @@ scope you can inject it in sync code. Example:
 .. code-block:: python
 
     import asyncio
-    from picodi import dependency, SingletonScope, init_dependencies, Provide, inject
+
+    from picodi import Provide, SingletonScope, dependency, init_dependencies, inject
+
 
     @dependency(scope_class=SingletonScope)
     async def get_async_dependency():
         return "from async"
 
+
     @inject
     def my_sync_service(async_dep=Provide(get_async_dependency)):
         return async_dep
+
 
     async def main():
         await init_dependencies()  # Try to comment this line and see what happens
 
         print(my_sync_service())
+
 
     asyncio.run(main())
     # Output: "from async"
@@ -116,13 +122,15 @@ If you want to skip manual initialization of your dependency you can use the
 
 .. code-block:: python
 
-    from picodi import dependency, SingletonScope, init_dependencies
+    from picodi import SingletonScope, dependency, init_dependencies
+
 
     # Try to set `ignore_manual_init` to `False` and see what happens
     @dependency(scope_class=SingletonScope, ignore_manual_init=True)
     def get_dependency():
         print("This will not be printed")
         return "from async"
+
 
     init_dependencies()  # This will not initialize get_dependency
 
@@ -135,7 +143,8 @@ scopes selectively you can use the ``scope_class`` argument of these functions.
 
 .. code-block:: python
 
-    from picodi import init_dependencies, shutdown_dependencies, SingletonScope
+    from picodi import SingletonScope, init_dependencies, shutdown_dependencies
+
 
     init_dependencies(scope_class=SingletonScope)
     # Only SingletonScope dependencies will be initialized
@@ -149,14 +158,14 @@ will be ignored. If you want to manage multiple scopes, you can pass a tuple of 
 
 .. code-block:: python
 
-    from picodi import init_dependencies, shutdown_dependencies, SingletonScope, ContextVarScope
+    from picodi import ContextVarScope, SingletonScope, init_dependencies, shutdown_dependencies
+
 
     init_dependencies(scope_class=(SingletonScope, ContextVarScope))
     # SingletonScope and ContextVarScope dependencies will be initialized
 
     shutdown_dependencies(scope_class=(SingletonScope, ContextVarScope))
     # SingletonScope and ContextVarScope dependencies will be closed
-
 
 ``lifespan`` decorator
 -----------------------
@@ -166,23 +175,39 @@ It's convenient for using with workers or cli commands.
 
 .. code-block:: python
 
-    from picodi import dependency, SingletonScope, Provide
+    import asyncio
+
+    from picodi import Provide, SingletonScope, dependency, inject
     from picodi.helpers import lifespan
 
 
     @dependency(scope_class=SingletonScope)
     def get_singleton():
-        return object()
+        print("Creating singleton object")
+        yield object()
+        print("Destroying singleton object")
 
 
     @lifespan
     @inject
-    def main(dep = Provide(get_singleton)):
+    def main(dep=Provide(get_singleton)):
         print(dep)
+
+
+    main()
+    # Output: Creating singleton object
+    # Output: <object object at 0x100e53710>
+    # Output: Destroying singleton object
 
 
     # or async
     @lifespan
     @inject
-    async def main(dep = Provide(get_singleton)):
+    async def main(dep=Provide(get_singleton)):
         print(dep)
+
+
+    asyncio.run(main())
+    # Output: Creating singleton object
+    # Output: <object object at 0x100e53710>
+    # Output: Destroying singleton object
