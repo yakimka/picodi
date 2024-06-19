@@ -17,7 +17,7 @@ Dependencies
 Dependency in terms of Picodi is an any function without required arguments.
 So this simple function is a Picodi dependency:
 
-.. code-block:: python
+.. testcode::
 
     def simple_function() -> int:
         return 42
@@ -25,7 +25,7 @@ So this simple function is a Picodi dependency:
 You can inject this dependency into your function or class by using
 the :func:`picodi.inject` decorator and the :func:`picodi.Provide` marker.
 
-.. code-block:: python
+.. testcode::
 
     from picodi import Provide, inject
 
@@ -50,7 +50,7 @@ You can tell that the ``my_function`` is a function without required arguments s
 it can also be a dependency. And you are right! You can inject ``my_function`` into
 another function or class.
 
-.. code-block:: python
+.. testcode::
 
     from picodi import Provide, inject
 
@@ -65,7 +65,7 @@ another function or class.
 So if dependency is just a function, you can use closures to parametrize dependencies
 or use them as a factory.
 
-.. code-block:: python
+.. testcode::
 
     from picodi import Provide, inject
 
@@ -90,7 +90,7 @@ Returning a values from dependencies is not enough. Sometimes you need not only 
 initialize dependency but also to clean it up. For this purpose, you can use
 functions that yield value.
 
-.. code-block:: python
+.. testcode::
 
     from picodi import Provide, inject
 
@@ -116,10 +116,14 @@ functions that yield value.
     assert read_file() == "Hello, World!"
     # Output: File closed
 
+.. testoutput::
+
+    File closed
+
 Manually calling ``close`` method on the file object is not necessary in this case,
 you can use context manager to handle it.
 
-.. code-block:: python
+.. testcode::
 
     from picodi import Provide, inject
 
@@ -142,7 +146,7 @@ you can use async functions.
 
 Some examples of async dependencies:
 
-.. code-block:: python
+.. testcode::
 
     import asyncio
 
@@ -167,3 +171,7 @@ Some examples of async dependencies:
 
 
     assert asyncio.run(async_function()) == 84
+
+.. testoutput::
+
+    Async dependency closed

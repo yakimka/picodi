@@ -120,7 +120,7 @@ Skipping manual initialization
 If you want to skip manual initialization of your dependency you can use the
 ``ignore_manual_init`` argument of the :func:`picodi.dependency` decorator.
 
-.. code-block:: python
+.. testcode::
 
     from picodi import SingletonScope, dependency, init_dependencies
 
@@ -141,7 +141,7 @@ By default :func:`picodi.init_dependencies` and :func:`picodi.shutdown_dependenc
 will initialize and close all dependencies with manual scopes. If you want to manage
 scopes selectively you can use the ``scope_class`` argument of these functions.
 
-.. code-block:: python
+.. testcode::
 
     from picodi import SingletonScope, init_dependencies, shutdown_dependencies
 
@@ -156,7 +156,7 @@ In the example above, only dependencies with the ``SingletonScope`` scope will b
 ``ContextVarScope`` scoped dependencies or dependencies with user-defined scopes
 will be ignored. If you want to manage multiple scopes, you can pass a tuple of scopes.
 
-.. code-block:: python
+.. testcode::
 
     from picodi import ContextVarScope, SingletonScope, init_dependencies, shutdown_dependencies
 
@@ -173,7 +173,7 @@ will be ignored. If you want to manage multiple scopes, you can pass a tuple of 
 You can use the :func:`picodi.helpers.lifespan` decorator manage lifecycle of your dependencies.
 It's convenient for using with workers or cli commands.
 
-.. code-block:: python
+.. testcode::
 
     import asyncio
 
@@ -184,7 +184,7 @@ It's convenient for using with workers or cli commands.
     @dependency(scope_class=SingletonScope)
     def get_singleton():
         print("Creating singleton object")
-        yield object()
+        yield "singleton"
         print("Destroying singleton object")
 
 
@@ -196,7 +196,7 @@ It's convenient for using with workers or cli commands.
 
     main()
     # Output: Creating singleton object
-    # Output: <object object at 0x100e53710>
+    # Output: singleton
     # Output: Destroying singleton object
 
 
@@ -209,5 +209,14 @@ It's convenient for using with workers or cli commands.
 
     asyncio.run(main())
     # Output: Creating singleton object
-    # Output: <object object at 0x100e53710>
+    # Output: singleton
     # Output: Destroying singleton object
+
+.. testoutput::
+
+    Creating singleton object
+    singleton
+    Destroying singleton object
+    Creating singleton object
+    singleton
+    Destroying singleton object

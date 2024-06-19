@@ -395,6 +395,8 @@ def shutdown_dependencies(
         for klass, instance in _scopes.items()
         if issubclass(klass, scope_class)
     ]
+    if all(isinstance(task, NullAwaitable) for task in tasks):
+        return NullAwaitable()
     return asyncio.gather(*tasks)
 
 

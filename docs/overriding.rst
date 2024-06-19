@@ -4,7 +4,7 @@ Overriding Dependencies
 You can override dependencies at runtime. This is important for testing and useful
 for implementing "abstract" dependencies.
 
-.. code-block:: python
+.. testcode::
 
     import pytest
 
@@ -29,7 +29,7 @@ for implementing "abstract" dependencies.
 
 You can also use :func:`picodi.registry.override` as a regular method call.
 
-.. code-block:: python
+.. testcode::
 
     from picodi import registry
 
@@ -50,7 +50,7 @@ Abstract Dependencies
 "Abstract" dependencies can be used to provide a default implementation for a dependency,
 which can be overridden at runtime. This is useful for reusing dependencies in different contexts.
 
-.. code-block:: python
+.. testcode::
 
     from picodi import Provide, inject, registry
 
@@ -70,14 +70,18 @@ which can be overridden at runtime. This is useful for reusing dependencies in d
 
 
     print(my_service())
-    # Output: {"my": "settings"}
+    # Output: {'my': 'settings'}
+
+.. testoutput::
+
+    {'my': 'settings'}
 
 Clearing Overrides
 ------------------
 
 To clear a specific override, you can pass None as the new dependency.
 
-.. code-block:: python
+.. testcode::
 
     from picodi import registry
 
@@ -86,7 +90,7 @@ To clear a specific override, you can pass None as the new dependency.
 
 To clear all overrides, you can use :func:`picodi.registry.clear_overrides`.
 
-.. code-block:: python
+.. testcode::
 
     from picodi import registry
 

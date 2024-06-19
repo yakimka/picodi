@@ -36,7 +36,7 @@ and you are using :class:`picodi.ManualScope` scoped dependencies.
 To fix this, you need to close all resources after the test finishes.
 Add ``await shutdown_dependencies()`` at the end of your tests.
 
-.. code-block:: python
+.. testcode::
 
     import picodi
     import pytest

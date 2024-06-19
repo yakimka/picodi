@@ -11,7 +11,7 @@ Using Picodi dependencies with FastAPI
 If you want to use Picody dependency in FastAPI view functions,
 you can use ``Depends`` with :func:`picodi.Provide`.
 
-.. code-block:: python
+.. testcode::
 
     from fastapi import Depends, FastAPI
     from picodi import Provide, inject
