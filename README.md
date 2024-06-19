@@ -4,6 +4,7 @@
 [![Codecov](https://codecov.io/gh/yakimka/picodi/branch/main/graph/badge.svg)](https://codecov.io/gh/yakimka/picodi)
 [![PyPI - Version](https://img.shields.io/pypi/v/picodi.svg)](https://pypi.org/project/picodi/)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/picodi)
+[![Documentation Status](https://readthedocs.org/projects/picodi/badge/?version=stable)](https://picodi.readthedocs.io/en/stable/?badge=stable)
 
 Picodi simplifies Dependency Injection (DI) for Python applications.
 [DI](https://en.wikipedia.org/wiki/Dependency_injection) is a design pattern
