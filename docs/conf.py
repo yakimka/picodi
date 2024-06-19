@@ -14,7 +14,16 @@ sys.path.insert(0, os.path.abspath("../"))
 project = "Picodi"
 copyright = "2024, yakimka"
 author = "yakimka"
-release = "0.16.0"
+
+with open("../pyproject.toml") as f:
+    for line in f:
+        if line.startswith("version"):
+            version = line.split("=")[1].strip().strip('"')
+            break
+    else:
+        raise ValueError("Version not found in pyproject.toml")
+
+release = version
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
