@@ -21,6 +21,7 @@ and offers features like lifecycle management.
 - [Installation](#installation)
 - [Features](#features)
 - [Quick Start](#quick-start)
+- [FastAPi Integration](#fastapi-integration)
 - [Known Issues](#known-issues)
 - [License](#license)
 - [Contributing](#contributing)
