@@ -89,11 +89,44 @@ T = TypeVar("T")
 P = ParamSpec("P")
 
 
-class Lifespan:
+class _Lifespan:
     """
-    Lifespan manager for dependencies.
+    Lifecycle manager for dependencies.
 
-    Don't instantiate this class directly. Use the :attr:`lifespan` instance instead.
+    Example
+    -------
+    .. code-block:: python
+
+        from picodi.helpers import lifespan
+
+
+        @lifespan
+        def main():
+            ...
+
+        @lifespan
+        async def async_main():
+            ...
+
+        with lifespan():
+            ...
+
+        async with lifespan():
+            ...
+
+        @lifespan.sync()
+        def main():
+            ...
+
+        @lifespan.async_()
+        async def async_main():
+            ...
+
+        with lifespan.sync():
+            ...
+
+        async with lifespan.async_():
+            ...
     """
 
     @overload
@@ -187,42 +220,4 @@ class Lifespan:
             await picodi.shutdown_dependencies(scope_class)  # noqa: ASYNC102
 
 
-lifespan = Lifespan()
-"""
-lifespan: An instance of `Lifespan` class to manage dependencies lifecycle.
-
-Example
--------
-.. code-block:: python
-
-    from picodi.helpers import lifespan
-
-
-    @lifespan
-    def main():
-        ...
-
-    @lifespan
-    async def async_main():
-        ...
-
-    with lifespan():
-        ...
-
-    async with lifespan():
-        ...
-
-    @lifespan.sync()
-    def main():
-        ...
-
-    @lifespan.async_()
-    async def async_main():
-        ...
-
-    with lifespan.sync():
-        ...
-
-    async with lifespan.async_():
-        ...
-"""
+lifespan = _Lifespan()

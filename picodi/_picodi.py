@@ -94,6 +94,10 @@ class InternalRegistry:
 
 
 class Registry:
+    """
+    Manages dependencies and overrides.
+    """
+
     def __init__(
         self, storage: RegistryStorage, internal_registry: InternalRegistry
     ) -> None:
@@ -109,17 +113,24 @@ class Registry:
         Override a dependency with a new one. It can be used as a decorator,
         as a context manager or as a regular method call. New dependency will be
         added to the registry.
-        Examples:
-        ```
-        @registry.override(get_settings)
-        def real_settings():
-            return {"real": "settings"}
 
-        with registry.override(get_settings, real_settings):
-            ...
+        :param dependency: dependency to override
+        :param new_dependency: new dependency to use. If explicitly set to `None`,
+            it will remove the override.
 
-        registry.override(get_settings, real_settings)
-        registry.override(get_settings, None)  # clear override
+        Examples
+        --------
+        .. code-block:: python
+
+            @registry.override(get_settings)
+            def real_settings():
+                return {"real": "settings"}
+
+            with registry.override(get_settings, real_settings):
+                ...
+
+            registry.override(get_settings, real_settings)
+            registry.override(get_settings, None)  # clear override
         """
 
         def decorator(override_to: DependencyCallable) -> DependencyCallable:
@@ -148,21 +159,21 @@ class Registry:
 
         return manage_context()
 
-    def clear(self) -> None:
-        """
-        Clear the registry. It will remove all dependencies and overrides.
-        This method will not close any dependencies. So you need to manually call
-        `shutdown_dependencies` before this method.
-        """
-        with self._storage.lock:
-            self._storage.deps.clear()
-            self._storage.overrides.clear()
-
     def clear_overrides(self) -> None:
         """
         Clear all overrides. It will remove all overrides, but keep the dependencies.
         """
         with self._storage.lock:
+            self._storage.overrides.clear()
+
+    def clear(self) -> None:
+        """
+        Clear the registry. It will remove all dependencies and overrides.
+        This method will not close any dependencies. So you need to manually call
+        :func:`shutdown_dependencies` before this method.
+        """
+        with self._storage.lock:
+            self._storage.deps.clear()
             self._storage.overrides.clear()
 
 
