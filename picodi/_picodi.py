@@ -115,7 +115,7 @@ class Registry:
         added to the registry.
 
         :param dependency: dependency to override
-        :param new_dependency: new dependency to use. If explicitly set to `None`,
+        :param new_dependency: new dependency to use. If explicitly set to ``None``,
             it will remove the override.
 
         Examples
@@ -196,7 +196,7 @@ def Provide(dependency: DependencyCallable, /) -> Any:  # noqa: N802
 
     :param dependency: can be a regular function or a generator with one yield.
         If the dependency is a generator, it will be used as a context manager.
-        Any generator that is valid for `contextlib.contextmanager`
+        Any generator that is valid for :func:`python:contextlib.contextmanager`
         can be used as a dependency.
 
     Example

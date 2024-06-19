@@ -41,16 +41,16 @@ class Scope:
 
     def enter_inject(self) -> None:
         """
-        Called when entering an `inject` decorator.
+        Called when entering an :func:`inject` decorator.
         """
         return None
 
     def exit_inject(self, exc: BaseException | None = None) -> None:  # noqa: U100
         """
-        Called before exiting a `inject` decorator.
+        Called before exiting a :func:`inject` decorator.
 
-        `shutdown` will be called after this, e.g.:
-            `exit_inject` -> `shutdown` -> `inject` wrapper returns.
+        ``shutdown`` will be called after this, e.g.:
+            ``exit_inject`` -> ``shutdown`` -> ``inject`` wrapper returns.
         """
         return None
 
@@ -98,9 +98,9 @@ class ManualScope(Scope):
     """
     ManualScope is a scope that requires manual closing of dependencies.
     For example :class:`SingletonScope` or :class:`ContextVarScope` use this scope.
-    You can close dependencies by calling `shutdown_dependencies()` or
-    `shutdown_dependencies(scope_class=MyCustomScope)`
-    for shutdown only dependencies that uses `MyCustomScope` scope.
+    You can close dependencies by calling :func:`shutdown_dependencies` or
+    ``shutdown_dependencies(scope_class=MyCustomScope)``
+    for shutdown only dependencies that uses :class:`MyCustomScope` scope.
 
     Don't use this class directly.
     Inherit this class for your custom scope.
@@ -111,7 +111,7 @@ class ManualScope(Scope):
     ) -> Awaitable:
         """
         Hook for entering yielded dependencies context. Will be called automatically
-        by picodi or when you call `init_dependencies`.
+        by picodi or when you call :func:`init_dependencies`.
 
         :param context_manager: context manager created from yield dependency.
         """

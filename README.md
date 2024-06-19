@@ -21,7 +21,7 @@ and offers features like lifecycle management.
 - [Installation](#installation)
 - [Features](#features)
 - [Quick Start](#quick-start)
-- [FastAPi Integration](#fastapi-integration)
+- [FastAPI Integration](#fastapi-integration)
 - [Known Issues](#known-issues)
 - [License](#license)
 - [Contributing](#contributing)
@@ -153,7 +153,7 @@ if __name__ == "__main__":
 # Title: Galaxy NGC 474: Cosmic Blender
 ```
 
-## FastAPi Integration
+## FastAPI Integration
 
 [Read on the documentation site](https://picodi.readthedocs.io/en/stable/fastapi.html)
 
