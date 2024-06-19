@@ -156,3 +156,33 @@ will be ignored. If you want to manage multiple scopes, you can pass a tuple of 
 
     shutdown_dependencies(scope_class=(SingletonScope, ContextVarScope))
     # SingletonScope and ContextVarScope dependencies will be closed
+
+
+``lifespan`` decorator
+-----------------------
+
+You can use the :func:`picodi.helpers.lifespan` decorator manage lifecycle of your dependencies.
+It's convenient for using with workers or cli commands.
+
+.. code-block:: python
+
+    from picodi import dependency, SingletonScope, Provide
+    from picodi.helpers import lifespan
+
+
+    @dependency(scope_class=SingletonScope)
+    def get_singleton():
+        return object()
+
+
+    @lifespan
+    @inject
+    def main(dep = Provide(get_singleton)):
+        print(dep)
+
+
+    # or async
+    @lifespan
+    @inject
+    async def main(dep = Provide(get_singleton)):
+        print(dep)
