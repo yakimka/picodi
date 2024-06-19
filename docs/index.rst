@@ -30,6 +30,7 @@ Key Features
 
    quickstart
    scopes
+   overriding
    knownissues
 
 .. toctree::
