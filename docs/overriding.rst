@@ -42,7 +42,7 @@ You can also use :func:`picodi.registry.override` as a regular method call.
         return {"test": "settings"}
 
 
-    registry.override(get_abc_setting, get_setting)
+    registry.override(get_settings, get_test_setting)
 
 Abstract Dependencies
 ---------------------
