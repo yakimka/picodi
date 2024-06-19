@@ -29,17 +29,21 @@ the :func:`picodi.inject` decorator and the :func:`picodi.Provide` marker.
 
     from picodi import Provide, inject
 
+
     @inject
-    def my_function(meaning_of_life: int = Provide(simple_function)) -> None:
+    def my_function(meaning_of_life: int = Provide(simple_function)) -> int:
         return meaning_of_life
+
 
     class MyClass:
         @inject
         def __init__(self, meaning_of_life: int = Provide(simple_function)) -> None:
             self.meaning_of_life = meaning_of_life
 
+
     assert my_function() == 42
     assert MyClass().meaning_of_life == 42
+
 
 ``my_function`` and ``MyClass`` will be injected with the ``simple_function`` dependency.
 
@@ -51,9 +55,11 @@ another function or class.
 
     from picodi import Provide, inject
 
+
     @inject
-    def another_function(meaning_of_life: int = Provide(my_function)) -> None:
+    def another_function(meaning_of_life: int = Provide(my_function)) -> int:
         return meaning_of_life
+
 
     assert another_function() == 42
 
@@ -65,14 +71,17 @@ or use them as a factory.
 
     from picodi import Provide, inject
 
+
     def get_number(number: int):
         def number_factory() -> int:
             return number
         return number_factory
 
+
     @inject
-    def my_function(value: int = Provide(factory(42))) -> int:
+    def my_function(value: int = Provide(get_number(42))) -> int:
         return value
+
 
     assert my_function() == 42
 
@@ -87,6 +96,7 @@ functions that yield value.
 
     from picodi import Provide, inject
 
+
     def get_file_for_read():
         file = open("file.txt")
         try:
@@ -95,12 +105,15 @@ functions that yield value.
             file.close()
             print("File closed")
 
+
     @inject
     def read_file(file=Provide(get_file_for_read)) -> str:
         return file.read()
 
+
     with open("file.txt", "w") as file:
         file.write("Hello, World!")
+
 
     assert read_file() == "Hello, World!"
     # Output: File closed
@@ -111,6 +124,7 @@ you can use context manager to handle it.
 .. code-block:: python
 
     from picodi import Provide, inject
+
 
     def get_file_for_read():
         with open("file.txt") as file:
@@ -133,14 +147,18 @@ Some examples of async dependencies:
 .. code-block:: python
 
     import asyncio
+
     from picodi import Provide, inject
+
 
     async def simple_async_dependency() -> int:
         return 42
 
+
     async def yield_async_dependency():
         yield 42
         print("Async dependency closed")
+
 
     @inject
     async def async_function(
@@ -148,5 +166,6 @@ Some examples of async dependencies:
         yield_: int = Provide(yield_async_dependency),
     ) -> int:
         return simple + yield_
+
 
     assert asyncio.run(async_function()) == 84
