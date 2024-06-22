@@ -6,13 +6,22 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
+import inspect
+from collections.abc import AsyncGenerator, Callable, Generator
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    AsyncContextManager,
+    ContextManager,
+    ParamSpec,
+    TypeVar,
+    overload,
+)
 
 import picodi
 from picodi import ManualScope
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Callable, Generator
     from types import TracebackType
 
 sentinel = object()
@@ -239,7 +248,9 @@ class enter:  # noqa: N801
             raise TypeError("Async generator is not supported in sync context")
 
         if self._context_manager is None:
-            self._context_manager = contextmanager(lambda: self._gen)()  # type: ignore
+            self._context_manager = contextlib.contextmanager(
+                lambda: self._gen  # type: ignore
+            )()
         return self._context_manager.__enter__()  # type: ignore[union-attr]
 
     def __exit__(
@@ -260,7 +271,7 @@ class enter:  # noqa: N801
         if inspect.iscoroutine(gen):
             gen = await gen
         if self._context_manager is None:
-            self._context_manager = asynccontextmanager(lambda: gen)()
+            self._context_manager = contextlib.asynccontextmanager(lambda: gen)()
         return await self._context_manager.__aenter__()  # type: ignore[union-attr]
 
     async def __aexit__(

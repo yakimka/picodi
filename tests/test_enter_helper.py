@@ -1,20 +1,5 @@
-import pytest
-
 from picodi import Provide, inject
 from picodi.helpers import enter
-
-
-class Closeable:
-    def __init__(self):
-        self.closed = False
-
-    def close(self):
-        self.closed = True
-
-
-@pytest.fixture()
-def closeable():
-    return Closeable()
 
 
 def get_42():
@@ -28,9 +13,9 @@ def test_enter_sync_gen(closeable):
 
     with enter(gen()) as val:
         assert val == 42
-        assert closeable.closed is False
+        assert closeable.is_closed is False
 
-    assert closeable.closed is True
+    assert closeable.is_closed is True
 
 
 async def test_enter_async_gen(closeable):
@@ -40,9 +25,9 @@ async def test_enter_async_gen(closeable):
 
     async with enter(gen()) as val:
         assert val == 42
-        assert closeable.closed is False
+        assert closeable.is_closed is False
 
-    assert closeable.closed is True
+    assert closeable.is_closed is True
 
 
 def test_enter_injected_sync_gen(closeable):
@@ -53,9 +38,9 @@ def test_enter_injected_sync_gen(closeable):
 
     with enter(gen()) as val:
         assert val == 42
-        assert closeable.closed is False
+        assert closeable.is_closed is False
 
-    assert closeable.closed is True
+    assert closeable.is_closed is True
 
 
 async def test_enter_injected_async_gen(closeable):
@@ -66,6 +51,6 @@ async def test_enter_injected_async_gen(closeable):
 
     async with enter(gen()) as val:
         assert val == 42
-        assert closeable.closed is False
+        assert closeable.is_closed is False
 
-    assert closeable.closed is True
+    assert closeable.is_closed is True
