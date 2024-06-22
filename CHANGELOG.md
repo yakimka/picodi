@@ -6,6 +6,10 @@ We follow [Semantic Versions](https://semver.org/).
 
 -
 
+## Version 0.19.0
+
+- `ignore_manual_init` argument of `dependency` decorator now can be callable type
+
 ## Version 0.18.0
 
 - Added `helpers.enter` context manager for resolving dependencies in pytest fixtures
