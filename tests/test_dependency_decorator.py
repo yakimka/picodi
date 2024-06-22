@@ -114,3 +114,67 @@ async def test_can_optionally_ignore_manual_initialization_async():
 
     assert await service() == 42
     assert inited is True
+
+
+def test_can_optionally_ignore_manual_initialization_with_callable():
+    # Arrange
+    inited = False
+    callable_called = False
+
+    @inject
+    def callable_func(flag: bool = Provide(lambda: True)):
+        nonlocal callable_called
+        callable_called = True
+        return flag
+
+    @dependency(scope_class=SingletonScope, ignore_manual_init=callable_func)
+    def get_num():
+        nonlocal inited
+        inited = True
+        yield 42
+
+    @inject
+    def service(num: int = Provide(get_num)) -> int:
+        return num
+
+    # Act
+    init_dependencies()
+
+    # Assert
+    assert inited is False
+    assert callable_called is True
+
+    assert service() == 42
+    assert inited is True
+
+
+async def test_can_optionally_ignore_manual_initialization_with_callable_async():
+    # Arrange
+    inited = False
+    callable_called = False
+
+    @inject
+    def callable_func(flag: bool = Provide(lambda: True)):
+        nonlocal callable_called
+        callable_called = True
+        return flag
+
+    @dependency(scope_class=SingletonScope, ignore_manual_init=callable_func)
+    async def get_num():
+        nonlocal inited
+        inited = True
+        yield 42
+
+    @inject
+    async def service(num: int = Provide(get_num)) -> int:
+        return num
+
+    # Act
+    await init_dependencies()
+
+    # Assert
+    assert inited is False
+    assert callable_called is True
+
+    assert await service() == 42
+    assert inited is True
