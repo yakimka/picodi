@@ -22,7 +22,7 @@ from picodi import ManualScope
 from picodi.support import nullcontext
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Callable, Generator
+    from collections.abc import AsyncGenerator, Callable, Coroutine, Generator
     from types import TracebackType
 
 sentinel = object()
@@ -233,7 +233,29 @@ class _Lifespan:
 lifespan = _Lifespan()
 
 
-def enter(dependency: Callable[[], Any]) -> AsyncContextManager | ContextManager:
+@overload
+def enter(dependency: Callable[[], Generator[T, None, None]]) -> ContextManager[T]: ...
+
+
+@overload
+def enter(  # type: ignore[overload-overlap]
+    dependency: Callable[[], AsyncGenerator[T, None] | Coroutine[T, None, None]],
+) -> AsyncContextManager[T]: ...
+
+
+@overload
+def enter(dependency: Callable[[], T]) -> ContextManager[T]: ...
+
+
+def enter(
+    dependency: Callable[
+        [],
+        Coroutine[T, None, None]
+        | Generator[T, None, None]
+        | AsyncGenerator[T, None]
+        | T,
+    ],
+) -> AsyncContextManager[T] | ContextManager[T]:
     """
     Create a context manager from a dependency.
 
