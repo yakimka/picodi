@@ -6,6 +6,10 @@ We follow [Semantic Versions](https://semver.org/).
 
 -
 
+## Version 0.18.0
+
+- Added `helpers.enter` context manager for resolving dependencies in pytest fixtures
+
 ## Version 0.17.1
 
 - Fixed typehints

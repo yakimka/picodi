@@ -161,6 +161,24 @@ if __name__ == "__main__":
 
 [Read on the documentation site](https://picodi.readthedocs.io/en/stable/knownissues.html)
 
+#### `helpers.enter(gen)`
+
+Helper to use generator dependencies in a context manager. May be useful in some cases.
+Note that this helper is not needed for regular usage because it ignores the scope of the dependency,
+so resources will not be cached and will be closed after each usage.
+
+```python
+from picodi import helpers
+
+
+def get_db():
+    yield "db connection"
+
+
+with helpers.enter(get_db()) as db:
+    print("processing data in db:", db)
+```
+
 ## License
 
 [MIT](https://github.com/yakimka/picodi/blob/main/LICENSE)

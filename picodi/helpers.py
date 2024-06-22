@@ -6,13 +6,23 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
+import inspect
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    AsyncContextManager,
+    ContextManager,
+    ParamSpec,
+    TypeVar,
+    overload,
+)
 
 import picodi
 from picodi import ManualScope
+from picodi.support import nullcontext
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Callable, Generator
+    from collections.abc import AsyncGenerator, Callable, Coroutine, Generator
     from types import TracebackType
 
 sentinel = object()
@@ -221,3 +231,76 @@ class _Lifespan:
 
 
 lifespan = _Lifespan()
+
+
+@overload
+def enter(dependency: Callable[[], Generator[T, None, None]]) -> ContextManager[T]: ...
+
+
+@overload
+def enter(  # type: ignore[overload-overlap]
+    dependency: Callable[[], AsyncGenerator[T, None] | Coroutine[T, None, None]],
+) -> AsyncContextManager[T]: ...
+
+
+@overload
+def enter(dependency: Callable[[], T]) -> ContextManager[T]: ...
+
+
+def enter(
+    dependency: Callable[
+        [],
+        Coroutine[T, None, None]
+        | Generator[T, None, None]
+        | AsyncGenerator[T, None]
+        | T,
+    ],
+) -> AsyncContextManager[T] | ContextManager[T]:
+    """
+    Create a context manager from a dependency.
+
+    Don't use (or use carefully) in production code. This function is mostly for
+    cases when you can't use :func:`inject` decorator, for example in pytest fixtures.
+
+    :param dependency: dependency to create a context manager from.
+        Like with :func:`Provide` - don't call the dependency function here,
+        just pass it.
+    :return: sync or async context manager.
+
+    Example
+    -------
+
+    .. code-block:: python
+
+        from picodi.helpers import enter
+
+        def get_42():
+            yield 42
+
+        with enter(get_42) as val:
+            assert val == 42
+    """
+    result = dependency()
+
+    if inspect.isasyncgen(result):
+
+        @contextlib.asynccontextmanager
+        @picodi.inject
+        async def async_enter(
+            dep: Any = picodi.Provide(dependency),
+        ) -> AsyncGenerator[Any, None]:
+            yield dep
+
+        return async_enter()
+    if inspect.isgenerator(result):
+
+        @contextlib.contextmanager
+        @picodi.inject
+        def sync_enter(
+            dep: Any = picodi.Provide(dependency),
+        ) -> Generator[Any, None, None]:
+            yield dep
+
+        return sync_enter()
+
+    return nullcontext(result)
