@@ -1,4 +1,4 @@
-from picodi import Provide, inject
+from picodi import Provide, SingletonScope, dependency, inject
 from picodi.helpers import enter
 
 
@@ -11,7 +11,7 @@ def test_enter_sync_gen(closeable):
         yield 42
         closeable.close()
 
-    with enter(gen()) as val:
+    with enter(gen) as val:
         assert val == 42
         assert closeable.is_closed is False
 
@@ -23,7 +23,7 @@ async def test_enter_async_gen(closeable):
         yield 42
         closeable.close()
 
-    async with enter(gen()) as val:
+    async with enter(gen) as val:
         assert val == 42
         assert closeable.is_closed is False
 
@@ -36,7 +36,7 @@ def test_enter_injected_sync_gen(closeable):
         yield num
         closeable.close()
 
-    with enter(gen()) as val:
+    with enter(gen) as val:
         assert val == 42
         assert closeable.is_closed is False
 
@@ -49,8 +49,29 @@ async def test_enter_injected_async_gen(closeable):
         yield num
         closeable.close()
 
-    async with enter(gen()) as val:
+    async with enter(gen) as val:
         assert val == 42
         assert closeable.is_closed is False
 
     assert closeable.is_closed is True
+
+
+def test_singleton_sync_gen_not_closed(closeable):
+    @dependency(scope_class=SingletonScope)
+    def gen():
+        yield 42
+        closeable.close()
+
+    with enter(gen) as val:
+        assert val == 42
+        assert closeable.is_closed is False
+
+    assert closeable.is_closed is False
+
+
+def test_enter_regular_dependency():
+    def dep():
+        return 42
+
+    with enter(dep) as val:
+        assert val == 42
