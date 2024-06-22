@@ -19,6 +19,7 @@ from typing import (
 
 import picodi
 from picodi import ManualScope
+from picodi.support import nullcontext
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable, Generator
@@ -233,6 +234,30 @@ lifespan = _Lifespan()
 
 
 def enter(dependency: Callable[[], Any]) -> AsyncContextManager | ContextManager:
+    """
+    Create a context manager from a dependency.
+
+    Don't use (or use carefully) in production code. This function is mostly for
+    cases when you can't use :func:`inject` decorator, for example in pytest fixtures.
+
+    :param dependency: dependency to create a context manager from.
+        Like with :func:`Provide` - don't call the dependency function here,
+        just pass it.
+    :return: sync or async context manager.
+
+    Example
+    -------
+
+    .. code-block:: python
+
+        from picodi.helpers import enter
+
+        def get_42():
+            yield 42
+
+        with enter(get_42) as val:
+            assert val == 42
+    """
     result = dependency()
 
     if inspect.isasyncgen(result):
@@ -256,4 +281,4 @@ def enter(dependency: Callable[[], Any]) -> AsyncContextManager | ContextManager
 
         return sync_enter()
 
-    return contextlib.nullcontext(result)
+    return nullcontext(result)

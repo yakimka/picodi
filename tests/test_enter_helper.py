@@ -7,11 +7,11 @@ def get_42():
 
 
 def test_enter_sync_gen(closeable):
-    def gen():
+    def dep():
         yield 42
         closeable.close()
 
-    with enter(gen) as val:
+    with enter(dep) as val:
         assert val == 42
         assert closeable.is_closed is False
 
@@ -19,11 +19,11 @@ def test_enter_sync_gen(closeable):
 
 
 async def test_enter_async_gen(closeable):
-    async def gen():
+    async def dep():
         yield 42
         closeable.close()
 
-    async with enter(gen) as val:
+    async with enter(dep) as val:
         assert val == 42
         assert closeable.is_closed is False
 
@@ -32,11 +32,11 @@ async def test_enter_async_gen(closeable):
 
 def test_enter_injected_sync_gen(closeable):
     @inject
-    def gen(num: int = Provide(get_42)):
+    def dep(num: int = Provide(get_42)):
         yield num
         closeable.close()
 
-    with enter(gen) as val:
+    with enter(dep) as val:
         assert val == 42
         assert closeable.is_closed is False
 
@@ -45,11 +45,11 @@ def test_enter_injected_sync_gen(closeable):
 
 async def test_enter_injected_async_gen(closeable):
     @inject
-    async def gen(num: int = Provide(get_42)):
+    async def dep(num: int = Provide(get_42)):
         yield num
         closeable.close()
 
-    async with enter(gen) as val:
+    async with enter(dep) as val:
         assert val == 42
         assert closeable.is_closed is False
 
@@ -58,11 +58,11 @@ async def test_enter_injected_async_gen(closeable):
 
 def test_singleton_sync_gen_not_closed(closeable):
     @dependency(scope_class=SingletonScope)
-    def gen():
+    def dep():
         yield 42
         closeable.close()
 
-    with enter(gen) as val:
+    with enter(dep) as val:
         assert val == 42
         assert closeable.is_closed is False
 
@@ -74,4 +74,12 @@ def test_enter_regular_dependency():
         return 42
 
     with enter(dep) as val:
+        assert val == 42
+
+
+async def test_enter_regular_dependency_async():
+    async def dep():
+        return 42
+
+    async with enter(dep) as val:
         assert val == 42
