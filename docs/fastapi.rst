@@ -144,6 +144,56 @@ So you can combine Picodi with FastAPI dependency injection system.
     # curl http://localhost:8000/whoami -u "It\'s me Mario:password"
     # Output: {"id":"1","nickname":"It\\'s me Mario"}%
 
+Request-scoped dependencies
+---------------------------
+
+Picodi doesn't provide integrations for frameworks (at least for now), but you can
+create your own request-scoped dependencies using `ContextVarScope`.
+
+Create dependency with ``ContextVarScope`` scope (it will be our request-scoped dependency):
+
+.. testcode::
+
+    from picodi import ContextVarScope, dependency
+
+
+    @dependency(scope_class=ContextVarScope)
+    def get_request_scoped_cache() -> dict:
+        return {}
+
+Create middleware that will initialize and cleanup our request-scoped dependency:
+
+.. testcode::
+
+    from fastapi import FastAPI
+
+    import picodi
+
+    app = FastAPI()
+
+
+    @app.middleware("http")
+    async def manage_request_scoped_deps(request, call_next):
+        await picodi.init_dependencies(scope_class=picodi.ContextVarScope)
+        response = await call_next(request)
+        await picodi.shutdown_dependencies(scope_class=picodi.ContextVarScope)
+        return response
+
+Now you can use ``get_request_scoped_cache`` dependency that will be request-scoped.
+
+If you use ``ContextVarScope`` for another purpose, you can create your own scope class by
+subclassing ``ContextVarScope``.
+
+.. testcode::
+
+    from picodi import ContextVarScope
+
+
+    # Replace `ContextVarScope` with this class in previous examples
+    class FastAPIRequestScope(ContextVarScope):
+        pass
+
+
 Example FastAPI application with Picodi
 ----------------------------------------
 
