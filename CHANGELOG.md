@@ -4,7 +4,7 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
--
+- Fixed bug with contextvars when `init_dependencies` run in different context
 
 ## Version 0.19.0
 

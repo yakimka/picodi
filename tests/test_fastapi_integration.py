@@ -5,7 +5,14 @@ from fastapi import Depends, FastAPI
 from fastapi.exceptions import FastAPIError
 from fastapi.testclient import TestClient
 
-from picodi import Provide, inject
+from picodi import (
+    ContextVarScope,
+    Provide,
+    dependency,
+    init_dependencies,
+    inject,
+    shutdown_dependencies,
+)
 
 
 class MyNumber:
@@ -124,3 +131,63 @@ def test_resolve_annotated_dependency(app, client):
     response = client.get("/")
 
     assert response.json() == {"number": 42}
+
+
+def test_contextvar_scope_can_be_used_as_request_scope(app, client):
+    closing_counter = 0
+
+    @app.middleware("http")
+    async def manage_request_scoped_deps(request, call_next):
+        await init_dependencies(scope_class=ContextVarScope)
+        response = await call_next(request)
+        await shutdown_dependencies(scope_class=ContextVarScope)
+        return response
+
+    @dependency(scope_class=ContextVarScope)
+    def get_42():
+        yield 42
+        nonlocal closing_counter
+        closing_counter += 1
+
+    @app.get("/")
+    @inject
+    def root(
+        number1: int = Depends(Provide(get_42)), number2: int = Depends(Provide(get_42))
+    ):
+        return {"numbers": [number1, number2]}
+
+    response = client.get("/")
+    client.get("/")
+
+    assert closing_counter == 2
+    assert response.json() == {"numbers": [42, 42]}
+
+
+async def test_contextvar_scope_can_be_used_as_request_scope_async(app, client):
+    closing_counter = 0
+
+    @app.middleware("http")
+    async def manage_request_scoped_deps(request, call_next):
+        await init_dependencies(scope_class=ContextVarScope)
+        response = await call_next(request)
+        await shutdown_dependencies(scope_class=ContextVarScope)
+        return response
+
+    @dependency(scope_class=ContextVarScope)
+    async def get_42():
+        yield 42
+        nonlocal closing_counter
+        closing_counter += 1
+
+    @app.get("/")
+    @inject
+    async def root(
+        number1: int = Depends(Provide(get_42)), number2: int = Depends(Provide(get_42))
+    ):
+        return {"numbers": [number1, number2]}
+
+    response = client.get("/")
+    client.get("/")
+
+    assert closing_counter == 2
+    assert response.json() == {"numbers": [42, 42]}

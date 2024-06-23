@@ -376,7 +376,16 @@ def init_dependencies(
             async_deps.append(value)
 
     if async_deps:
-        return asyncio.gather(*async_deps)
+        # asyncio.gather runs coros in different tasks with different context
+        #   we can run them in current context with contextvars.copy_context()
+        #   but in this case `ContextVarScope` will save values in the wrong context.
+        #   So we fix it in dirty way by running all coros one by one until
+        #   come up with better solution.
+        async def init_all() -> None:
+            for dep in async_deps:
+                await dep
+
+        return init_all()
     return NullAwaitable()
 
 
