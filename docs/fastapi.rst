@@ -5,6 +5,25 @@ Picodi can be used with web frameworks like FastAPI, Django, Flask, etc.
 
 Here is an example of how to use Picodi with FastAPI dependency injection system.
 
+Why I need additional DI library when FastAPI already has DI system?
+---------------------------------------------------------------------
+
+FastAPI built-in dependency injection system lacks some features that Picodi provides.
+For example, Picodi allows you to use scopes for your dependencies.
+This is useful when you want to manage the lifecycle of your dependencies.
+Another drawback of FastAPI dependency injection system is that it works only
+in FastAPI views. If you want to use dependencies in other parts of your
+application, like workers, cli commands, etc., you need to pass them manually.
+
+Picodi is a general-purpose dependency injection library that works with any
+Python application. It provides a more flexible dependencies.
+You can use it with FastAPI, Django, Flask, or any other Python framework.
+
+Picodi doesn't replace FastAPI DI system entirely. You can
+use Picodi for dependencies that require more control over their lifecycle
+or\\and can be used outside of FastAPI views. You still can use FastAPI DI
+for parsing request data, query parameters, headers, etc.
+
 Using Picodi dependencies with FastAPI
 --------------------------------------
 
@@ -124,3 +143,11 @@ So you can combine Picodi with FastAPI dependency injection system.
     # uvicorn fastapi_app:app --reload
     # curl http://localhost:8000/whoami -u "It\'s me Mario:password"
     # Output: {"id":"1","nickname":"It\\'s me Mario"}%
+
+Example FastAPI application with Picodi
+----------------------------------------
+
+Here is an more complex example of a FastAPI application
+that uses Picodi for dependency injection:
+
+`Picodi FastAPI Example <https://github.com/yakimka/picodi-fastapi-example>`_
