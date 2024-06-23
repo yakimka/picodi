@@ -193,7 +193,7 @@ class ContextVarScope(ManualScope):
         try:
             var = self._store[key]
         except KeyError:
-            var = self._store[key] = ContextVar("picodi_FastApiScope_var")
+            var = self._store[key] = ContextVar("picodi_ContextVarScope_var")
         var.set(value)
 
     def enter(self, context_manager: AsyncContextManager | ContextManager) -> Awaitable:
