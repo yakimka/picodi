@@ -351,7 +351,7 @@ def dependency(
 
 
 def init_dependencies(
-    scope_class: type[ManualScope] | tuple[type[ManualScope], ...] = ManualScope,
+    scope_class: type[ManualScope] | tuple[type[ManualScope], ...] = SingletonScope,
 ) -> Awaitable:
     """
     Call this function to close dependencies. Usually, it should be called
@@ -364,6 +364,7 @@ def init_dependencies(
 
     :param scope_class: you can specify the scope class to initialize. If passed -
         only dependencies of this scope class and its subclasses will be initialized.
+        By default, it will initialize only :class:`SingletonScope` and its subclasses.
     """
     async_deps = []
     filtered_providers = _internal_registry.filter(
@@ -390,7 +391,7 @@ def init_dependencies(
 
 
 def shutdown_dependencies(
-    scope_class: type[ManualScope] | tuple[type[ManualScope], ...] = ManualScope,
+    scope_class: type[ManualScope] | tuple[type[ManualScope], ...] = SingletonScope,
 ) -> Awaitable:
     """
     Call this function to close dependencies. Usually, it should be called
@@ -403,6 +404,7 @@ def shutdown_dependencies(
 
     :param scope_class: you can specify the scope class to shutdown. If passed -
         only dependencies of this scope class and its subclasses will be shutdown.
+        By default, it will shutdown only :class:`SingletonScope` and its subclasses.
     """
     tasks = [
         instance.shutdown()  # type: ignore[call-arg]

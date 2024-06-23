@@ -18,7 +18,7 @@ from typing import (
 )
 
 import picodi
-from picodi import ManualScope
+from picodi import ManualScope, SingletonScope
 from picodi.support import nullcontext
 
 if TYPE_CHECKING:
@@ -195,7 +195,7 @@ class _Lifespan:
     @contextlib.contextmanager
     def sync(
         self,
-        scope_class: type[ManualScope] | tuple[type[ManualScope]] = ManualScope,
+        scope_class: type[ManualScope] | tuple[type[ManualScope]] = SingletonScope,
     ) -> Generator[None, None, None]:
         """
         :attr:`lifespan` can automatically detect if the decorated function
@@ -213,7 +213,7 @@ class _Lifespan:
     @contextlib.asynccontextmanager
     async def async_(
         self,
-        scope_class: type[ManualScope] | tuple[type[ManualScope]] = ManualScope,
+        scope_class: type[ManualScope] | tuple[type[ManualScope]] = SingletonScope,
     ) -> AsyncGenerator[None, None]:
         """
         :attr:`lifespan` can automatically detect if the decorated function

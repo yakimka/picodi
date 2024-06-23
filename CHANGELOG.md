@@ -5,6 +5,8 @@ We follow [Semantic Versions](https://semver.org/).
 ## Version next
 
 - Fixed bug with contextvars when `init_dependencies` run in different context
+- Breaking changes:
+  - Changed default scope class of `init_dependencies` and `shutdown_dependencies` to `SingletonScope
 
 ## Version 0.19.0
 

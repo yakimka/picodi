@@ -89,7 +89,7 @@ async def test_closing_dependencies_in_one_task_dont_affect_another(make_closeab
         await task1()
         assert closeable.is_closed is False
         async with lock:
-            await shutdown_dependencies()
+            await shutdown_dependencies(scope_class=ContextVarScope)
             first_shutdown.set()
 
     async def manager2(closeable):
@@ -97,7 +97,7 @@ async def test_closing_dependencies_in_one_task_dont_affect_another(make_closeab
             await task2()
             await first_shutdown.wait()
         assert closeable.is_closed is False
-        await shutdown_dependencies()
+        await shutdown_dependencies(scope_class=ContextVarScope)
 
     closeable_task1, closeable_task2 = closeables
     await asyncio.gather(
