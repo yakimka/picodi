@@ -46,4 +46,5 @@ Key Features
     :caption: Project links
 
     GitHub <https://github.com/yakimka/picodi>
-    PyPI <https://pypi.org/project/picodi/>
+    PyPI <https://pypi.org/project/picodi>
+    FastAPI example project <https://github.com/yakimka/picodi-fastapi-example>
