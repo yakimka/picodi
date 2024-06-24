@@ -419,7 +419,9 @@ def shutdown_dependencies(
 class Dependency(NamedTuple):
     call: DependencyCallable
 
-    def __call__(self) -> Dependency:
+    # This is not needed for Picodi, it's used only for FastAPI
+    #   for using :func:`Provide` as ``Depends`` argument.
+    async def __call__(self) -> Dependency:
         return self
 
     def get_provider(self) -> Provider:
