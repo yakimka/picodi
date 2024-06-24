@@ -213,7 +213,7 @@ def Provide(dependency: DependencyCallable, /) -> Any:  # noqa: N802
         def my_service(db: str = Provide(get_db)):
             assert db == "db connection"
     """
-    return Dependency(dependency)
+    return Depends(dependency)
 
 
 def inject(fn: Callable[P, T]) -> Callable[P, T]:
@@ -235,7 +235,7 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
             ...
     """
     signature = inspect.signature(fn)
-    dependant = _build_depend_tree(Dependency(fn))
+    dependant = _build_depend_tree(Depends(fn))
 
     if inspect.iscoroutinefunction(fn) or inspect.isasyncgenfunction(fn):
 
@@ -416,12 +416,12 @@ def shutdown_dependencies(
     return asyncio.gather(*tasks)
 
 
-class Dependency(NamedTuple):
+class Depends(NamedTuple):
     call: DependencyCallable
 
     # This is not needed for Picodi, it's used only for FastAPI
     #   for using :func:`Provide` as ``Depends`` argument.
-    async def __call__(self) -> Dependency:
+    async def __call__(self) -> Depends:
         return self
 
     def get_provider(self) -> Provider:
@@ -508,7 +508,7 @@ def _wrapper_helper(
     bound.apply_defaults()
     arguments: dict[str, Any] = bound.arguments
     scopes: list[ScopeType] = []
-    is_root = any(isinstance(value, Dependency) for value in bound.arguments.values())
+    is_root = any(isinstance(value, Depends) for value in bound.arguments.values())
 
     if is_root:
         arguments, scopes = _resolve_dependencies(dependant, exit_stack)
@@ -601,12 +601,12 @@ def _resolve_dependencies(
 
 @dataclass
 class DependNode:
-    value: Dependency
+    value: Depends
     name: str | None
     dependencies: list[DependNode]
 
 
-def _build_depend_tree(dependency: Dependency, name: str | None = None) -> DependNode:
+def _build_depend_tree(dependency: Depends, name: str | None = None) -> DependNode:
     signature = inspect.signature(dependency.call)
     dependencies = []
     for name_, value in signature.parameters.items():
@@ -618,8 +618,8 @@ def _build_depend_tree(dependency: Dependency, name: str | None = None) -> Depen
 
 def _extract_and_register_dependency_from_parameter(
     value: inspect.Parameter,
-) -> Dependency | None:
-    if isinstance(value.default, Dependency):
+) -> Depends | None:
+    if isinstance(value.default, Depends):
         _internal_registry.add(value.default.call)
         return value.default
 
@@ -633,7 +633,7 @@ def _extract_and_register_dependency_from_parameter(
             if isinstance(metadata, fastapi.params.Depends):
                 fastapi_dependency = metadata.dependency
                 break
-    if isinstance(fastapi_dependency, Dependency):
+    if isinstance(fastapi_dependency, Depends):
         _internal_registry.add(fastapi_dependency.call)  # type: ignore[unreachable]
         return fastapi_dependency
     return None

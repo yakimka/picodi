@@ -4,7 +4,8 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
--
+- Make `Dependency.__call__` async because FastAPI always runs Picodi deps in threadpool even if they are async
+- Rename `Dependency` to `Depends` [internal change]
 
 ## Version 0.20.0
 
