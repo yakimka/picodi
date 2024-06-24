@@ -15,7 +15,17 @@ from collections.abc import (
 )
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import asdict, dataclass
-from typing import Annotated, Any, NamedTuple, ParamSpec, TypeVar, cast, get_origin
+from typing import (
+    Annotated,
+    Any,
+    ContextManager,
+    NamedTuple,
+    ParamSpec,
+    TypeVar,
+    cast,
+    get_origin,
+    overload,
+)
 
 from picodi._scopes import (
     AutoScope,
@@ -104,11 +114,21 @@ class Registry:
         self._storage = storage
         self._internal_registry = internal_registry
 
+    @overload
+    def override(
+        self, dependency: DependencyCallable, new_dependency: None = None
+    ) -> Callable[[DependencyCallable], DependencyCallable]: ...
+
+    @overload
+    def override(
+        self, dependency: DependencyCallable, new_dependency: DependencyCallable
+    ) -> ContextManager[None]: ...
+
     def override(
         self,
         dependency: DependencyCallable,
         new_dependency: DependencyCallable | None | object = unset,
-    ) -> Callable[[DependencyCallable], DependencyCallable]:
+    ) -> Callable[[DependencyCallable], DependencyCallable] | ContextManager[None]:
         """
         Override a dependency with a new one. It can be used as a decorator,
         as a context manager or as a regular method call. New dependency will be

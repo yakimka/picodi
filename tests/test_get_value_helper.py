@@ -76,4 +76,4 @@ def test_cant_pass_empty_path():
 
 def test_path_must_be_string():
     with pytest.raises(TypeError, match="Path must be a string"):
-        get_value(42, SN(foo=42))
+        get_value(42, SN(foo=42))  # type: ignore[arg-type]
