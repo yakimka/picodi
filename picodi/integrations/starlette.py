@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import picodi
 
 if TYPE_CHECKING:
-    from starlette.types import ASGIApp, Message, Receive, Scope, Send
+    from starlette.types import ASGIApp, Receive, Scope, Send
 
 
 class RequestScope(picodi.ContextVarScope):
@@ -18,11 +18,13 @@ class PicodiRequestScopeMiddleware:
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
-            return await self.app(scope, receive, send)
+            await self.app(scope, receive, send)
+            return
 
-        async def send_wrapper(message: Message) -> None:
-            await picodi.init_dependencies(scope_class=RequestScope)
-            await send(message)
-            await picodi.shutdown_dependencies(scope_class=RequestScope)
-
-        await self.app(scope, receive, send_wrapper)
+        await picodi.init_dependencies(scope_class=RequestScope)
+        try:
+            await self.app(scope, receive, send)
+        finally:
+            await picodi.shutdown_dependencies(  # noqa: ASYNC102
+                scope_class=RequestScope
+            )
