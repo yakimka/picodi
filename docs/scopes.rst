@@ -46,10 +46,12 @@ ContextVarScope
 
 The :class:`picodi.ContextVarScope` uses the :class:`python:contextvars.ContextVar`
 to store the instance. The instance is created when the
-dependency is first injected or :func:`picodi.init_dependencies` is called.
+dependency is first injected or :func:`picodi.init_dependencies` with
+``scope_class=ContextVarScope`` is called.
 
 ``ContextVarScope`` is the manual scope, so you need to call :func:`picodi.shutdown_dependencies`
-manually. Usually you want to call it when your asyncio task or thread is shutting down.
+with ``scope_class=ContextVarScope`` manually.
+Usually you want to call it when your asyncio task or thread is shutting down.
 
 Useful for storing the instance in the context of the current asyncio task or thread.
 Can be used to create request-scoped dependencies in web applications.
@@ -71,9 +73,20 @@ You can use it as a reference:
 Lifecycle of manual scopes
 --------------------------
 
-You can manually initialize your dependencies by calling :func:`picodi.init_dependencies`.
-It will initialize all dependencies with manual scopes. This can be useful when you want to
-initialize your dependencies on application startup.
+You can manually initialize your dependencies by calling :func:`picodi.init_dependencies`
+with the ``scope_class`` argument. Example:
+
+.. code-block:: python
+
+    from picodi import ManualScope, SingletonScope, init_dependencies
+
+
+    # Initialize all SingletonScope dependencies.
+    #   This is default behavior if you don't pass `scope_class` argument.
+    init_dependencies(scope_class=SingletonScope)
+
+    # Initialize all dependencies with manual scopes.
+    init_dependencies(scope_class=ManualScope)
 
 Also, you need to manually close your dependencies by calling
 :func:`picodi.shutdown_dependencies`.
@@ -138,23 +151,23 @@ Managing scopes selectively
 ***************************
 
 By default :func:`picodi.init_dependencies` and :func:`picodi.shutdown_dependencies`
-will initialize and close all dependencies with manual scopes. If you want to manage
-scopes selectively you can use the ``scope_class`` argument of these functions.
+will initialize and close all dependencies with :class:`SingletonScope`.
+If you want to manage scopes selectively you can use the
+``scope_class`` argument of these functions.
 
 .. testcode::
 
-    from picodi import SingletonScope, init_dependencies, shutdown_dependencies
+    from picodi import ContextVarScope, init_dependencies, shutdown_dependencies
 
 
-    init_dependencies(scope_class=SingletonScope)
-    # Only SingletonScope dependencies will be initialized
+    init_dependencies(scope_class=ContextVarScope)
+    # Only ContextVarScope dependencies will be initialized
 
-    shutdown_dependencies(scope_class=SingletonScope)
-    # Only SingletonScope dependencies will be closed
+    shutdown_dependencies(scope_class=ContextVarScope)
+    # Only ContextVarScope dependencies will be closed
 
-In the example above, only dependencies with the ``SingletonScope`` scope will be managed,
-``ContextVarScope`` scoped dependencies or dependencies with user-defined scopes
-will be ignored. If you want to manage multiple scopes, you can pass a tuple of scopes.
+If you want to manage multiple scopes, you can pass a tuple of scopes or a
+parent class.
 
 .. testcode::
 
