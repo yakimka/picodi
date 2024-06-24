@@ -83,7 +83,7 @@ asyncio_mode = "auto"
 addopts = [
   # don't add --cov because it breaks pycharm debugger
   #   just add it manaually when needed to cmd args
-  "--import-mode=importlib",
+  "--import-mode=append",
   "--strict-markers",
   "--strict-config",
   "--tb=short",
@@ -104,7 +104,6 @@ exclude_lines = [
 
 [tool.mypy]
 files = ["."]
-exclude = ["tests/"]
 ##
 # mypy configurations: https://mypy.readthedocs.io/en/latest/config_file.html
 allow_redefinition = false
@@ -112,9 +111,9 @@ check_untyped_defs = true
 disallow_any_explicit = false
 disallow_any_generics = false
 disallow_incomplete_defs = true
-disallow_untyped_calls = 'true'
-disallow_untyped_decorators = 'true'
-disallow_untyped_defs = 'true'
+disallow_untyped_calls = true
+disallow_untyped_decorators = true
+disallow_untyped_defs = true
 ignore_errors = false
 ignore_missing_imports = true
 implicit_reexport = false
@@ -127,3 +126,10 @@ warn_redundant_casts = true
 warn_unreachable = true
 warn_unused_configs = true
 warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+disallow_untyped_decorators = false
+disallow_untyped_defs = false

@@ -50,7 +50,7 @@ async def test_closing_one_dependency_dont_affect_another(make_closeable):
         assert closeable.is_closed is False
         await task1()
         assert closeable.is_closed is True
-        first_dep_close.set()
+        first_dep_close.set()  # type: ignore[unreachable]
 
     async def manager2(closeable):
         assert closeable.is_closed is False
