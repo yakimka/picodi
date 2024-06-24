@@ -312,7 +312,7 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
     else:
 
         @functools.wraps(fn)
-        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+        def fun_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             gen = _wrapper_helper(
                 dependant,
                 signature,
@@ -330,6 +330,18 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
                 except StopIteration:
                     break
             return cast("T", result)
+
+        wrapper = fun_wrapper
+
+        if inspect.isgeneratorfunction(fn):
+
+            @functools.wraps(fn)
+            def gen_wrapper(
+                *args: P.args, **kwargs: P.kwargs
+            ) -> Generator[T, None, None]:
+                yield from fun_wrapper(*args, **kwargs)  # type: ignore[misc]
+
+            wrapper = gen_wrapper  # type: ignore[assignment]
 
     return wrapper  # type: ignore[return-value]
 
