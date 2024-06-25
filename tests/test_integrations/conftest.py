@@ -10,6 +10,11 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture()
-async def asgi_client(app) -> AsyncGenerator[AsyncClient, None]:
-    async with AsyncClient(app=app, base_url="http://test") as client:
+async def asgi_client(app, test_server_url) -> AsyncGenerator[AsyncClient, None]:
+    async with AsyncClient(app=app, base_url=test_server_url) as client:
         yield client
+
+
+@pytest.fixture()
+def test_server_url():
+    return "http://test"

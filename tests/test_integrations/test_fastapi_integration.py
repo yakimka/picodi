@@ -156,7 +156,7 @@ async def test_middleware_init_and_shutdown_request_scope(app, asgi_client):
 
     @app.get("/")
     @inject
-    def root():
+    async def root():
         assert init_counter == 1
         assert closing_counter == 0
         return {}
