@@ -1,12 +1,43 @@
-FastAPI Integration
-===================
+Integrations
+=============
 
 Picodi can be used with web frameworks like FastAPI, Django, Flask, etc.
 
-Here is an example of how to use Picodi with FastAPI dependency injection system.
+Below you can find some useful integrations that Picodi provides.
+
+Starlette
+---------
+
+If you want to use request scope in your Starlette application,
+you can use the ``RequestScopeMiddleware`` middleware.
+
+.. testcode::
+
+    from starlette.applications import Starlette
+    from starlette.middleware import Middleware
+    from picodi.integrations.starlette import RequestScopeMiddleware
+
+    app = Starlette(middleware=[Middleware(RequestScopeMiddleware)])
+
+
+And now you can use the ``RequestScope`` scope for your dependencies.
+Dependencies will be resolved in the context of the current request.
+
+.. testcode::
+
+    from picodi import dependency
+    from picodi.integrations.starlette import RequestScope
+
+    @dependency(scope_class=RequestScope)
+    def get_cache():
+        ...
+
+
+FastAPI
+-------
 
 Why I need additional DI library when FastAPI already has DI system?
----------------------------------------------------------------------
+*********************************************************************
 
 FastAPI built-in dependency injection system lacks some features that Picodi provides.
 For example, Picodi allows you to use scopes for your dependencies.
@@ -25,15 +56,16 @@ or\\and can be used outside of FastAPI views. You still can use FastAPI DI
 for parsing request data, query parameters, headers, etc.
 
 Using Picodi dependencies with FastAPI
---------------------------------------
+**************************************
 
 If you want to use Picody dependency in FastAPI view functions,
-you can use ``Depends`` with :func:`picodi.Provide`.
+you can use ``Depends`` with :func:`picodi.integrations.fastapi.Provide`.
 
 .. testcode::
 
     from fastapi import Depends, FastAPI
-    from picodi import Provide, inject
+    from picodi import inject
+    from picodi.integrations.fastapi import Provide
 
     app = FastAPI()
 
@@ -53,8 +85,18 @@ you can use ``Depends`` with :func:`picodi.Provide`.
     # curl http://localhost:8000/
     # Output: {"redis":"http://redis:8080"}
 
+``Depends(Provide(...))`` looks a bit verbose, if you want to make it shorter,
+you can use a ``wrap`` parameter of :func:`picodi.integrations.fastapi.Provide`.
+
+.. testcode::
+
+    @app.get("/")
+    @inject
+    async def read_root(redis: str = Provide(get_redis_connection, wrap=True)):
+        ...
+
 Combining Picodi with FastAPI dependency injection system
-----------------------------------------------------------
+*********************************************************
 
 Dependency injection system in FastAPI is very powerful and handy,
 specially when you use it for parsing request data, query parameters, headers, etc.
@@ -97,7 +139,8 @@ So you can combine Picodi with FastAPI dependency injection system.
 
     from fastapi import Depends, HTTPException
     from fastapi.security import HTTPBasic, HTTPBasicCredentials
-    from picodi import Provide, inject
+    from picodi import inject
+    from picodi.integrations.fastapi import Provide
 
     from picodi_deps import IUserRepository, User, get_user_repository
 
@@ -144,58 +187,29 @@ So you can combine Picodi with FastAPI dependency injection system.
     # curl http://localhost:8000/whoami -u "It\'s me Mario:password"
     # Output: {"id":"1","nickname":"It\\'s me Mario"}%
 
+
 Request-scoped dependencies
----------------------------
+***************************
 
-Picodi doesn't provide integrations for frameworks (at least for now), but you can
-create your own request-scoped dependencies using `ContextVarScope`.
-
-Create dependency with ``ContextVarScope`` scope (it will be our request-scoped dependency):
-
-.. testcode::
-
-    from picodi import ContextVarScope, dependency
-
-
-    @dependency(scope_class=ContextVarScope)
-    def get_request_scoped_cache() -> dict:
-        return {}
-
-Create middleware that will initialize and cleanup our request-scoped dependency:
+Like with Starlette you can use request scope in FastAPI application.
 
 .. testcode::
 
     from fastapi import FastAPI
+    from picodi import dependency
+    from picodi.integrations.fastapi import RequestScope, RequestScopeMiddleware
 
-    import picodi
+    app = FastAPI(middleware=[Middleware(RequestScopeMiddleware)])
 
-    app = FastAPI()
-
-
-    @app.middleware("http")
-    async def manage_request_scoped_deps(request, call_next):
-        await picodi.init_dependencies(scope_class=picodi.ContextVarScope)
-        response = await call_next(request)
-        await picodi.shutdown_dependencies(scope_class=picodi.ContextVarScope)
-        return response
-
-Now you can use ``get_request_scoped_cache`` dependency that will be request-scoped.
-
-If you use ``ContextVarScope`` for another purpose, you can create your own scope class by
-subclassing ``ContextVarScope``.
-
-.. testcode::
-
-    from picodi import ContextVarScope
-
-
-    # Replace `ContextVarScope` with this class in previous examples
-    class FastAPIRequestScope(ContextVarScope):
-        pass
-
+    # Now you can use the RequestScope scope for your dependencies.
+    # Dependencies will be initialized once per request
+    #   and closed after the request is finished.
+    @dependency(scope_class=RequestScope)
+    def get_cache():
+        ...
 
 Example FastAPI application with Picodi
-----------------------------------------
+****************************************
 
 Here is an more complex example of a FastAPI application
 that uses Picodi for dependency injection:
