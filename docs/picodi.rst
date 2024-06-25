@@ -19,6 +19,25 @@ Module contents
 Submodules
 ----------
 
+picodi.integrations module
+--------------------------
+
+Starlette
+*********
+
+.. automodule:: picodi.integrations.starlette
+   :members:
+   :no-undoc-members:
+   :show-inheritance:
+
+FastAPI
+*******
+
+.. automodule:: picodi.integrations.fastapi
+   :members:
+   :no-undoc-members:
+   :show-inheritance:
+
 picodi.helpers module
 ---------------------
 

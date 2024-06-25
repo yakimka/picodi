@@ -9,10 +9,18 @@ if TYPE_CHECKING:
 
 
 class RequestScope(picodi.ContextVarScope):
-    pass
+    """
+    Request scope. Values cached in contextvars.
+    Dependencies initialized on request start and closed on request end.
+    """
 
 
 class RequestScopeMiddleware:
+    """
+    Starlette Pure ASGI Middleware for automatically
+    initializing and closing request scoped dependencies
+    """
+
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
 
