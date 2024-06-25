@@ -6,7 +6,7 @@ from starlette.responses import PlainTextResponse
 from starlette.routing import Route
 
 from picodi import dependency
-from picodi.integrations.starlette import PicodiRequestScopeMiddleware, RequestScope
+from picodi.integrations.starlette import RequestScope, RequestScopeMiddleware
 
 
 @pytest.fixture()
@@ -19,7 +19,7 @@ def app():
 
     return Starlette(
         routes=[Route("/sync-view", sync_view), Route("/async-view", async_view)],
-        middleware=[Middleware(PicodiRequestScopeMiddleware)],
+        middleware=[Middleware(RequestScopeMiddleware)],
     )
 
 

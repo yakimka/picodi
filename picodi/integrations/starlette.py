@@ -12,7 +12,7 @@ class RequestScope(picodi.ContextVarScope):
     pass
 
 
-class PicodiRequestScopeMiddleware:
+class RequestScopeMiddleware:
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
 

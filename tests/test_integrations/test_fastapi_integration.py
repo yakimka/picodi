@@ -6,17 +6,13 @@ from fastapi.exceptions import FastAPIError
 from starlette.middleware import Middleware
 
 from picodi import dependency, inject
-from picodi.integrations.fastapi import (
-    PicodiRequestScopeMiddleware,
-    Provide,
-    RequestScope,
-)
+from picodi.integrations.fastapi import Provide, RequestScope, RequestScopeMiddleware
 
 
 @pytest.fixture()
 def app():
     return FastAPI(
-        middleware=[Middleware(PicodiRequestScopeMiddleware)],
+        middleware=[Middleware(RequestScopeMiddleware)],
     )
 
 
