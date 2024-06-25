@@ -51,6 +51,20 @@ async def test_resolve_dependency_in_route(app, asgi_client):
     assert response.json() == {"number": 42}
 
 
+async def test_resolve_dependency_in_route_only_with_provide(app, asgi_client):
+    def get_42() -> MyNumber:
+        return MyNumber(42)
+
+    @app.get("/")
+    @inject
+    def root(number: MyNumber = Provide(get_42, wrap=True)):
+        return {"number": number.value}
+
+    response = await asgi_client.get("/")
+
+    assert response.json() == {"number": 42}
+
+
 async def test_resolve_dependency_in_route_async(app, asgi_client):
     async def get_42() -> MyNumber:
         return MyNumber(42)

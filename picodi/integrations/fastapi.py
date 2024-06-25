@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from fastapi import Depends as FastAPIDepends
+
 from picodi._picodi import DependencyCallable, Depends
 from picodi.integrations.starlette import PicodiRequestScopeMiddleware, RequestScope
 
@@ -17,5 +19,8 @@ class DependsAsyncCallable(Depends):
         return self
 
 
-def Provide(dependency: DependencyCallable, /) -> Any:  # noqa: N802
-    return DependsAsyncCallable(dependency)
+def Provide(  # noqa: N802
+    dependency: DependencyCallable, /, *, wrap: bool = False
+) -> Any:
+    dep = DependsAsyncCallable(dependency)
+    return FastAPIDepends(dep) if wrap else dep  # type: ignore[arg-type]
