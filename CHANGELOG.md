@@ -8,6 +8,9 @@ We follow [Semantic Versions](https://semver.org/).
 - Rename `Dependency` to `Depends` [internal change]
 - Run mypy in tests directory
 - Make sure that `inject` doesn't change type of wrapped function (e.g. coroutinefunction, generatorfunction, etc.)
+- Return value of `Provide` no longer has `__call__` method
+- Added Starlette integration
+- Added FastAPI integration
 
 ## Version 0.20.0
 
