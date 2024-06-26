@@ -154,9 +154,9 @@ if __name__ == "__main__":
 # Title: Galaxy NGC 474: Cosmic Blender
 ```
 
-## FastAPI Integration
+## Integration with other libraries
 
-[Read on the documentation site](https://picodi.readthedocs.io/en/stable/fastapi.html)
+[Read on the documentation site](https://picodi.readthedocs.io/en/stable/integrations.html)
 
 ## FastAPI Example Project
 

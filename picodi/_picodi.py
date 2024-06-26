@@ -451,14 +451,6 @@ def shutdown_dependencies(
 class Depends(NamedTuple):
     call: DependencyCallable
 
-    # This is not needed for Picodi, it's used only for FastAPI
-    #   for using :func:`Provide` as ``Depends`` argument.
-    async def __call__(self) -> Depends:
-        return self
-
-    def get_provider(self) -> Provider:
-        return _internal_registry.get(self.call)
-
 
 @dataclass(frozen=True)
 class Provider:
@@ -622,7 +614,7 @@ def _resolve_dependencies(
     if dependant.name is None:
         return resolved_dependencies, list(scopes)
 
-    provider = dependant.value.get_provider()
+    provider = _internal_registry.get(dependant.value.call)
     value = LazyResolver(
         provider=provider,
         kwargs=resolved_dependencies,

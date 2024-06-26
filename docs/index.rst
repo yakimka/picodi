@@ -31,7 +31,7 @@ Key Features
    quickstart
    scopes
    overriding
-   fastapi
+   integrations
    knownissues
 
 .. toctree::
