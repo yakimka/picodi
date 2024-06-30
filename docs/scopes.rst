@@ -171,7 +171,12 @@ parent class.
 
 .. testcode::
 
-    from picodi import ContextVarScope, SingletonScope, init_dependencies, shutdown_dependencies
+    from picodi import (
+        ContextVarScope,
+        SingletonScope,
+        init_dependencies,
+        shutdown_dependencies,
+    )
 
 
     init_dependencies(scope_class=(SingletonScope, ContextVarScope))

@@ -111,12 +111,12 @@ class _Lifespan:
 
 
         @lifespan
-        def main():
-            ...
+        def main(): ...
+
 
         @lifespan
-        async def async_main():
-            ...
+        async def async_main(): ...
+
 
         with lifespan():
             ...
@@ -124,13 +124,14 @@ class _Lifespan:
         async with lifespan():
             ...
 
+
         @lifespan.sync()
-        def main():
-            ...
+        def main(): ...
+
 
         @lifespan.async_()
-        async def async_main():
-            ...
+        async def async_main(): ...
+
 
         with lifespan.sync():
             ...
@@ -274,8 +275,10 @@ def enter(
 
         from picodi.helpers import enter
 
+
         def get_42():
             yield 42
+
 
         with enter(get_42) as val:
             assert val == 42

@@ -13,8 +13,7 @@ for implementing "abstract" dependencies.
 
     # Dependency that return app settings
     #   usually it should be implemented in the app
-    def get_settings():
-        ...
+    def get_settings(): ...
 
 
     def get_test_settings():
@@ -34,8 +33,7 @@ You can also use :func:`picodi.registry.override` as a regular method call.
     from picodi import registry
 
 
-    def get_settings() -> dict:
-        ...
+    def get_settings() -> dict: ...
 
 
     def get_test_setting():

@@ -59,7 +59,14 @@ from typing import Any
 
 import httpx
 
-from picodi import Provide, init_dependencies, inject, dependency, SingletonScope, shutdown_dependencies
+from picodi import (
+    Provide,
+    init_dependencies,
+    inject,
+    dependency,
+    SingletonScope,
+    shutdown_dependencies,
+)
 from picodi.helpers import get_value
 
 

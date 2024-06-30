@@ -146,6 +146,7 @@ class Registry:
             def real_settings():
                 return {"real": "settings"}
 
+
             with registry.override(get_settings, real_settings):
                 ...
 
@@ -225,9 +226,11 @@ def Provide(dependency: DependencyCallable, /) -> Any:  # noqa: N802
 
         from picodi import Provide, inject
 
+
         def get_db():
             yield "db connection"
             print("closing db connection")
+
 
         @inject
         def my_service(db: str = Provide(get_db)):
@@ -250,9 +253,9 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
 
         from picodi import inject, Provide
 
+
         @inject
-        def my_service(db=Provide(some_dependency_func)):
-            ...
+        def my_service(db=Provide(some_dependency_func)): ...
     """
     signature = inspect.signature(fn)
     dependant = _build_depend_tree(Depends(fn))

@@ -28,9 +28,9 @@ Dependencies will be resolved in the context of the current request.
     from picodi import dependency
     from picodi.integrations.starlette import RequestScope
 
+
     @dependency(scope_class=RequestScope)
-    def get_cache():
-        ...
+    def get_cache(): ...
 
 
 FastAPI
@@ -92,8 +92,7 @@ you can use a ``wrap`` parameter of :func:`picodi.integrations.fastapi.Provide`.
 
     @app.get("/")
     @inject
-    async def read_root(redis: str = Provide(get_redis_connection, wrap=True)):
-        ...
+    async def read_root(redis: str = Provide(get_redis_connection, wrap=True)): ...
 
 Combining Picodi with FastAPI dependency injection system
 *********************************************************
@@ -201,12 +200,12 @@ Like with Starlette you can use request scope in FastAPI application.
 
     app = FastAPI(middleware=[Middleware(RequestScopeMiddleware)])
 
+
     # Now you can use the RequestScope scope for your dependencies.
     # Dependencies will be initialized once per request
     #   and closed after the request is finished.
     @dependency(scope_class=RequestScope)
-    def get_cache():
-        ...
+    def get_cache(): ...
 
 Example FastAPI application with Picodi
 ****************************************
