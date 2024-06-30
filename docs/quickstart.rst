@@ -73,6 +73,7 @@ or use them as a factory.
     def get_number(number: int):
         def number_factory() -> int:
             return number
+
         return number_factory
 
 
@@ -132,6 +133,7 @@ you can use context manager to handle it.
         with open("file.txt") as file:
             yield file
             print("File closed")
+
 
     # The rest of the code is the same as in the previous example
 
