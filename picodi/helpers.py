@@ -24,7 +24,6 @@ from picodi.support import nullcontext
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable, Coroutine, Generator
-    from types import TracebackType
 
 sentinel = object()
 
@@ -119,13 +118,6 @@ class _Lifespan:
         async def async_main(): ...
 
 
-        with lifespan():
-            ...
-
-        async with lifespan():
-            ...
-
-
         @lifespan.sync()
         def main(): ...
 
@@ -150,11 +142,21 @@ class _Lifespan:
         """
 
     @overload
-    def __call__(self, fn: None = None) -> Callable[[Callable[P, T]], Callable[P, T]]:
+    def __call__(
+        self,
+        fn: None = None,
+        *,
+        scope_class: type[ManualScope] | tuple[type[ManualScope]] = SingletonScope,
+        skip_init: bool = False,
+    ) -> Callable[[Callable[P, T]], Callable[P, T]]:
         """Sync and Async context manager"""
 
     def __call__(
-        self, fn: Callable[P, T] | None = None
+        self,
+        fn: Callable[P, T] | None = None,
+        *,
+        scope_class: type[ManualScope] | tuple[type[ManualScope]] = SingletonScope,
+        skip_init: bool = False,
     ) -> Callable[P, T] | Callable[[Callable[P, T]], Callable[P, T]]:
         """
         Can be used as a decorator or a context manager.
@@ -163,41 +165,32 @@ class _Lifespan:
         :return: decorated function or context manager.
         """
         if fn is None:
-            return self
+
+            def decorator(fn: Callable[P, T]) -> Callable[P, T]:
+                return self._wrap_fn(fn, scope_class=scope_class, skip_init=skip_init)
+
+            return decorator
+        return self._wrap_fn(fn, scope_class=scope_class, skip_init=skip_init)
+
+    def _wrap_fn(
+        self,
+        fn: Callable[P, T],
+        *,
+        scope_class: type[ManualScope] | tuple[type[ManualScope]] = SingletonScope,
+        skip_init: bool = False,
+    ) -> Callable[P, T]:
         if asyncio.iscoroutinefunction(fn):
-            return self.async_()(fn)  # type: ignore[return-value]
-        return self.sync()(fn)
-
-    def __enter__(self) -> None:
-        """Initialize sync dependencies."""
-        picodi.init_dependencies()
-
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc: BaseException | None,
-        traceback: TracebackType | None,
-    ) -> None:
-        """Shutdown sync dependencies."""
-        picodi.shutdown_dependencies()
-
-    async def __aenter__(self) -> None:
-        """Initialize async dependencies."""
-        await picodi.init_dependencies()
-
-    async def __aexit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc: BaseException | None,
-        traceback: TracebackType | None,
-    ) -> None:
-        """Shutdown async dependencies."""
-        await picodi.shutdown_dependencies()
+            return self.async_(  # type: ignore[return-value]
+                scope_class=scope_class, skip_init=skip_init
+            )(fn)
+        return self.sync(scope_class=scope_class, skip_init=skip_init)(fn)
 
     @contextlib.contextmanager
     def sync(
         self,
+        *,
         scope_class: type[ManualScope] | tuple[type[ManualScope]] = SingletonScope,
+        skip_init: bool = False,
     ) -> Generator[None, None, None]:
         """
         :attr:`lifespan` can automatically detect if the decorated function
@@ -205,8 +198,10 @@ class _Lifespan:
 
         :param scope_class: optionally you can specify the scope class
             to initialize and shutdown.
+        :param skip_init: if True, don't initialize dependencies.
         """
-        picodi.init_dependencies(scope_class)
+        if not skip_init:
+            picodi.init_dependencies(scope_class)
         try:
             yield
         finally:
@@ -215,7 +210,9 @@ class _Lifespan:
     @contextlib.asynccontextmanager
     async def async_(
         self,
+        *,
         scope_class: type[ManualScope] | tuple[type[ManualScope]] = SingletonScope,
+        skip_init: bool = False,
     ) -> AsyncGenerator[None, None]:
         """
         :attr:`lifespan` can automatically detect if the decorated function
@@ -224,8 +221,10 @@ class _Lifespan:
 
         :param scope_class: optionally you can specify the scope class
             to initialize and shutdown.
+        :param skip_init: if True, don't initialize dependencies.
         """
-        await picodi.init_dependencies(scope_class)
+        if not skip_init:
+            await picodi.init_dependencies(scope_class)
         try:
             yield
         finally:
