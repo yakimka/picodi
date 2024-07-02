@@ -22,14 +22,10 @@ class IntMultiplierScope(AutoScope):
 
     def get(self, key: Hashable) -> Any:
         result = self._store[key]
-        if isinstance(result, int):
-            return result * 2
-        return result
+        return result * 2
 
     def set(self, key: Hashable, value: Any) -> None:
-        if isinstance(value, int):
-            value = value * 2
-        self._store[key] = value
+        self._store[key] = value * 2
 
 
 def test_can_add_user_defined_scope():

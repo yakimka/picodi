@@ -72,9 +72,8 @@ def test_resources_are_closed_even_if_exception_raised(closeable):
 
     @contextmanager
     @inject
-    def my_manager(dep=Provide(get_yield_dep)):
+    def my_manager(dep=Provide(get_yield_dep)):  # noqa: U100
         yield
-        assert dep.is_closed is False
 
     with pytest.raises(ValueError, match="Something went wrong"):  # noqa: PT012, SIM117
         with my_manager():
@@ -108,7 +107,7 @@ async def test_resources_are_closed_even_if_exception_raised_async(closeable):
 def test_resources_not_closed_without_finally_block(closeable):
     def get_yield_dep():
         yield closeable
-        closeable.close()
+        closeable.close()  # pragma: no cover
 
     @contextmanager
     @inject
@@ -127,7 +126,7 @@ def test_resources_not_closed_without_finally_block(closeable):
 async def test_resources_not_closed_without_finally_block_async(closeable):
     async def get_yield_dep():
         yield closeable
-        closeable.close()
+        closeable.close()  # pragma: no cover
 
     @asynccontextmanager
     @inject
@@ -153,7 +152,7 @@ def test_yield_dep_dont_close_while_parent_not_close(closeable):
     def my_manager(dep=Provide(get_yield_dep)):
         assert closeable.is_closed is False
         yield dep
-        raise ValueError("Should not be raised")
+        raise ValueError("Should not be raised")  # pragma: no cover
 
     manager = my_manager()
 
@@ -173,7 +172,7 @@ async def test_yield_dep_dont_close_while_parent_not_close_async(closeable):
     async def my_manager(dep=Provide(get_yield_dep)):
         assert closeable.is_closed is False
         yield dep
-        raise ValueError("Should not be raised")
+        raise ValueError("Should not be raised")  # pragma: no cover
 
     manager = my_manager()
 

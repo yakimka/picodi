@@ -162,28 +162,20 @@ class _Lifespan:
         Can be used as a decorator or a context manager.
 
         :param fn: function to decorate (if used as a decorator).
-        :return: decorated function or context manager.
+        :param scope_class: optionally you can specify the scope class
+            to initialize and shutdown.
+        :param skip_init: if True, don't initialize dependencies.
+        :return: decorated function or decorator.
         """
-        if fn is None:
 
-            def decorator(fn: Callable[P, T]) -> Callable[P, T]:
-                return self._wrap_fn(fn, scope_class=scope_class, skip_init=skip_init)
+        def decorator(fn: Callable[P, T]) -> Callable[P, T]:
+            if asyncio.iscoroutinefunction(fn):
+                return self.async_(  # type: ignore[return-value]
+                    scope_class=scope_class, skip_init=skip_init
+                )(fn)
+            return self.sync(scope_class=scope_class, skip_init=skip_init)(fn)
 
-            return decorator
-        return self._wrap_fn(fn, scope_class=scope_class, skip_init=skip_init)
-
-    def _wrap_fn(
-        self,
-        fn: Callable[P, T],
-        *,
-        scope_class: type[ManualScope] | tuple[type[ManualScope]] = SingletonScope,
-        skip_init: bool = False,
-    ) -> Callable[P, T]:
-        if asyncio.iscoroutinefunction(fn):
-            return self.async_(  # type: ignore[return-value]
-                scope_class=scope_class, skip_init=skip_init
-            )(fn)
-        return self.sync(scope_class=scope_class, skip_init=skip_init)(fn)
+        return decorator if fn is None else decorator(fn)
 
     @contextlib.contextmanager
     def sync(

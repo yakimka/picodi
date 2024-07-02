@@ -23,14 +23,14 @@ class MyNumber:
 
 def test_fastapi_cant_use_provide_as_is(app):
     def get_42() -> MyNumber:
-        return MyNumber(42)
+        return MyNumber(42)  # pragma: no cover
 
     with pytest.raises(FastAPIError, match="Invalid args for response field"):
 
-        @app.get("/")
+        @app.get("/")  # pragma: no cover
         @inject
         async def root(number: MyNumber = Provide(get_42)):
-            return {"number": number}
+            return {"number": number}  # pragma: no cover
 
 
 async def test_resolve_dependency_in_route(app, asgi_client):
