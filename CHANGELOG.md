@@ -4,6 +4,10 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
+-
+
+## Version 0.22.0
+
 - `enter` now respects overrides
 - `lifespan` is a factory decorator now
 
