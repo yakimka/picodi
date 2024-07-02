@@ -60,11 +60,10 @@ async def test_can_init_and_shutdown_async(async_resource, decorator):
     assert state["closed"] is True
 
 
-@pytest.mark.parametrize("manager", [lifespan, lifespan.sync])
-def test_can_init_and_shutdown_sync_as_context_manager(resource, manager):
+def test_can_init_and_shutdown_sync_as_context_manager(resource):
     state, _ = resource
 
-    with manager():
+    with lifespan.sync():
         assert state["inited"] is True
         assert state["closed"] is False
 
@@ -72,13 +71,38 @@ def test_can_init_and_shutdown_sync_as_context_manager(resource, manager):
     assert state["closed"] is True
 
 
-@pytest.mark.parametrize("manager", [lifespan, lifespan.async_])
-async def test_can_init_and_shutdown_async_as_context_manager(async_resource, manager):
+async def test_can_init_and_shutdown_async_as_context_manager(async_resource):
     state, _ = async_resource
 
-    async with manager():
+    async with lifespan.async_():
         assert state["inited"] is True
         assert state["closed"] is False
 
     assert state["inited"] is True
     assert state["closed"] is True
+
+
+@pytest.mark.parametrize("decorator", [lifespan, lifespan.sync])
+def test_decorate_with_parameters(resource, decorator):
+    state, _ = resource
+
+    @decorator(skip_init=True)
+    def service():
+        pass
+
+    service()
+
+    assert state["inited"] is False
+
+
+@pytest.mark.parametrize("decorator", [lifespan, lifespan.async_])
+async def test_decorate_with_parameters_async(async_resource, decorator):
+    state, _ = async_resource
+
+    @decorator(skip_init=True)
+    async def service():
+        pass
+
+    await service()
+
+    assert state["inited"] is False
