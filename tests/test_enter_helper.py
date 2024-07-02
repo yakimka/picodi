@@ -1,4 +1,4 @@
-from picodi import Provide, SingletonScope, dependency, inject
+from picodi import Provide, SingletonScope, dependency, inject, registry
 from picodi.helpers import enter
 
 
@@ -83,3 +83,12 @@ async def test_enter_regular_dependency_async():
 
     async with enter(dep) as val:
         assert val == 42
+
+
+async def test_can_use_override_enter_dependency():
+    async def dep():
+        return 42
+
+    with registry.override(dep, lambda: 43):  # noqa: SIM117
+        with enter(dep) as val:
+            assert val == 43

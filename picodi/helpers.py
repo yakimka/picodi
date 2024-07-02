@@ -19,6 +19,7 @@ from typing import (
 
 import picodi
 from picodi import ManualScope, SingletonScope
+from picodi._picodi import _internal_registry
 from picodi.support import nullcontext
 
 if TYPE_CHECKING:
@@ -283,6 +284,7 @@ def enter(
         with enter(get_42) as val:
             assert val == 42
     """
+    dependency = _internal_registry.get_dep_or_override(dependency)
     result = dependency()
 
     if inspect.isasyncgen(result):
