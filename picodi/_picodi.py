@@ -95,9 +95,11 @@ class InternalRegistry:
 
     def get(self, dependency: DependencyCallable) -> Provider:
         with self._storage.lock:
-            if self._storage.overrides.get(dependency):
-                dependency = self._storage.overrides[dependency]
+            dependency = self.get_dep_or_override(dependency)
             return self._storage.deps[dependency]
+
+    def get_dep_or_override(self, dependency: DependencyCallable) -> DependencyCallable:
+        return self._storage.overrides.get(dependency, dependency)
 
     def filter(self, predicate: Callable[[Provider], bool]) -> Iterable[Provider]:
         return filter(predicate, self._storage)
