@@ -61,6 +61,8 @@ signatures_for_replace = {
     "~picodi._scopes.SingletonScope": "SingletonScope",
     "<class 'picodi._scopes.ManualScope'>": "ManualScope",
     "<class 'picodi._scopes.NullScope'>": "NullScope",
+    "<class 'picodi._scopes.SingletonScope'>": "SingletonScope",
+    "<class 'picodi._scopes.ContextVarScope'>": "ContextVarScope",
 }
 
 

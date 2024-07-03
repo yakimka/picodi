@@ -86,7 +86,7 @@ async def test_can_init_and_shutdown_async_as_context_manager(async_resource):
 def test_decorate_with_parameters(resource, decorator):
     state, _ = resource
 
-    @decorator(skip_init=True)
+    @decorator(init_scope_class=None)
     def service():
         pass
 
@@ -99,7 +99,7 @@ def test_decorate_with_parameters(resource, decorator):
 async def test_decorate_with_parameters_async(async_resource, decorator):
     state, _ = async_resource
 
-    @decorator(skip_init=True)
+    @decorator(init_scope_class=None)
     async def service():
         pass
 
