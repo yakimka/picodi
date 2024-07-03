@@ -4,6 +4,8 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
+## Version 0.23.0
+
 - Now you can mark you dependencies with tags for more granular control over their lifecycle
 - Breaking changes:
   - Removed `ignore_manual_init` argument from `dependency` decorator
