@@ -47,6 +47,8 @@ logger = logging.getLogger("picodi")
 
 
 DependencyCallable = Callable[..., Any]
+LifespanScopeClass = type[ManualScope] | tuple[type[ManualScope], ...]
+Tags = list[str] | tuple[str, ...]
 T = TypeVar("T")
 P = ParamSpec("P")
 TC = TypeVar("TC", bound=Callable)
@@ -73,7 +75,7 @@ class InternalRegistry:
         dependency: DependencyCallable,
         scope_class: type[ScopeType] = NullScope,
         override_scope: bool = False,
-        ignore_manual_init: bool | Callable[[], bool] = False,
+        tags: Tags = (),
     ) -> None:
         """
         Add a dependency to the registry.
@@ -90,7 +92,7 @@ class InternalRegistry:
                 self._storage.deps[dependency] = Provider.from_dependency(
                     dependency=dependency,
                     scope_class=scope_class,
-                    ignore_manual_init=ignore_manual_init,
+                    tags=tags,
                 )
 
     def get(self, dependency: DependencyCallable) -> Provider:
@@ -354,7 +356,7 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
 def dependency(
     *,
     scope_class: type[ScopeType] = NullScope,
-    ignore_manual_init: bool | Callable[[], bool] = False,
+    tags: Tags = (),
 ) -> Callable[[TC], TC]:
     """
     Decorator to declare a dependency. You don't need to use it with default arguments,
@@ -365,11 +367,9 @@ def dependency(
         :class:`NullScope`.
         Picodi additionally provides a few built-in scopes:
         :class:`SingletonScope`, :class:`ContextVarScope`.
-    :param ignore_manual_init: this parameter can be used to skip the dependency manual
-        initialization. It can be a boolean or a callable that returns a boolean.
-        If it's a callable, it will be called every time before the dependency is
-        initialized with :func:`init_dependencies`. If it returns True, the dependency
-        will be skipped.
+    :param tags: list of tags to assign to the dependency. Tags can be used to select
+        which dependencies to initialize. They can be used to group
+        dependencies and control their lifecycle.
     """
 
     if scope_class not in _scopes:
@@ -380,7 +380,7 @@ def dependency(
             fn,
             scope_class=scope_class,
             override_scope=True,
-            ignore_manual_init=ignore_manual_init,
+            tags=tags,
         )
         return fn
 
@@ -388,7 +388,8 @@ def dependency(
 
 
 def init_dependencies(
-    scope_class: type[ManualScope] | tuple[type[ManualScope], ...] = SingletonScope,
+    scope_class: LifespanScopeClass = SingletonScope,
+    tags: Tags = (),
 ) -> Awaitable:
     """
     Call this function to close dependencies. Usually, it should be called
@@ -399,14 +400,21 @@ def init_dependencies(
     If you call it ``await init_dependencies()``, it will initialize both sync and async
     dependencies.
 
+    If you not pass any arguments, it will initialize only :class:`SingletonScope`
+    and its subclasses.
+
+    If you pass tags with scope_class ``and`` logic will be applied.
+
     :param scope_class: you can specify the scope class to initialize. If passed -
         only dependencies of this scope class and its subclasses will be initialized.
-        By default, it will initialize only :class:`SingletonScope` and its subclasses.
+    :param tags: you can specify the dependencies to initialize by tags. If passed -
+        only dependencies of this tags will be initialized. If you pass a tag with a
+        minus sign, it will exclude dependencies with this tag.
     """
-    async_deps = []
     filtered_providers = _internal_registry.filter(
-        lambda p: not p.is_ignored() and issubclass(p.scope_class, scope_class)
+        lambda p: p.match_tags(tags) and issubclass(p.scope_class, scope_class)
     )
+    async_deps = []
     for provider in filtered_providers:
         resolver = LazyResolver(provider)
         value = resolver(provider.is_async)
@@ -428,7 +436,7 @@ def init_dependencies(
 
 
 def shutdown_dependencies(
-    scope_class: type[ManualScope] | tuple[type[ManualScope], ...] = SingletonScope,
+    scope_class: LifespanScopeClass = ManualScope,
 ) -> Awaitable:
     """
     Call this function to close dependencies. Usually, it should be called
@@ -439,9 +447,10 @@ def shutdown_dependencies(
     If you call it ``await shutdown_dependencies()``, it will shutdown both
     sync and async dependencies.
 
+    If you not pass any arguments, it will shutdown subclasses of :class:`ManualScope`.
+
     :param scope_class: you can specify the scope class to shutdown. If passed -
         only dependencies of this scope class and its subclasses will be shutdown.
-        By default, it will shutdown only :class:`SingletonScope` and its subclasses.
     """
     tasks = [
         instance.shutdown()  # type: ignore[call-arg]
@@ -462,29 +471,34 @@ class Provider:
     dependency: DependencyCallable
     is_async: bool
     scope_class: type[ScopeType]
-    ignore_manual_init: bool | Callable[[], bool]
+    tags: set[str]
 
     @classmethod
     def from_dependency(
         cls,
         dependency: DependencyCallable,
         scope_class: type[ScopeType],
-        ignore_manual_init: bool | Callable[[], bool] = False,
+        tags: Tags,
     ) -> Provider:
         is_async = inspect.iscoroutinefunction(
             dependency
         ) or inspect.isasyncgenfunction(dependency)
+
         return cls(
             dependency=dependency,
             is_async=is_async,
             scope_class=scope_class,
-            ignore_manual_init=ignore_manual_init,
+            tags=set(tags),
         )
 
-    def is_ignored(self) -> bool:
-        if callable(self.ignore_manual_init):
-            return self.ignore_manual_init()
-        return self.ignore_manual_init
+    def match_tags(self, tags: Tags) -> bool:
+        include_tags = {tag for tag in tags if not tag.startswith("-")}
+        exclude_tags = {tag[1:] for tag in tags if tag.startswith("-")}
+
+        if exclude_tags.intersection(self.tags):
+            return False
+
+        return bool(not include_tags or include_tags.intersection(self.tags))
 
     def replace(self, scope_class: type[ScopeType] | None = None) -> Provider:
         kwargs = asdict(self)

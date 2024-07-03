@@ -127,31 +127,30 @@ scope you can inject it in sync code. Example:
 Because ``get_async_dependency`` is ``SingletonScope`` scoped dependency and
 it's initialized on startup, while your app is running you can inject it in sync code.
 
-Skipping manual initialization
-******************************
+Initializing dependencies by tags
+*********************************
 
-If you want to skip manual initialization of your dependency you can use the
-``ignore_manual_init`` argument of the :func:`picodi.dependency` decorator.
+You can tag your dependencies to initialize them selectively.
 
 .. testcode::
 
     from picodi import SingletonScope, dependency, init_dependencies
 
 
-    # Try to set `ignore_manual_init` to `False` and see what happens
-    @dependency(scope_class=SingletonScope, ignore_manual_init=True)
-    def get_dependency():
-        print("This will not be printed")
-        return "from async"
+    @dependency(scope_class=SingletonScope, tags=["tag1"])
+    def get_tagged_dependency():
+        return "tagged dependency"
 
 
-    init_dependencies()  # This will not initialize get_dependency
+    init_dependencies(tags=["tag1"])
+    # or you can exclude dependencies by tags
+    init_dependencies(tags=["-tag1"])
 
 Managing scopes selectively
 ***************************
 
-By default :func:`picodi.init_dependencies` and :func:`picodi.shutdown_dependencies`
-will initialize and close all dependencies with :class:`SingletonScope`.
+By default :func:`picodi.init_dependencies` initialize
+dependencies with :class:`SingletonScope`.
 If you want to manage scopes selectively you can use the
 ``scope_class`` argument of these functions.
 

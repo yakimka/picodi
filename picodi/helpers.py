@@ -19,7 +19,7 @@ from typing import (
 
 import picodi
 from picodi import ManualScope, SingletonScope
-from picodi._picodi import _internal_registry
+from picodi._picodi import LifespanScopeClass, Tags, _internal_registry
 from picodi.support import nullcontext
 
 if TYPE_CHECKING:
@@ -146,8 +146,9 @@ class _Lifespan:
         self,
         fn: None = None,
         *,
-        scope_class: type[ManualScope] | tuple[type[ManualScope]] = SingletonScope,
-        skip_init: bool = False,
+        init_scope_class: LifespanScopeClass | None = SingletonScope,
+        init_tags: Tags = (),
+        shutdown_scope_class: LifespanScopeClass | None = ManualScope,
     ) -> Callable[[Callable[P, T]], Callable[P, T]]:
         """Sync and Async context manager"""
 
@@ -155,25 +156,34 @@ class _Lifespan:
         self,
         fn: Callable[P, T] | None = None,
         *,
-        scope_class: type[ManualScope] | tuple[type[ManualScope]] = SingletonScope,
-        skip_init: bool = False,
+        init_scope_class: LifespanScopeClass | None = SingletonScope,
+        init_tags: Tags = (),
+        shutdown_scope_class: LifespanScopeClass | None = ManualScope,
     ) -> Callable[P, T] | Callable[[Callable[P, T]], Callable[P, T]]:
         """
         Can be used as a decorator or a context manager.
 
         :param fn: function to decorate (if used as a decorator).
-        :param scope_class: optionally you can specify the scope class
-            to initialize and shutdown.
-        :param skip_init: if True, don't initialize dependencies.
+        :param init_scope_class: scope class for initialization
+            (can be omitted by passing None).
+        :param init_tags: list of tags to be initialized.
+        :param shutdown_scope_class: scope class for shutdown
+            (can be omitted by passing None).
         :return: decorated function or decorator.
         """
 
         def decorator(fn: Callable[P, T]) -> Callable[P, T]:
             if asyncio.iscoroutinefunction(fn):
                 return self.async_(  # type: ignore[return-value]
-                    scope_class=scope_class, skip_init=skip_init
+                    init_scope_class=init_scope_class,
+                    init_tags=init_tags,
+                    shutdown_scope_class=shutdown_scope_class,
                 )(fn)
-            return self.sync(scope_class=scope_class, skip_init=skip_init)(fn)
+            return self.sync(
+                init_scope_class=init_scope_class,
+                init_tags=init_tags,
+                shutdown_scope_class=shutdown_scope_class,
+            )(fn)
 
         return decorator if fn is None else decorator(fn)
 
@@ -181,46 +191,56 @@ class _Lifespan:
     def sync(
         self,
         *,
-        scope_class: type[ManualScope] | tuple[type[ManualScope]] = SingletonScope,
-        skip_init: bool = False,
+        init_scope_class: LifespanScopeClass | None = SingletonScope,
+        init_tags: Tags = (),
+        shutdown_scope_class: LifespanScopeClass | None = ManualScope,
     ) -> Generator[None, None, None]:
         """
         :attr:`lifespan` can automatically detect if the decorated function
         is async or not. But if you want to force sync behavior, ``lifespan.sync``.
 
-        :param scope_class: optionally you can specify the scope class
-            to initialize and shutdown.
-        :param skip_init: if True, don't initialize dependencies.
+        :param init_scope_class: scope class for initialization
+            (can be omitted by passing None).
+        :param init_tags: list of tags to be initialized.
+        :param shutdown_scope_class: scope class for shutdown
+            (can be omitted by passing None).
         """
-        if not skip_init:
-            picodi.init_dependencies(scope_class)
+        if init_scope_class is not None:
+            picodi.init_dependencies(init_scope_class, tags=init_tags)
         try:
             yield
         finally:
-            picodi.shutdown_dependencies(scope_class)
+            if shutdown_scope_class is not None:
+                picodi.shutdown_dependencies(shutdown_scope_class)
 
     @contextlib.asynccontextmanager
     async def async_(
         self,
         *,
-        scope_class: type[ManualScope] | tuple[type[ManualScope]] = SingletonScope,
-        skip_init: bool = False,
+        init_scope_class: LifespanScopeClass | None = SingletonScope,
+        init_tags: Tags = (),
+        shutdown_scope_class: LifespanScopeClass | None = ManualScope,
     ) -> AsyncGenerator[None, None]:
         """
         :attr:`lifespan` can automatically detect if the decorated function
         is async or not.
         But if you want to force async behavior, ``lifespan.async_``.
 
-        :param scope_class: optionally you can specify the scope class
-            to initialize and shutdown.
-        :param skip_init: if True, don't initialize dependencies.
+        :param init_scope_class: scope class for initialization
+            (can be omitted by passing None).
+        :param init_tags: list of tags to be initialized.
+        :param shutdown_scope_class: scope class for shutdown
+            (can be omitted by passing None).
         """
-        if not skip_init:
-            await picodi.init_dependencies(scope_class)
+        if init_scope_class is not None:
+            await picodi.init_dependencies(init_scope_class, tags=init_tags)
         try:
             yield
         finally:
-            await picodi.shutdown_dependencies(scope_class)  # noqa: ASYNC102
+            if shutdown_scope_class is not None:
+                await picodi.shutdown_dependencies(  # noqa: ASYNC102
+                    shutdown_scope_class
+                )
 
 
 lifespan = _Lifespan()
