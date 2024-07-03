@@ -4,6 +4,10 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
+## Version 0.24.0
+
+- revert tags
+
 ## Version 0.23.0
 
 - Now you can mark you dependencies with tags for more granular control over their lifecycle

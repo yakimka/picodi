@@ -19,7 +19,7 @@ from typing import (
 
 import picodi
 from picodi import ManualScope, SingletonScope
-from picodi._picodi import LifespanScopeClass, Tags, _internal_registry
+from picodi._picodi import LifespanScopeClass, _internal_registry
 from picodi.support import nullcontext
 
 if TYPE_CHECKING:
@@ -147,7 +147,6 @@ class _Lifespan:
         fn: None = None,
         *,
         init_scope_class: LifespanScopeClass | None = SingletonScope,
-        init_tags: Tags = (),
         shutdown_scope_class: LifespanScopeClass | None = ManualScope,
     ) -> Callable[[Callable[P, T]], Callable[P, T]]:
         """Sync and Async context manager"""
@@ -157,7 +156,6 @@ class _Lifespan:
         fn: Callable[P, T] | None = None,
         *,
         init_scope_class: LifespanScopeClass | None = SingletonScope,
-        init_tags: Tags = (),
         shutdown_scope_class: LifespanScopeClass | None = ManualScope,
     ) -> Callable[P, T] | Callable[[Callable[P, T]], Callable[P, T]]:
         """
@@ -166,7 +164,6 @@ class _Lifespan:
         :param fn: function to decorate (if used as a decorator).
         :param init_scope_class: scope class for initialization
             (can be omitted by passing None).
-        :param init_tags: list of tags to be initialized.
         :param shutdown_scope_class: scope class for shutdown
             (can be omitted by passing None).
         :return: decorated function or decorator.
@@ -176,12 +173,10 @@ class _Lifespan:
             if asyncio.iscoroutinefunction(fn):
                 return self.async_(  # type: ignore[return-value]
                     init_scope_class=init_scope_class,
-                    init_tags=init_tags,
                     shutdown_scope_class=shutdown_scope_class,
                 )(fn)
             return self.sync(
                 init_scope_class=init_scope_class,
-                init_tags=init_tags,
                 shutdown_scope_class=shutdown_scope_class,
             )(fn)
 
@@ -192,7 +187,6 @@ class _Lifespan:
         self,
         *,
         init_scope_class: LifespanScopeClass | None = SingletonScope,
-        init_tags: Tags = (),
         shutdown_scope_class: LifespanScopeClass | None = ManualScope,
     ) -> Generator[None, None, None]:
         """
@@ -201,12 +195,11 @@ class _Lifespan:
 
         :param init_scope_class: scope class for initialization
             (can be omitted by passing None).
-        :param init_tags: list of tags to be initialized.
         :param shutdown_scope_class: scope class for shutdown
             (can be omitted by passing None).
         """
         if init_scope_class is not None:
-            picodi.init_dependencies(init_scope_class, tags=init_tags)
+            picodi.init_dependencies(init_scope_class)
         try:
             yield
         finally:
@@ -218,7 +211,6 @@ class _Lifespan:
         self,
         *,
         init_scope_class: LifespanScopeClass | None = SingletonScope,
-        init_tags: Tags = (),
         shutdown_scope_class: LifespanScopeClass | None = ManualScope,
     ) -> AsyncGenerator[None, None]:
         """
@@ -228,12 +220,11 @@ class _Lifespan:
 
         :param init_scope_class: scope class for initialization
             (can be omitted by passing None).
-        :param init_tags: list of tags to be initialized.
         :param shutdown_scope_class: scope class for shutdown
             (can be omitted by passing None).
         """
         if init_scope_class is not None:
-            await picodi.init_dependencies(init_scope_class, tags=init_tags)
+            await picodi.init_dependencies(init_scope_class)
         try:
             yield
         finally:

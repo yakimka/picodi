@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-import pytest
-
 from picodi import (
     AutoScope,
     Provide,
@@ -66,123 +64,113 @@ async def test_can_add_user_defined_scope_async():
     assert result == 42 * 2 * 2
 
 
-@pytest.fixture()
-def tagged_dependencies():
-    init_state = {
-        "dep1": False,
-        "dep2": False,
-        "dep3": False,
-    }
+def test_can_optionally_ignore_manual_initialization():
+    # Arrange
+    inited = False
 
-    @dependency(scope_class=SingletonScope, tags=["dep1", "group1"])
-    def get_dep1():
-        init_state["dep1"] = True
+    @dependency(scope_class=SingletonScope, ignore_manual_init=True)
+    def get_num():
+        nonlocal inited
+        inited = True
         yield 42
 
-    @dependency(scope_class=SingletonScope, tags=["dep2", "group1"])
-    def get_dep2():
-        init_state["dep2"] = True
+    @inject
+    def service(num: int = Provide(get_num)) -> int:
+        return num
+
+    # Act
+    init_dependencies()
+
+    # Assert
+    assert inited is False
+
+    assert service() == 42
+    assert inited is True
+
+
+async def test_can_optionally_ignore_manual_initialization_async():
+    # Arrange
+    inited = False
+
+    @dependency(scope_class=SingletonScope, ignore_manual_init=True)
+    async def get_num():
+        nonlocal inited
+        inited = True
         yield 42
 
-    @dependency(scope_class=SingletonScope, tags=["dep3", "group2"])
-    def get_dep3():
-        init_state["dep3"] = True
+    @inject
+    async def service(num: int = Provide(get_num)) -> int:
+        return num
+
+    # Act
+    await init_dependencies()
+
+    # Assert
+    assert inited is False
+
+    assert await service() == 42
+    assert inited is True
+
+
+def test_can_optionally_ignore_manual_initialization_with_callable():
+    # Arrange
+    inited = False
+    callable_called = False
+
+    @inject
+    def callable_func(flag: bool = Provide(lambda: True)):
+        nonlocal callable_called
+        callable_called = True
+        return flag
+
+    @dependency(scope_class=SingletonScope, ignore_manual_init=callable_func)
+    def get_num():
+        nonlocal inited
+        inited = True
         yield 42
 
-    return init_state
+    @inject
+    def service(num: int = Provide(get_num)) -> int:
+        return num
+
+    # Act
+    init_dependencies()
+
+    # Assert
+    assert inited is False
+    assert callable_called is True
+
+    assert service() == 42
+    assert inited is True
 
 
-@pytest.fixture()
-def tagged_dependencies_async():
-    init_state = {
-        "dep1": False,
-        "dep2": False,
-        "dep3": False,
-    }
+async def test_can_optionally_ignore_manual_initialization_with_callable_async():
+    # Arrange
+    inited = False
+    callable_called = False
 
-    @dependency(scope_class=SingletonScope, tags=["dep1", "group1"])
-    async def get_dep1():
-        init_state["dep1"] = True
+    @inject
+    def callable_func(flag: bool = Provide(lambda: True)):
+        nonlocal callable_called
+        callable_called = True
+        return flag
+
+    @dependency(scope_class=SingletonScope, ignore_manual_init=callable_func)
+    async def get_num():
+        nonlocal inited
+        inited = True
         yield 42
 
-    @dependency(scope_class=SingletonScope, tags=["dep2", "group1"])
-    async def get_dep2():
-        init_state["dep2"] = True
-        yield 42
+    @inject
+    async def service(num: int = Provide(get_num)) -> int:
+        return num
 
-    @dependency(scope_class=SingletonScope, tags=["dep3", "group2"])
-    async def get_dep3():
-        init_state["dep3"] = True
-        yield 42
+    # Act
+    await init_dependencies()
 
-    return init_state
+    # Assert
+    assert inited is False
+    assert callable_called is True
 
-
-tags_cases = [
-    pytest.param(
-        [],
-        {"dep1": True, "dep2": True, "dep3": True},
-        id="If no tags - init all",
-    ),
-    pytest.param(
-        ["dep1"],
-        {"dep1": True, "dep2": False, "dep3": False},
-        id="Select one tag",
-    ),
-    pytest.param(
-        ["dep1", "dep2"],
-        {"dep1": True, "dep2": True, "dep3": False},
-        id="Select multiple tags",
-    ),
-    pytest.param(
-        ["group1"],
-        {"dep1": True, "dep2": True, "dep3": False},
-        id="Select deps that marked with same tag",
-    ),
-    pytest.param(
-        ["dep1", "dep2", "dep3"],
-        {"dep1": True, "dep2": True, "dep3": True},
-        id="Select all tags",
-    ),
-    pytest.param(
-        ["group1", "group2"],
-        {"dep1": True, "dep2": True, "dep3": True},
-        id="Select all tags (by groups)",
-    ),
-    pytest.param(
-        ["group1", "-dep1"],
-        {"dep1": False, "dep2": True, "dep3": False},
-        id="Select group and exclude from this group",
-    ),
-    pytest.param(
-        ["-dep1", "-dep2", "-dep3"],
-        {"dep1": False, "dep2": False, "dep3": False},
-        id="Deselect all deps",
-    ),
-    pytest.param(
-        ["-group1", "-group2"],
-        {"dep1": False, "dep2": False, "dep3": False},
-        id="Deselect all deps (by groups)",
-    ),
-    pytest.param(
-        ["-dep2"], {"dep1": True, "dep2": False, "dep3": True}, id="Init all except one"
-    ),
-]
-
-
-@pytest.mark.parametrize("tags,expected_state", tags_cases)
-def test_can_init_dependencies_by_selecting_tags(
-    tags, expected_state, tagged_dependencies
-):
-    init_dependencies(tags=tags)
-
-    assert tagged_dependencies == expected_state
-
-
-@pytest.mark.parametrize("tags,expected_state", tags_cases)
-async def test_can_init_dependencies_by_selecting_tags_async(
-    tags, expected_state, tagged_dependencies_async
-):
-    await init_dependencies(tags=tags)
-
-    assert tagged_dependencies_async == expected_state
+    assert await service() == 42
+    assert inited is True
