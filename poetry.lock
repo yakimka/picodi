@@ -336,23 +336,23 @@ test = ["pytest (>=6)"]
 
 [[package]]
 name = "fastapi-slim"
-version = "0.111.1"
+version = "0.115.0"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "fastapi_slim-0.111.1-py3-none-any.whl", hash = "sha256:ac29948dcbf84cc78d68ed2c4df4e695ac265cf53c339e5794008476e9befbbb"},
-    {file = "fastapi_slim-0.111.1.tar.gz", hash = "sha256:f799a60658f56c49fe3842eb534730fabe1168731c0b407b98a042c8d57be39d"},
+    {file = "fastapi_slim-0.115.0-py3-none-any.whl", hash = "sha256:27ab44da95b622e68be7a19f06df1960a320b9d94e689b0adfc055bb26ee9be7"},
+    {file = "fastapi_slim-0.115.0.tar.gz", hash = "sha256:b4b962ca2aa0a31010dafdad3d4da99d368a5591223304c6fb385712fad7feb6"},
 ]
 
 [package.dependencies]
 pydantic = ">=1.7.4,<1.8 || >1.8,<1.8.1 || >1.8.1,<2.0.0 || >2.0.0,<2.0.1 || >2.0.1,<2.1.0 || >2.1.0,<3.0.0"
-starlette = ">=0.37.2,<0.38.0"
+starlette = ">=0.37.2,<0.39.0"
 typing-extensions = ">=4.8.0"
 
 [package.extras]
-all = ["email_validator (>=2.0.0)", "fastapi-cli (>=0.0.2)", "httpx (>=0.23.0)", "itsdangerous (>=1.1.0)", "jinja2 (>=2.11.2)", "orjson (>=3.2.1)", "pydantic-extra-types (>=2.0.0)", "pydantic-settings (>=2.0.0)", "python-multipart (>=0.0.7)", "pyyaml (>=5.3.1)", "ujson (>=4.0.1,!=4.0.2,!=4.1.0,!=4.2.0,!=4.3.0,!=5.0.0,!=5.1.0)", "uvicorn[standard] (>=0.12.0)"]
-standard = ["email_validator (>=2.0.0)", "fastapi-cli (>=0.0.2)", "httpx (>=0.23.0)", "jinja2 (>=2.11.2)", "python-multipart (>=0.0.7)", "uvicorn[standard] (>=0.12.0)"]
+all = ["email-validator (>=2.0.0)", "fastapi-cli[standard] (>=0.0.5)", "httpx (>=0.23.0)", "itsdangerous (>=1.1.0)", "jinja2 (>=2.11.2)", "orjson (>=3.2.1)", "pydantic-extra-types (>=2.0.0)", "pydantic-settings (>=2.0.0)", "python-multipart (>=0.0.7)", "pyyaml (>=5.3.1)", "ujson (>=4.0.1,!=4.0.2,!=4.1.0,!=4.2.0,!=4.3.0,!=5.0.0,!=5.1.0)", "uvicorn[standard] (>=0.12.0)"]
+standard = ["email-validator (>=2.0.0)", "fastapi-cli[standard] (>=0.0.5)", "httpx (>=0.23.0)", "jinja2 (>=2.11.2)", "python-multipart (>=0.0.7)", "uvicorn[standard] (>=0.12.0)"]
 
 [[package]]
 name = "filelock"
@@ -1324,4 +1324,4 @@ test = ["covdefaults (>=2.3)", "coverage (>=7.2.7)", "coverage-enable-subprocess
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "3ede222ada5ed3706eb622258db29f58e0039a257fe6168aa74fac1252f34376"
+content-hash = "8d28afa4a63c1bb3f531a51d4e12bfb32a6ffa7b43eb4965c63144bf3401eb11"
