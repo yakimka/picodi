@@ -15,8 +15,11 @@ poetry:  ## Run poetry with args
 
 .PHONY: lint
 lint:  ## Run flake8, mypy, other linters and verify formatting
-	@make pre-commit args="run --all-files"
-	@make mypy
+	@make pre-commit args="run --all-files"; \
+	RESULT1=$$?; \
+	make mypy; \
+	RESULT2=$$?; \
+	exit $$((RESULT1 + RESULT2))
 
 .PHONY: mypy
 mypy:  ## Run mypy
