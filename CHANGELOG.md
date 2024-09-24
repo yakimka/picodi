@@ -4,6 +4,12 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
+## Version 0.25.0
+
+- Patch dependency tree when resolving dependencies with overrides
+- Breaking changes:
+  - If you try to override a dependency that is already is use in another override, you will get an error
+
 ## Version 0.24.0
 
 - revert tags

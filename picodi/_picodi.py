@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 import functools
 import inspect
 import logging
@@ -102,6 +103,18 @@ class InternalRegistry:
     def get_dep_or_override(self, dependency: DependencyCallable) -> DependencyCallable:
         return self._storage.overrides.get(dependency, dependency)
 
+    def get_override(self, dependency: DependencyCallable) -> DependencyCallable | None:
+        return self._storage.overrides.get(dependency)
+
+    def get_original(self, override: DependencyCallable) -> DependencyCallable | None:
+        for original, overriden in self._storage.overrides.items():
+            if overriden == override:
+                return original
+        return None
+
+    def has_overrides(self) -> bool:
+        return bool(self._storage.overrides)
+
     def filter(self, predicate: Callable[[Provider], bool]) -> Iterable[Provider]:
         return filter(predicate, self._storage)
 
@@ -156,6 +169,8 @@ class Registry:
             registry.override(get_settings, real_settings)
             registry.override(get_settings, None)  # clear override
         """
+        if _internal_registry.get_original(dependency):
+            raise ValueError("Cannot override an overridden dependency")
 
         def decorator(override_to: DependencyCallable) -> DependencyCallable:
             self._internal_registry.add(override_to)
@@ -535,6 +550,9 @@ def _wrapper_helper(
     kwargs: dict[str, Any],
 ) -> Generator[Any, None, None]:
     exit_stack = ExitStack()
+    if _need_patch(dependant):
+        dependant = copy.deepcopy(dependant)
+        _patch_dependant(dependant)
     bound = signature.bind(*args, **kwargs)
     bound.apply_defaults()
     arguments: dict[str, Any] = bound.arguments
@@ -606,6 +624,32 @@ def _wrapper_helper(
         scope.exit_inject()
         if isinstance(scope, AutoScope):
             yield scope.shutdown(exit_stack), "close_scope"
+
+
+def _need_patch(dependant: DependNode) -> bool:
+    if dependant.name is None and not _internal_registry.has_overrides():
+        return False
+
+    for dep in dependant.dependencies:  # noqa: SIM110
+        if _need_patch(dep):
+            return True
+
+    return bool(
+        dependant.name and _internal_registry.get_override(dependant.value.call)
+    )
+
+
+def _patch_dependant(dependant: DependNode) -> None:
+    for dep in dependant.dependencies:
+        _patch_dependant(dep)
+
+    if dependant.name is None:
+        return
+
+    if override := _internal_registry.get_override(dependant.value.call):
+        dependant.value = Depends(override)
+        override_tree = _build_depend_tree(dependant.value)
+        dependant.dependencies = override_tree.dependencies
 
 
 def _resolve_dependencies(
