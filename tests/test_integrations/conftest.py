@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 @pytest.fixture()
 async def asgi_client(app, test_server_url) -> AsyncGenerator[AsyncClient, None]:
-    async with AsyncClient(app=app, base_url=test_server_url) as client:
+    async with AsyncClient(app=app, base_url=test_server_url, timeout=2) as client:
         yield client
 
 

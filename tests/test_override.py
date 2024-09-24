@@ -96,23 +96,21 @@ def test_can_context_manager_return_state_to_previous_not_to_original():
     assert after_context_result == {"first": "override"}
 
 
-def test_overriding_overridden_dependency_dont_apply_to_original_dep():
+def test_overriding_overridden_dependency_dont_allowed_and_must_raise_error():
     @inject
     def my_service(settings: dict = Provide(get_abc_settings)):
-        return settings
+        return settings  # pragma: no cover
 
     def first_override():
-        return {"first": "override"}
+        return {"first": "override"}  # pragma: no cover
 
     def second_override():
         return {"second": "override"}  # pragma: no cover
 
     registry.override(get_abc_settings, first_override)
-    registry.override(first_override, second_override)
 
-    result = my_service()
-
-    assert result == {"first": "override"}
+    with pytest.raises(ValueError, match="Cannot override an overridden dependency"):
+        registry.override(first_override, second_override)
 
 
 def test_can_clear_overrides():
@@ -212,7 +210,111 @@ async def test_can_use_async_dep_with_not_default_scope_in_override_in_sync_cont
 
 def test_cant_override_dependency_with_itself():
     def get_settings() -> dict:
-        return {"default": "settings"}
+        return {"default": "settings"}  # pragma: no cover
 
     with pytest.raises(ValueError, match="Cannot override a dependency with itself"):
         registry.override(get_settings, get_settings)
+
+
+def test_can_override_with_injected_dep():
+    @inject
+    def original_dep(num: int = Provide(lambda: 1)):
+        return num  # pragma: no cover
+
+    @inject
+    def overriding_dep(num2: int = Provide(lambda: 42)):
+        return num2
+
+    @inject
+    def my_service(dep: int = Provide(original_dep)):
+        return dep
+
+    with registry.override(original_dep, overriding_dep):
+        result = my_service()
+
+    assert result == 42
+
+
+def test_can_override_with_zero_arguments_function():
+    @inject
+    def original_dep(num: int = Provide(lambda: 1)):
+        return num  # pragma: no cover
+
+    def overriding_dep():
+        return 42
+
+    @inject
+    def my_service(dep: int = Provide(original_dep)):
+        return dep
+
+    with registry.override(original_dep, overriding_dep):
+        result = my_service()
+
+    assert result == 42
+
+
+async def test_can_override_with_injected_dep_async():
+    @inject
+    async def original_dep(num: int = Provide(lambda: 1)):
+        return num  # pragma: no cover
+
+    @inject
+    async def overriding_dep(num2: int = Provide(lambda: 42)):
+        return num2
+
+    @inject
+    async def my_service(dep: int = Provide(original_dep)):
+        return dep
+
+    with registry.override(original_dep, overriding_dep):
+        result = await my_service()
+
+    assert result == 42
+
+
+async def test_can_override_with_zero_arguments_function_async():
+    @inject
+    async def original_dep(num: int = Provide(lambda: 1)):
+        return num  # pragma: no cover
+
+    async def overriding_dep():
+        return 42
+
+    @inject
+    async def my_service(dep: int = Provide(original_dep)):
+        return dep
+
+    with registry.override(original_dep, overriding_dep):
+        result = await my_service()
+
+    assert result == 42
+
+
+def test_can_override_deeply_nested_dep():
+    @inject
+    async def original_dep(num: int = Provide(lambda: 1)):
+        return num  # pragma: no cover
+
+    def overriding_dep():
+        return 42
+
+    @inject
+    def third_level_dep(dep4: int = Provide(original_dep)):
+        return dep4
+
+    @inject
+    def second_level_dep(dep3: int = Provide(third_level_dep)):
+        return dep3
+
+    @inject
+    def first_level_dep(dep2: int = Provide(second_level_dep)):
+        return dep2
+
+    @inject
+    def my_service(my_dep: int = Provide(first_level_dep)):
+        return my_dep
+
+    with registry.override(original_dep, overriding_dep):
+        result = my_service()
+
+    assert result == 42
