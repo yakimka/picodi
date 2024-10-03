@@ -6,24 +6,30 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import inspect
 from typing import (
     TYPE_CHECKING,
     Any,
     AsyncContextManager,
     ContextManager,
+    Generic,
     ParamSpec,
     TypeVar,
     overload,
 )
 
-import picodi
-from picodi import ManualScope, SingletonScope
-from picodi._picodi import LifespanScopeClass, _internal_registry
-from picodi.support import nullcontext
+from picodi import (
+    ManualScope,
+    Provide,
+    SingletonScope,
+    init_dependencies,
+    inject,
+    shutdown_dependencies,
+)
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable, Coroutine, Generator
+
+    from picodi._picodi import LifespanScopeClass
 
 sentinel = object()
 
@@ -199,12 +205,12 @@ class _Lifespan:
             (can be omitted by passing None).
         """
         if init_scope_class is not None:
-            picodi.init_dependencies(init_scope_class)
+            init_dependencies(init_scope_class)
         try:
             yield
         finally:
             if shutdown_scope_class is not None:
-                picodi.shutdown_dependencies(shutdown_scope_class)
+                shutdown_dependencies(shutdown_scope_class)
 
     @contextlib.asynccontextmanager
     async def async_(
@@ -224,47 +230,23 @@ class _Lifespan:
             (can be omitted by passing None).
         """
         if init_scope_class is not None:
-            await picodi.init_dependencies(init_scope_class)
+            await init_dependencies(init_scope_class)
         try:
             yield
         finally:
             if shutdown_scope_class is not None:
-                await picodi.shutdown_dependencies(  # noqa: ASYNC102
-                    shutdown_scope_class
-                )
+                await shutdown_dependencies(shutdown_scope_class)  # noqa: ASYNC102
 
 
 lifespan = _Lifespan()
 
 
-@overload
-def enter(dependency: Callable[[], Generator[T, None, None]]) -> ContextManager[T]: ...
-
-
-@overload
-def enter(  # type: ignore[overload-overlap]
-    dependency: Callable[[], AsyncGenerator[T, None] | Coroutine[T, None, None]],
-) -> AsyncContextManager[T]: ...
-
-
-@overload
-def enter(dependency: Callable[[], T]) -> ContextManager[T]: ...
-
-
-def enter(
-    dependency: Callable[
-        [],
-        Coroutine[T, None, None]
-        | Generator[T, None, None]
-        | AsyncGenerator[T, None]
-        | T,
-    ],
-) -> AsyncContextManager[T] | ContextManager[T]:
+class enter(Generic[T]):  # noqa: N801
     """
     Create a context manager from a dependency.
 
-    Don't use (or use carefully) in production code. This function is mostly for
-    cases when you can't use :func:`inject` decorator, for example in pytest fixtures.
+    Can be handy for testing or when you need to create "fabric" dependency
+    (dependency that creates other dependencies based on some conditions).
 
     :param dependency: dependency to create a context manager from.
         Like with :func:`Provide` - don't call the dependency function here,
@@ -286,28 +268,47 @@ def enter(
         with enter(get_42) as val:
             assert val == 42
     """
-    dependency = _internal_registry.get_dep_or_override(dependency)
-    result = dependency()
 
-    if inspect.isasyncgen(result):
+    def __init__(
+        self,
+        dependency: Callable[
+            [],
+            Coroutine[T, None, None]
+            | Generator[T, None, None]
+            | AsyncGenerator[T, None]
+            | T,
+        ],
+    ) -> None:
+        self.dependency = dependency
+        self.sync_cm: ContextManager[T] = self._create_sync_cm()
+        self.async_cm: AsyncContextManager[T] = self._create_async_cm()
 
-        @contextlib.asynccontextmanager
-        @picodi.inject
-        async def async_enter(
-            dep: Any = picodi.Provide(dependency),
-        ) -> AsyncGenerator[Any, None]:
-            yield dep
-
-        return async_enter()
-    if inspect.isgenerator(result):
-
+    def _create_sync_cm(self) -> ContextManager[T]:
         @contextlib.contextmanager
-        @picodi.inject
-        def sync_enter(
-            dep: Any = picodi.Provide(dependency),
-        ) -> Generator[Any, None, None]:
+        @inject
+        def sync_enter(dep: Any = Provide(self.dependency)) -> Generator[T, None, None]:
             yield dep
 
         return sync_enter()
 
-    return nullcontext(result)
+    def _create_async_cm(self) -> AsyncContextManager[T]:
+        @contextlib.asynccontextmanager
+        @inject
+        async def async_enter(
+            dep: Any = Provide(self.dependency),
+        ) -> AsyncGenerator[T, None]:
+            yield dep
+
+        return async_enter()
+
+    def __enter__(self) -> T:
+        return self.sync_cm.__enter__()
+
+    def __exit__(self, *args: Any) -> None:
+        self.sync_cm.__exit__(*args)
+
+    async def __aenter__(self) -> T:
+        return await self.async_cm.__aenter__()
+
+    async def __aexit__(self, *args: Any) -> None:
+        await self.async_cm.__aexit__(*args)
