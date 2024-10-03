@@ -4,6 +4,8 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
+- Rewrite `helpers.enter` as class-based context manager (now it behaves more predictably)
+
 ## Version 0.25.0
 
 - Patch dependency tree when resolving dependencies with overrides
