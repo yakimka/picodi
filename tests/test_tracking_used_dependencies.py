@@ -43,6 +43,7 @@ def test_can_track_that_transitive_dependency_was_in_use():
     def get_transitive():
         return "transitive"
 
+    @inject
     def get_in_use(transitive: str = Provide(get_transitive)):
         return f"in_use {transitive}"
 
@@ -50,8 +51,9 @@ def test_can_track_that_transitive_dependency_was_in_use():
     def service(dependency: str = Provide(get_in_use)):
         return dependency
 
-    service()
+    result = service()
 
+    assert result == "in_use transitive"
     assert get_in_use in registry.touched
     assert get_transitive in registry.touched
     assert get_unused not in registry.touched
@@ -64,6 +66,7 @@ async def test_can_track_that_transitive_dependency_was_in_use_async():
     async def get_transitive():
         return "transitive"
 
+    @inject
     async def get_in_use(transitive: str = Provide(get_transitive)):
         return f"in_use {transitive}"
 
@@ -71,8 +74,9 @@ async def test_can_track_that_transitive_dependency_was_in_use_async():
     async def service(dependency: str = Provide(get_in_use)):
         return dependency
 
-    await service()
+    result = await service()
 
+    assert result == "in_use transitive"
     assert get_in_use in registry.touched
     assert get_transitive in registry.touched
     assert get_unused not in registry.touched

@@ -14,7 +14,7 @@ Picodi's lifespan in tests
 For effective testing, it’s essential to have a clean environment for each test.
 Picodi's scopes can introduce issues if not managed properly. To avoid this,
 you should ensure that dependencies are properly teardown after each test.
-In this example, we use the `pytest` framework, but the same principle applies
+In this example, we use the ``pytest`` framework, but the same principle applies
 to other test frameworks.
 
 .. testcode::
@@ -75,7 +75,6 @@ You have a MongoDB dependency, and you want to drop the test database during the
 
     # root conftest.py
     import pytest
-    from uuid import uuid4
 
     from picodi import registry
     from picodi.helpers import enter
@@ -83,28 +82,97 @@ You have a MongoDB dependency, and you want to drop the test database during the
     # from deps import get_mongo_database, get_mongo_client, get_mongo_database_name
 
 
-    # Use a different collection for each test to avoid conflicts
-    @pytest.fixture()
-    def mongo_test_db_name():
-        return f"test_db_{uuid4().hex}"
-
-
     # Override the MongoDB database name for tests
     @pytest.fixture(autouse=True)
-    async def _override_deps_for_tests(mongo_test_db_name):
-        with registry.override(get_mongo_database_name, lambda: mongo_test_db_name):
+    async def _override_deps_for_tests():
+        with registry.override(get_mongo_database_name, lambda: "test_db"):
             yield
 
 
     @pytest.fixture(autouse=True)
-    async def _drop_mongo_database(mongo_test_db_name):
+    async def _drop_mongo_database():
         yield
         # If the `get_mongo_database` dependency was used, this block will execute,
         # and the test database will be dropped during teardown
         if get_mongo_database in registry.touched:
             async with enter(get_mongo_client) as mongo_client:
-                await mongo_client.drop_database(mongo_test_db_name)
+                await mongo_client.drop_database("test_db")
 
         # Clear touched dependencies after each test.
         # This is important to properly detect dependency usage.
         registry.clear_touched()
+
+
+Pytest integration
+------------------
+
+Section above shows how to integrate Picodi with `pytest` by yourself. However, Picodi
+provides a built-in ``pytest`` plugin that simplifies the process.
+
+Setup pytest plugin
+********************
+
+To use builtin Picodi plugin for pytest you need to add to root conftest.py of your project:
+
+.. code-block:: python
+
+    # conftest.py
+    pytest_plugins = [
+        "picodi.integrations._pytest",
+        # If you use asyncio in your tests, add also the following plugin,
+        # it needs to be added after the main plugin.
+        "picodi.integrations._pytest_asyncio",
+    ]
+
+For using ``_pytest_asyncio`` plugin you need to install
+`pytest-asyncio <https://pypi.org/project/pytest-asyncio/>`_ package.
+
+Now Picodi will automatically handle dependency shutdown and cleanup for you.
+
+Override marker
+****************
+
+You can use ``picodi_override`` marker to override dependencies in your tests.
+
+.. code-block:: python
+
+    @pytest.mark.picodi_override(original_dependency, override_dependency)
+    def test_foo(): ...
+
+
+    # or for multiple dependencies at once
+    @pytest.mark.picodi_override(
+        [
+            (original_dependency, override_dependency),
+            (second_original_dependency, second_override_dependency),
+        ]
+    )
+    def test_bar(): ...
+
+
+Example
+********
+
+So previous example can be rewritten as:
+
+.. code-block:: python
+
+    # root conftest.py
+    import pytest
+
+    from picodi import registry
+    from picodi.helpers import enter
+
+    # from deps import get_mongo_database, get_mongo_client, get_mongo_database_name
+
+    pytestmark = pytest.mark.picodi_override(get_mongo_database_name, lambda: "test_db")
+
+
+    @pytest.fixture(autouse=True)
+    async def _drop_mongo_database():
+        yield
+        # If the `get_mongo_database` dependency was used, this block will execute,
+        # and the test database will be dropped during teardown
+        if get_mongo_database in registry.touched:
+            async with enter(get_mongo_client) as mongo_client:
+                await mongo_client.drop_database("test_db")

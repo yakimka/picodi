@@ -1,12 +1,17 @@
 import pytest
 
-from picodi import registry, shutdown_dependencies
+from picodi import registry
+
+pytest_plugins = [
+    "picodi.integrations._pytest",
+    "picodi.integrations._pytest_asyncio",
+    "pytester",
+]
 
 
 @pytest.fixture(autouse=True)
 async def _clear_registry():
     yield
-    await shutdown_dependencies()
     registry.clear()
 
 

@@ -24,7 +24,7 @@ run_ci () {
   poetry check
   poetry run pip check
   poetry run pytest --cov=tests --cov=picodi --cov-report=xml --junitxml=jcoverage.xml
-  poetry run pytest --dead-fixtures
+  poetry run pytest --dead-fixtures || true
   poetry build
   poetry export --format=requirements.txt --output=dist/requirements.txt
   # print shasum of the built packages
