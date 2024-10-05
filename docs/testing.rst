@@ -5,7 +5,7 @@ Overriding Dependencies
 -----------------------
 
 Picodi aims to be a good citizen by providing a way to test your code. It
-enables you to :doc:`overriding` dependencies in your tests, allowing you to replace
+enables you to :doc:`overriding` in your tests, allowing you to replace
 them with mocks or stubs as needed.
 
 Picodi's Lifespan in Tests
