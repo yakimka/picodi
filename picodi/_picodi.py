@@ -60,6 +60,7 @@ class RegistryStorage:
     def __init__(self) -> None:
         self.deps: dict[DependencyCallable, Provider] = {}
         self.overrides: dict[DependencyCallable, DependencyCallable] = {}
+        self.touched_dependencies: set[DependencyCallable] = set()
         self.lock = threading.RLock()
 
     def __iter__(self) -> Iterator[Provider]:
@@ -98,6 +99,7 @@ class InternalRegistry:
     def get(self, dependency: DependencyCallable) -> Provider:
         with self._storage.lock:
             dependency = self.get_dep_or_override(dependency)
+            self._storage.touched_dependencies.add(dependency)
             return self._storage.deps[dependency]
 
     def get_dep_or_override(self, dependency: DependencyCallable) -> DependencyCallable:
@@ -129,6 +131,18 @@ class Registry:
     ) -> None:
         self._storage = storage
         self._internal_registry = internal_registry
+
+    @property
+    def touched(self) -> frozenset[DependencyCallable]:
+        """
+        Get all dependencies that were used during the picodi lifecycle.
+        This method will return a frozenset of dependencies that were resolved.
+        It will not include dependencies that were overridden.
+        Primarily used for testing purposes.
+        For example, you can check that mongo
+        database was used in the test and clear it after the test.
+        """
+        return frozenset(self._storage.touched_dependencies)
 
     @overload
     def override(
@@ -205,6 +219,14 @@ class Registry:
         with self._storage.lock:
             self._storage.overrides.clear()
 
+    def clear_touched(self) -> None:
+        """
+        Clear the touched dependencies.
+        It will remove all dependencies resolved during the picodi lifecycle.
+        """
+        with self._storage.lock:
+            self._storage.touched_dependencies.clear()
+
     def clear(self) -> None:
         """
         Clear the registry. It will remove all dependencies and overrides.
@@ -214,6 +236,7 @@ class Registry:
         with self._storage.lock:
             self._storage.deps.clear()
             self._storage.overrides.clear()
+            self._storage.touched_dependencies.clear()
 
 
 _registry_storage = RegistryStorage()

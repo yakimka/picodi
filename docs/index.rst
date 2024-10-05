@@ -31,6 +31,7 @@ Key Features
    quickstart
    scopes
    overriding
+   testing
    integrations
    knownissues
 
