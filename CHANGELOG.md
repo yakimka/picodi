@@ -4,9 +4,12 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
+## Version 0.26.0
+
 - Rewrite `helpers.enter` as class-based context manager (now it behaves more predictably)
 - Added `registry.touched` property and `registry.clear_touched` method for tracking
 dependencies usage (useful for testing)
+- Added pytest integration for simpler testing
 
 ## Version 0.25.0
 
