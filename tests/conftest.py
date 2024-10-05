@@ -2,7 +2,11 @@ import pytest
 
 from picodi import registry
 
-pytest_plugins = ["picodi.integrations._pytest", "picodi.integrations._pytest_asyncio"]
+pytest_plugins = [
+    "picodi.integrations._pytest",
+    "picodi.integrations._pytest_asyncio",
+    "pytester",
+]
 
 
 @pytest.fixture(autouse=True)
