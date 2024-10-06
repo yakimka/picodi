@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
+import pytest_asyncio
 
 from picodi import shutdown_dependencies
 
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
 
-@pytest.fixture()
+@pytest_asyncio.fixture()
 async def _picodi_shutdown() -> AsyncGenerator[None, None]:
     """
     Shutdown dependencies after the test (async version).
