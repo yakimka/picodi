@@ -28,7 +28,7 @@ mypy:  ## Run mypy
 .PHONY: test
 test:  ## Run tests
 	$(RUN) poetry run pytest --cov=tests --cov=picodi $(args)
-	$(RUN) poetry run pytest --dead-fixtures || true
+	$(RUN) poetry run pytest --dead-fixtures
 
 .PHONY: test-docs
 test-docs:  ## Check docs
