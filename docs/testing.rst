@@ -103,7 +103,7 @@ Setting Up the Pytest Plugin
 To use Picodi's built-in plugin for pytest,
 add the following to the root ``conftest.py`` of your project:
 
-.. code-block:: python
+.. testcode::
 
     # conftest.py
     pytest_plugins = [
@@ -125,6 +125,9 @@ You can use the ``picodi_override`` marker to override dependencies in your test
 
 .. code-block:: python
 
+    import pytest
+
+
     @pytest.mark.picodi_override(original_dependency, override_dependency)
     def test_foo():
         pass
@@ -140,6 +143,25 @@ You can use the ``picodi_override`` marker to override dependencies in your test
     def test_bar():
         pass
 
+
+Override Fixture
+*****************
+
+You can also use a ``picodi_overrides`` fixture to override dependencies in your tests.
+
+.. testcode::
+
+    import pytest
+
+
+    @pytest.fixture()
+    def picodi_overrides():
+        return [(original_dependency, override_dependency)]
+
+
+    @pytest.mark.usefixtures("picodi_overrides")
+    def test_foo():
+        pass
 
 Example
 *******

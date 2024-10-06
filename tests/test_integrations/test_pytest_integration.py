@@ -50,6 +50,18 @@ def test_can_override_multiple_deps_with_marker():
     assert result == (42, 24)
 
 
+@pytest.fixture()
+def picodi_overrides():
+    return [(original_dependency, override_dependency)]
+
+
+@pytest.mark.usefixtures("picodi_overrides")
+def test_can_override_with_fixture():
+    result = service()
+
+    assert result == 42
+
+
 def test_cant_add_more_tan_2_arguments_to_marker(pytester):
     pytester.makeconftest(
         """

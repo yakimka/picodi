@@ -45,7 +45,7 @@ def _picodi_teardown(_picodi_clear_touched: None, _picodi_shutdown: None) -> Non
 
 
 @pytest.fixture()
-def picodi_overrides(request: pytest.FixtureRequest) -> list[tuple[Callable, Callable]]:
+def picodi_overrides() -> list[tuple[Callable, Callable]]:
     """
     Get overrides from markers that will be used in the test.
 
@@ -53,6 +53,13 @@ def picodi_overrides(request: pytest.FixtureRequest) -> list[tuple[Callable, Cal
     Use `picodi_override` marker instead. But if you want to stick to
     some custom logic you can inherit from this fixture.
     """
+    return []
+
+
+@pytest.fixture()
+def picodi_overrides_from_marks(
+    request: pytest.FixtureRequest,
+) -> list[tuple[Callable, Callable]]:
     for marker in request.node.iter_markers(name="picodi_override"):
         if len(marker.args) not in (1, 2):
             pytest.fail(
@@ -76,8 +83,13 @@ def picodi_overrides(request: pytest.FixtureRequest) -> list[tuple[Callable, Cal
 @pytest.fixture(autouse=True)
 def _picodi_override_setup(
     picodi_overrides: list[tuple[Callable, Callable]],
+    picodi_overrides_from_marks: list[tuple[Callable, Callable]],
 ) -> Generator[None, None, None]:
+    overrides = []
+    for item in picodi_overrides_from_marks + picodi_overrides:
+        if item not in overrides:
+            overrides.append(item)
     with ExitStack() as stack:
-        for get_dep, override in picodi_overrides:
+        for get_dep, override in overrides:
             stack.enter_context(registry.override(get_dep, override))
         yield
