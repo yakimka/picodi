@@ -7,10 +7,8 @@ May be useful for writing your own scopes or other customizations.
 from __future__ import annotations
 
 import asyncio
-import inspect
 from contextlib import AsyncExitStack
 from contextlib import ExitStack as SyncExitStack
-from contextlib import nullcontext as stdlib_nullcontext
 from typing import TYPE_CHECKING, Any, AsyncContextManager, ContextManager
 
 if TYPE_CHECKING:
@@ -91,20 +89,6 @@ class ExitStack:
         ):
             return self.__aexit__(exc_type, exc, None)
         return NullAwaitable()
-
-
-class nullcontext(stdlib_nullcontext):  # noqa: N801
-    """
-    A context manager that does nothing.
-
-    This is the :func:`python:contextlib.nullcontext` with the same functionality
-    but with the ability to await ``enter_result`` in async context.
-    """
-
-    async def __aenter__(self) -> Any:
-        if inspect.iscoroutine(self.enter_result):
-            self.enter_result = await self.enter_result
-        return self.enter_result
 
 
 def is_async_environment() -> bool:

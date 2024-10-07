@@ -15,7 +15,7 @@ from collections.abc import (
     Iterator,
 )
 from contextlib import asynccontextmanager, contextmanager
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import (
     Annotated,
     Any,
@@ -75,21 +75,13 @@ class InternalRegistry:
         self,
         dependency: DependencyCallable,
         scope_class: type[ScopeType] = NullScope,
-        override_scope: bool = False,
         use_init_hook: bool | Callable[[], bool] = False,
     ) -> None:
         """
         Add a dependency to the registry.
         """
         with self._storage.lock:
-            if dependency in self._storage.deps:
-                provider = self._storage.deps[dependency]
-                to_replace = provider.replace(
-                    scope_class=(scope_class if override_scope else None)
-                )
-                if to_replace != provider:
-                    self._storage.deps[dependency] = to_replace
-            else:
+            if dependency not in self._storage.deps:
                 self._storage.deps[dependency] = Provider.from_dependency(
                     dependency=dependency,
                     scope_class=scope_class,
@@ -147,12 +139,14 @@ class Registry:
     @overload
     def override(
         self, dependency: DependencyCallable, new_dependency: None = None
-    ) -> Callable[[DependencyCallable], DependencyCallable]: ...
+    ) -> Callable[[DependencyCallable], DependencyCallable]:
+        pass
 
     @overload
     def override(
         self, dependency: DependencyCallable, new_dependency: DependencyCallable
-    ) -> ContextManager[None]: ...
+    ) -> ContextManager[None]:
+        pass
 
     def override(
         self,
@@ -178,7 +172,7 @@ class Registry:
 
 
             with registry.override(get_settings, real_settings):
-                ...
+                pass
 
             registry.override(get_settings, real_settings)
             registry.override(get_settings, None)  # clear override
@@ -296,7 +290,8 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
 
 
         @inject
-        def my_service(db=Provide(some_dependency_func)): ...
+        def my_service(db=Provide(some_dependency_func)):
+            pass
     """
     signature = inspect.signature(fn)
     dependant = _build_depend_tree(Depends(fn))
@@ -419,7 +414,6 @@ def dependency(
         _internal_registry.add(
             fn,
             scope_class=scope_class,
-            override_scope=True,
             use_init_hook=use_init_hook,
         )
         return fn
@@ -527,12 +521,6 @@ class Provider:
         if callable(value):
             value = value()
         return not value
-
-    def replace(self, scope_class: type[ScopeType] | None = None) -> Provider:
-        kwargs = asdict(self)
-        if scope_class is not None:
-            kwargs["scope_class"] = scope_class
-        return Provider(**kwargs)
 
     def get_scope(self) -> ScopeType:
         return _scopes[self.scope_class]

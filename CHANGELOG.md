@@ -4,6 +4,8 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
+- Removed dead code
+
 ## Version 0.27.0
 
 - Breaking changes:

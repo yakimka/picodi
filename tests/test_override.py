@@ -218,8 +218,8 @@ def test_cant_override_dependency_with_itself():
 
 def test_can_override_with_injected_dep():
     @inject
-    def original_dep(num: int = Provide(lambda: 1)):
-        return num  # pragma: no cover
+    def original_dep(num: int = Provide(lambda: 1)):  # pragma: no cover
+        return num
 
     @inject
     def overriding_dep(num2: int = Provide(lambda: 42)):
@@ -237,8 +237,8 @@ def test_can_override_with_injected_dep():
 
 def test_can_override_with_zero_arguments_function():
     @inject
-    def original_dep(num: int = Provide(lambda: 1)):
-        return num  # pragma: no cover
+    def original_dep(num: int = Provide(lambda: 1)):  # pragma: no cover
+        return num
 
     def overriding_dep():
         return 42
@@ -255,8 +255,8 @@ def test_can_override_with_zero_arguments_function():
 
 async def test_can_override_with_injected_dep_async():
     @inject
-    async def original_dep(num: int = Provide(lambda: 1)):
-        return num  # pragma: no cover
+    async def original_dep(num: int = Provide(lambda: 1)):  # pragma: no cover
+        return num
 
     @inject
     async def overriding_dep(num2: int = Provide(lambda: 42)):
@@ -274,8 +274,8 @@ async def test_can_override_with_injected_dep_async():
 
 async def test_can_override_with_zero_arguments_function_async():
     @inject
-    async def original_dep(num: int = Provide(lambda: 1)):
-        return num  # pragma: no cover
+    async def original_dep(num: int = Provide(lambda: 1)):  # pragma: no cover
+        return num
 
     async def overriding_dep():
         return 42
@@ -292,8 +292,8 @@ async def test_can_override_with_zero_arguments_function_async():
 
 def test_can_override_deeply_nested_dep():
     @inject
-    async def original_dep(num: int = Provide(lambda: 1)):
-        return num  # pragma: no cover
+    async def original_dep(num: int = Provide(lambda: 1)):  # pragma: no cover
+        return num
 
     def overriding_dep():
         return 42
