@@ -76,7 +76,7 @@ class InternalRegistry:
         dependency: DependencyCallable,
         scope_class: type[ScopeType] = NullScope,
         override_scope: bool = False,
-        init_hook: bool | Callable[[], bool] = False,
+        use_init_hook: bool | Callable[[], bool] = False,
     ) -> None:
         """
         Add a dependency to the registry.
@@ -93,7 +93,7 @@ class InternalRegistry:
                 self._storage.deps[dependency] = Provider.from_dependency(
                     dependency=dependency,
                     scope_class=scope_class,
-                    init_hook=init_hook,
+                    use_init_hook=use_init_hook,
                 )
 
     def get(self, dependency: DependencyCallable) -> Provider:
@@ -393,7 +393,7 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
 def dependency(
     *,
     scope_class: type[ScopeType] = NullScope,
-    init_hook: bool | Callable[[], bool] = False,
+    use_init_hook: bool | Callable[[], bool] = False,
 ) -> Callable[[TC], TC]:
     """
     Decorator to declare a dependency. You don't need to use it with default arguments,
@@ -404,7 +404,7 @@ def dependency(
         :class:`NullScope`.
         Picodi additionally provides a few built-in scopes:
         :class:`SingletonScope`, :class:`ContextVarScope`.
-    :param init_hook: this parameter can be used to initialize dependency on
+    :param use_init_hook: this parameter can be used to initialize dependency on
         :func:`init_dependencies` call.
         It can be a boolean or a callable that returns a boolean.
         If it's a callable, it will be called every time before the dependency is
@@ -420,7 +420,7 @@ def dependency(
             fn,
             scope_class=scope_class,
             override_scope=True,
-            init_hook=init_hook,
+            use_init_hook=use_init_hook,
         )
         return fn
 
@@ -503,14 +503,14 @@ class Provider:
     dependency: DependencyCallable
     is_async: bool
     scope_class: type[ScopeType]
-    init_hook: bool | Callable[[], bool]
+    use_init_hook: bool | Callable[[], bool]
 
     @classmethod
     def from_dependency(
         cls,
         dependency: DependencyCallable,
         scope_class: type[ScopeType],
-        init_hook: bool | Callable[[], bool] = False,
+        use_init_hook: bool | Callable[[], bool] = False,
     ) -> Provider:
         is_async = inspect.iscoroutinefunction(
             dependency
@@ -519,11 +519,11 @@ class Provider:
             dependency=dependency,
             is_async=is_async,
             scope_class=scope_class,
-            init_hook=init_hook,
+            use_init_hook=use_init_hook,
         )
 
     def is_ignored(self) -> bool:
-        value = self.init_hook
+        value = self.use_init_hook
         if callable(value):
             value = value()
         return not value

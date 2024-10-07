@@ -7,7 +7,7 @@ Receiving a coroutine object instead of the actual value
 If you are trying to resolve async dependencies in sync functions, you will receive a coroutine object.
 For regular dependencies, this is intended behavior, so only use async dependencies in async functions.
 However, if your dependency uses a scope inherited from :class:`picodi.ManualScope`,
-and used ``init_hook=True`` with :func:`dependency` decorator,
+and used ``use_init_hook=True`` with :func:`dependency` decorator,
 you can use :func:`picodi.init_dependencies` on app startup to resolve dependencies,
 and then Picodi will use cached values, even in sync functions.
 
@@ -15,7 +15,7 @@ Dependency not initialized with init_dependencies()
 -----------------------------------------------------
 
 1. Ensure that your dependency defined with scopes inherited from :class:`picodi.ManualScope`.
-2. Ensure that your dependency is decorated with parameter ``init_hook=True`` of :func:`dependency` decorator
+2. Ensure that your dependency is decorated with parameter ``use_init_hook=True`` of :func:`dependency` decorator
 3. If you have async dependency, ensure that you are calling ``await init_dependencies()`` in an async context.
 4. Ensure that modules with your dependencies are imported (e.g., registered) before calling :func:`picodi.init_dependencies()`.
 

@@ -181,7 +181,7 @@ def test_resolve_async_yield_dep_from_sync_function_return_coroutine():
 
 
 async def test_resolve_async_yield_dep_from_sync_function_can_be_inited():
-    @dependency(scope_class=SingletonScope, init_hook=True)
+    @dependency(scope_class=SingletonScope, use_init_hook=True)
     async def async_singleton_scope_dep():
         int_service = IntService.create()
         yield int_service
@@ -327,7 +327,7 @@ def test_can_init_injected_singleton_scope_dep():
     def get_42():
         return 42
 
-    @dependency(scope_class=SingletonScope, init_hook=True)
+    @dependency(scope_class=SingletonScope, use_init_hook=True)
     @inject
     def my_singleton_scope_dep(number: int = Provide(get_42)):
         assert number == 42
@@ -346,7 +346,7 @@ async def test_can_init_injected_singleton_scope_dep_async():
     def get_42():
         return 42
 
-    @dependency(scope_class=SingletonScope, init_hook=True)
+    @dependency(scope_class=SingletonScope, use_init_hook=True)
     @inject
     async def my_async_singleton_scope_dep(number: int = Provide(get_42)):
         assert number == 42

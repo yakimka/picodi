@@ -68,7 +68,7 @@ def test_can_optionally_set_manual_initialization():
     # Arrange
     inited = False
 
-    @dependency(scope_class=SingletonScope, init_hook=True)
+    @dependency(scope_class=SingletonScope, use_init_hook=True)
     def get_num():
         nonlocal inited
         inited = True
@@ -85,7 +85,7 @@ async def test_can_optionally_set_manual_initialization_async():
     # Arrange
     inited = False
 
-    @dependency(scope_class=SingletonScope, init_hook=True)
+    @dependency(scope_class=SingletonScope, use_init_hook=True)
     async def get_num():
         nonlocal inited
         inited = True
@@ -106,7 +106,7 @@ def test_can_optionally_set_manual_initialization_with_callable():
     def callable_func(flag: bool = Provide(lambda: True)):
         return flag
 
-    @dependency(scope_class=SingletonScope, init_hook=callable_func)
+    @dependency(scope_class=SingletonScope, use_init_hook=callable_func)
     def get_num():
         nonlocal inited
         inited = True
@@ -127,7 +127,7 @@ async def test_can_optionally_set_manual_initialization_with_callable_async():
     def callable_func(flag: bool = Provide(lambda: True)):
         return flag
 
-    @dependency(scope_class=SingletonScope, init_hook=callable_func)
+    @dependency(scope_class=SingletonScope, use_init_hook=callable_func)
     async def get_num():
         nonlocal inited
         inited = True
