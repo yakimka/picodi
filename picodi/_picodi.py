@@ -393,7 +393,7 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
 def dependency(
     *,
     scope_class: type[ScopeType] = NullScope,
-    ignore_manual_init: bool | Callable[[], bool] = False,
+    ignore_manual_init: bool | Callable[[], bool] = True,
 ) -> Callable[[TC], TC]:
     """
     Decorator to declare a dependency. You don't need to use it with default arguments,
@@ -437,7 +437,7 @@ def init_dependencies(scope_class: LifespanScopeClass = SingletonScope) -> Await
     dependencies.
 
     If you not pass any arguments, it will initialize only :class:`SingletonScope`
-    and its subclasses.
+    and its subclasses (that are not ignored for manual init).
 
     :param scope_class: you can specify the scope class to initialize. If passed -
         only dependencies of this scope class and its subclasses will be initialized.

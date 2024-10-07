@@ -30,13 +30,14 @@ NullScope
 By default, all dependencies are created with the :class:`picodi.NullScope` scope.
 This means that a new instance is created every time the dependency is injected
 and closed immediately after root injection is done.
-
 SingletonScope
 **************
 
 The :class:`picodi.SingletonScope` scope creates a single instance of the dependency
 and reuses it every time the dependency is injected. The instance is created when the
 dependency is first injected or :func:`picodi.init_dependencies` is called.
+In case of ```picodi.init_dependencies`` yor dependency need to be decorated with
+parameter ``ignore_manual_init=False`` of :func:`dependency` decorator
 
 ``SingletonScope`` is the manual scope, so you need to call :func:`picodi.shutdown_dependencies`
 manually. Usually you want to call it when your application is shutting down.
@@ -48,6 +49,8 @@ The :class:`picodi.ContextVarScope` uses the :class:`python:contextvars.ContextV
 to store the instance. The instance is created when the
 dependency is first injected or :func:`picodi.init_dependencies` with
 ``scope_class=ContextVarScope`` is called.
+In case of ```picodi.init_dependencies`` yor dependency need to be decorated with
+parameter ``ignore_manual_init=False`` of :func:`dependency` decorator
 
 ``ContextVarScope`` is the manual scope, so you need to call :func:`picodi.shutdown_dependencies`
 with ``scope_class=ContextVarScope`` manually.
@@ -74,7 +77,10 @@ Lifecycle of manual scopes
 --------------------------
 
 You can manually initialize your dependencies by calling :func:`picodi.init_dependencies`
-with the ``scope_class`` argument. Example:
+with the ``scope_class`` argument
+(yor dependencies need to be decorated with parameter ``ignore_manual_init=False``
+of :func:`dependency` decorator).
+Example:
 
 .. code-block:: python
 
@@ -105,7 +111,7 @@ scope you can inject it in sync code. Example:
     from picodi import Provide, SingletonScope, dependency, init_dependencies, inject
 
 
-    @dependency(scope_class=SingletonScope)
+    @dependency(scope_class=SingletonScope, ignore_manual_init=False)
     async def get_async_dependency():
         return "from async"
 
@@ -127,10 +133,11 @@ scope you can inject it in sync code. Example:
 Because ``get_async_dependency`` is ``SingletonScope`` scoped dependency and
 it's initialized on startup, while your app is running you can inject it in sync code.
 
-Skipping manual initialization
-******************************
+Resolve dependencies on app startup
+***********************************
 
-If you want to skip manual initialization of your dependency you can use the
+If you want to automatically resolve dependencies on app startup
+(or any other necessary time) you can set to ``True`` the
 ``ignore_manual_init`` argument of the :func:`picodi.dependency` decorator.
 
 .. testcode::
@@ -199,7 +206,7 @@ It's convenient for using with workers or cli commands.
     from picodi.helpers import lifespan
 
 
-    @dependency(scope_class=SingletonScope)
+    @dependency(scope_class=SingletonScope, ignore_manual_init=False)
     def get_singleton():
         print("Creating singleton object")
         yield "singleton"

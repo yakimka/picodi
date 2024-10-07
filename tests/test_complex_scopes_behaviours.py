@@ -76,7 +76,7 @@ async def test_transitive_local_dependency_injected_from_singleton_acts_like_sin
 
 
 async def test_can_sync_enter_inited_async_singleton():
-    @dependency(scope_class=SingletonScope)
+    @dependency(scope_class=SingletonScope, ignore_manual_init=False)
     async def dep():
         return 42
 
