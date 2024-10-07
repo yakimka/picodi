@@ -4,6 +4,9 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
+- Breaking changes:
+  - Argument `ignore_manual_init` of `@dependency` decorator by default is `True` now
+
 ## Version 0.26.0
 
 - Rewrite `helpers.enter` as class-based context manager (now it behaves more predictably)

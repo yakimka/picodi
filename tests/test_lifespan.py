@@ -8,7 +8,7 @@ from picodi.helpers import lifespan
 def resource():
     state = {"inited": False, "closed": False}
 
-    @dependency(scope_class=SingletonScope)
+    @dependency(scope_class=SingletonScope, ignore_manual_init=False)
     def my_resource():
         state["inited"] = True
         yield state
@@ -21,7 +21,7 @@ def resource():
 def async_resource():
     state = {"inited": False, "closed": False}
 
-    @dependency(scope_class=SingletonScope)
+    @dependency(scope_class=SingletonScope, ignore_manual_init=False)
     async def my_resource():
         state["inited"] = True
         yield state
