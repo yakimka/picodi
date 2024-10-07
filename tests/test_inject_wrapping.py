@@ -3,12 +3,14 @@ import inspect
 from picodi import Provide, inject
 
 
-def get_value(): ...
+def get_value():
+    pass
 
 
 def test_inject_doesnt_change_type_of_function():
     @inject
-    def my_dependency(value: int = Provide(get_value)): ...
+    def my_dependency(value: int = Provide(get_value)):
+        pass
 
     assert inspect.isfunction(my_dependency)
     assert not inspect.iscoroutinefunction(my_dependency)
@@ -18,7 +20,8 @@ def test_inject_doesnt_change_type_of_function():
 
 def test_inject_doesnt_change_type_of_async_function():
     @inject
-    async def my_dependency(value: int = Provide(get_value)): ...
+    async def my_dependency(value: int = Provide(get_value)):
+        pass
 
     assert inspect.iscoroutinefunction(my_dependency)
 

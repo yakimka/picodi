@@ -99,7 +99,11 @@ precision = 2
 exclude_lines = [
   "pragma: no cover",
   "if TYPE_CHECKING:",
+  "raise AssertionError",
   "raise NotImplementedError",
+  "pass",
+  "class .*\\bProtocol\\):",
+  "@(abc\\.)?abstractmethod",
 ]
 
 [tool.mypy]

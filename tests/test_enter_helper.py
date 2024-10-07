@@ -87,7 +87,7 @@ async def test_enter_regular_dependency_async():
 
 async def test_can_use_override_enter_dependency():
     async def dep():
-        return 42
+        return 42  # pragma: no cover
 
     with registry.override(dep, lambda: 43):  # noqa: SIM117
         with enter(dep) as val:

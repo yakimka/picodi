@@ -117,26 +117,30 @@ class _Lifespan:
 
 
         @lifespan
-        def main(): ...
+        def main():
+            pass
 
 
         @lifespan
-        async def async_main(): ...
+        async def async_main():
+            pass
 
 
         @lifespan.sync()
-        def main(): ...
+        def main():
+            pass
 
 
         @lifespan.async_()
-        async def async_main(): ...
+        async def async_main():
+            pass
 
 
         with lifespan.sync():
-            ...
+            pass
 
         async with lifespan.async_():
-            ...
+            pass
     """
 
     @overload
