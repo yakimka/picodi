@@ -30,13 +30,14 @@ NullScope
 By default, all dependencies are created with the :class:`picodi.NullScope` scope.
 This means that a new instance is created every time the dependency is injected
 and closed immediately after root injection is done.
+
 SingletonScope
 **************
 
 The :class:`picodi.SingletonScope` scope creates a single instance of the dependency
 and reuses it every time the dependency is injected. The instance is created when the
 dependency is first injected or :func:`picodi.init_dependencies` is called.
-In case of ```picodi.init_dependencies`` yor dependency need to be decorated with
+In case of ``picodi.init_dependencies`` yor dependency need to be decorated with
 parameter ``use_init_hook=True`` of :func:`dependency` decorator
 
 ``SingletonScope`` is the manual scope, so you need to call :func:`picodi.shutdown_dependencies`
