@@ -4,7 +4,7 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
-## Version 0.26.0
+## Version 0.27.0
 
 - Breaking changes:
   - Argument `ignore_manual_init` of `@dependency` decorator renamed to `use_init_hook`
