@@ -76,7 +76,7 @@ class InternalRegistry:
         dependency: DependencyCallable,
         scope_class: type[ScopeType] = NullScope,
         override_scope: bool = False,
-        ignore_manual_init: bool | Callable[[], bool] = False,
+        init_hook: bool | Callable[[], bool] = False,
     ) -> None:
         """
         Add a dependency to the registry.
@@ -93,7 +93,7 @@ class InternalRegistry:
                 self._storage.deps[dependency] = Provider.from_dependency(
                     dependency=dependency,
                     scope_class=scope_class,
-                    ignore_manual_init=ignore_manual_init,
+                    init_hook=init_hook,
                 )
 
     def get(self, dependency: DependencyCallable) -> Provider:
@@ -393,7 +393,7 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
 def dependency(
     *,
     scope_class: type[ScopeType] = NullScope,
-    ignore_manual_init: bool | Callable[[], bool] = True,
+    init_hook: bool | Callable[[], bool] = False,
 ) -> Callable[[TC], TC]:
     """
     Decorator to declare a dependency. You don't need to use it with default arguments,
@@ -404,10 +404,11 @@ def dependency(
         :class:`NullScope`.
         Picodi additionally provides a few built-in scopes:
         :class:`SingletonScope`, :class:`ContextVarScope`.
-    :param ignore_manual_init: this parameter can be used to skip the dependency manual
-        initialization. It can be a boolean or a callable that returns a boolean.
+    :param init_hook: this parameter can be used to initialize dependency on
+        :func:`init_dependencies` call.
+        It can be a boolean or a callable that returns a boolean.
         If it's a callable, it will be called every time before the dependency is
-        initialized with :func:`init_dependencies`. If it returns True, the dependency
+        initialized with :func:`init_dependencies`. If it returns False, the dependency
         will be skipped.
     """
 
@@ -419,7 +420,7 @@ def dependency(
             fn,
             scope_class=scope_class,
             override_scope=True,
-            ignore_manual_init=ignore_manual_init,
+            init_hook=init_hook,
         )
         return fn
 
@@ -502,14 +503,14 @@ class Provider:
     dependency: DependencyCallable
     is_async: bool
     scope_class: type[ScopeType]
-    ignore_manual_init: bool | Callable[[], bool]
+    init_hook: bool | Callable[[], bool]
 
     @classmethod
     def from_dependency(
         cls,
         dependency: DependencyCallable,
         scope_class: type[ScopeType],
-        ignore_manual_init: bool | Callable[[], bool] = False,
+        init_hook: bool | Callable[[], bool] = False,
     ) -> Provider:
         is_async = inspect.iscoroutinefunction(
             dependency
@@ -518,13 +519,14 @@ class Provider:
             dependency=dependency,
             is_async=is_async,
             scope_class=scope_class,
-            ignore_manual_init=ignore_manual_init,
+            init_hook=init_hook,
         )
 
     def is_ignored(self) -> bool:
-        if callable(self.ignore_manual_init):
-            return self.ignore_manual_init()
-        return self.ignore_manual_init
+        value = self.init_hook
+        if callable(value):
+            value = value()
+        return not value
 
     def replace(self, scope_class: type[ScopeType] | None = None) -> Provider:
         kwargs = asdict(self)

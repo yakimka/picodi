@@ -11,7 +11,7 @@ from picodi.helpers import enter
 
 async def test_transitive_dependency_injected_with_enter_closed_properly(closeable):
     # Arrange
-    @dependency(scope_class=SingletonScope, ignore_manual_init=True)
+    @dependency(scope_class=SingletonScope)
     async def get_dep_with_cleanup():
         yield 42
         closeable.close()
@@ -76,7 +76,7 @@ async def test_transitive_local_dependency_injected_from_singleton_acts_like_sin
 
 
 async def test_can_sync_enter_inited_async_singleton():
-    @dependency(scope_class=SingletonScope, ignore_manual_init=False)
+    @dependency(scope_class=SingletonScope, init_hook=True)
     async def dep():
         return 42
 
