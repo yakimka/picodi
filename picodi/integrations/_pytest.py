@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from picodi import registry, shutdown_dependencies
+from picodi import init_dependencies, registry, shutdown_dependencies
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
@@ -14,6 +14,9 @@ if TYPE_CHECKING:
 def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line(
         "markers", "picodi_override(dep, override): Picodi deps override"
+    )
+    config.addinivalue_line(
+        "markers", "init_dependencies(scope_class): Helper marker for initializing deps"
     )
 
 
@@ -35,13 +38,6 @@ def _picodi_clear_touched() -> Generator[None, None, None]:
     """
     yield
     registry.clear_touched()
-
-
-@pytest.fixture(autouse=True)
-def _picodi_teardown(_picodi_clear_touched: None, _picodi_shutdown: None) -> None:
-    """
-    Automatically cleanup Picodi dependencies and registry after the test.
-    """
 
 
 @pytest.fixture()
@@ -80,7 +76,7 @@ def picodi_overrides_from_marks(
     return []
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture()
 def _picodi_override_setup(
     picodi_overrides: list[tuple[Callable, Callable]],
     picodi_overrides_from_marks: list[tuple[Callable, Callable]],
@@ -93,3 +89,35 @@ def _picodi_override_setup(
         for get_dep, override in overrides:
             stack.enter_context(registry.override(get_dep, override))
         yield
+
+
+@pytest.fixture()
+def picodi_init_dependencies_kwargs(request: pytest.FixtureRequest) -> dict | None:
+    for marker in request.node.iter_markers(name="init_dependencies"):
+        if marker.args:
+            raise ValueError(
+                "init_dependencies marker don't support positional arguments"
+            )
+        return marker.kwargs
+    return None
+
+
+@pytest.fixture()
+def _picodi_init_dependencies(
+    picodi_init_dependencies_kwargs: dict | None,
+) -> None:
+    if picodi_init_dependencies_kwargs is None:
+        return
+    init_dependencies(**picodi_init_dependencies_kwargs)
+
+
+@pytest.fixture(autouse=True)
+def _pytest_autouse_fixture(
+    _picodi_init_dependencies: None,
+    _picodi_override_setup: None,
+    _picodi_clear_touched: None,
+    _picodi_shutdown: None,
+) -> None:
+    """
+    Just a fixture to make sure that all the autouse fixtures are used.
+    """

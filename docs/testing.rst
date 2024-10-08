@@ -116,7 +116,29 @@ add the following to the root ``conftest.py`` of your project:
 To use the ``_pytest_asyncio`` plugin, you need to install the
 `pytest-asyncio <https://pypi.org/project/pytest-asyncio/>`_ package.
 
-Now, Picodi will automatically handle dependency shutdown and cleanup for you.
+Lifespan
+********
+
+By default, Picodi will automatically call :func:`picodi.shutdown_dependencies`
+and make additional cleanups after each test.
+
+If you need to call :func:`picodi.init_dependencies` - you can use eponymous marker.
+
+.. testcode::
+
+    import pytest
+    from picodi import SingletonScope
+
+
+    @pytest.mark.init_dependencies
+    async def test_foo():
+        pass
+
+
+    # Or pass kwargs to fixture
+    @pytest.mark.init_dependencies(scope_class=SingletonScope)
+    async def test_bar():
+        pass
 
 Override Marker
 ***************
