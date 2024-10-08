@@ -5,6 +5,7 @@ We follow [Semantic Versions](https://semver.org/).
 ## Version next
 
 - Removed dead code
+- Added `init_dependencies` marker for pytest
 
 ## Version 0.27.0
 

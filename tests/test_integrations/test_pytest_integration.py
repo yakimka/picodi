@@ -244,3 +244,113 @@ def test_dependencies_and_overrides_must_be_callable(pytester, dep, override):
     result = pytester.runpytest()
 
     assert "Dependency and override must be callable" in "".join(result.outlines)
+
+
+def test_can_init_dependencies_with_marker(pytester):
+    pytester.makeconftest(
+        """
+        pytest_plugins = ["picodi.integrations._pytest"]
+    """
+    )
+
+    pytester.makepyfile(
+        """
+        import pytest
+        from picodi import Provide, inject, dependency, SingletonScope
+
+        inited = False
+
+        @dependency(scope_class=SingletonScope, use_init_hook=True)
+        def ged_dep():
+            global inited
+            inited = True
+            return 42
+
+        @inject
+        def service(dependency=Provide(ged_dep)):
+            return dependency
+
+
+        @pytest.mark.init_dependencies
+        def test_hello_default():
+            assert inited is True
+            assert service() == 42
+    """
+    )
+
+    result = pytester.runpytest()
+
+    result.assert_outcomes(passed=1)
+
+
+def test_can_init_dependencies_with_marker_async(pytester):
+    pytester.makepyprojecttoml(
+        """
+        [tool.coverage.run]
+        branch = true
+    """
+    )
+
+    pytester.makeconftest(
+        """
+        import coverage
+        coverage.process_startup()
+        pytest_plugins = [
+            "picodi.integrations._pytest",
+            "picodi.integrations._pytest_asyncio",
+        ]
+    """
+    )
+
+    pytester.makepyfile(
+        """
+        import pytest
+        from picodi import Provide, inject, dependency, SingletonScope
+
+        inited = False
+
+        @dependency(scope_class=SingletonScope, use_init_hook=True)
+        async def ged_dep():
+            global inited
+            inited = True
+            return 42
+
+        @inject
+        def service(dependency=Provide(ged_dep)):
+            return dependency
+
+
+        @pytest.mark.init_dependencies
+        def test_hello_default():
+            assert inited is True
+            assert service() == 42
+    """
+    )
+
+    result = pytester.runpytest_subprocess()
+
+    result.assert_outcomes(passed=1)
+
+
+def test_cant_use_init_dependencies_with_args(pytester):
+    pytester.makeconftest(
+        """
+        pytest_plugins = ["picodi.integrations._pytest"]
+    """
+    )
+
+    pytester.makepyfile(
+        """
+        import pytest
+        from picodi import Provide, inject, dependency, SingletonScope
+
+
+        @pytest.mark.init_dependencies("position arg")
+        def test_hello_default():
+            pass
+    """
+    )
+
+    result = pytester.runpytest()
+
+    assert "marker don't support positional arguments" in "".join(result.outlines)
