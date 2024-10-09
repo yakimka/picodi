@@ -4,6 +4,10 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
+## Version 0.28.2
+
+- Change order of running pytest fixtures
+
 ## Version 0.28.1
 
 - Rename pytest fixture name for consistency
