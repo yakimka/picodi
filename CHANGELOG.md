@@ -4,6 +4,8 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
+## Version 0.28.0
+
 - Removed dead code
 - Added `init_dependencies` marker for pytest
 - Added tests for detecting race conditions
