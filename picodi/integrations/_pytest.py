@@ -114,8 +114,8 @@ def _picodi_init_dependencies(
 
 @pytest.fixture(autouse=True)
 def _pytest_autouse_fixture(
-    _picodi_init_dependencies: None,
     _picodi_override_setup: None,
+    _picodi_init_dependencies: None,
     _picodi_clear_touched: None,
     _picodi_shutdown: None,
 ) -> None:

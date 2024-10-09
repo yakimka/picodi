@@ -354,3 +354,40 @@ def test_cant_use_init_dependencies_with_args(pytester):
     result = pytester.runpytest()
 
     assert "marker don't support positional arguments" in "".join(result.outlines)
+
+
+def test_fixtures_executes_in_strict_order(pytester):
+    pytester.makeconftest(
+        """
+        pytest_plugins = ["picodi.integrations._pytest"]
+    """
+    )
+
+    pytester.makepyfile(
+        """
+        import pytest
+        from picodi import Provide, inject, dependency, SingletonScope
+
+        order = []
+
+        @pytest.fixture()
+        def picodi_overrides():
+            order.append("picodi_overrides")
+            return []
+
+        @dependency(scope_class=SingletonScope, use_init_hook=True)
+        def auto_init_dependency():
+            order.append("auto_init_dependency")
+
+        @pytest.mark.picodi_init_dependencies
+        def test_hello_default():
+            assert order == [
+                "picodi_overrides",
+                "auto_init_dependency",
+            ]
+    """
+    )
+
+    result = pytester.runpytest("-vv")
+
+    result.assert_outcomes(passed=1)
