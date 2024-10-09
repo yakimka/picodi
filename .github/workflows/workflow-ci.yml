@@ -145,7 +145,7 @@ jobs:
       packages: write
     strategy:
       matrix:
-        image-name: [ 'quay.io/pypa/manylinux_2_28_x86_64']
+        image-name: [ 'quay.io/pypa/musllinux_1_2_x86_64']
 
     steps:
       - uses: actions/checkout@v4
@@ -174,12 +174,20 @@ jobs:
           docker run -e VIRTUAL_ENV=/opt/code/.venv --rm -v $(pwd):/opt/code -w /opt/code
           free-threading-image bash -c "
           if [ ! -d .venv ]; then
+            # Remove this after cryptography can be installed in free-threading mode
+            # (pytest depends on cryptography)
+            python3.13 -m venv venvpoetry;
+            ./venvpoetry/bin/pip install poetry;
+            ./venvpoetry/bin/poetry self add poetry-plugin-export;
+            ./venvpoetry/bin/poetry export --with=dev --format=requirements.txt --output=requirements.txt;
+            rm -rf venvpoetry;
+
             python3.13t -m venv .venv;
           fi
-          && .venv/bin/pip install pytest pytest-asyncio pytest-cov pytest-randomly pytest-race pytest-repeat
+          && .venv/bin/pip install -r requirements.txt
           && .venv/bin/pip install --no-deps -e .
           && .venv/bin/python -VV
-          && .venv/bin/pytest --ignore=tests/test_integrations
+          && .venv/bin/pytest
           "
 
   release-package:
