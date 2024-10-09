@@ -184,7 +184,7 @@ jobs:
 
   release-package:
     runs-on: ubuntu-latest
-    needs: [ check-code ]
+    needs: [check-code, pypy-test, free-threading-test]
 
     steps:
       - uses: actions/checkout@v4
