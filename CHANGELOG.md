@@ -6,6 +6,8 @@ We follow [Semantic Versions](https://semver.org/).
 
 - Removed dead code
 - Added `init_dependencies` marker for pytest
+- Added tests for detecting race conditions
+- Added Python 3.13-free-threading to CI
 
 ## Version 0.27.0
 

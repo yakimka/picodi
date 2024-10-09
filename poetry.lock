@@ -970,6 +970,20 @@ markdown-it-py = ">=2.2.0,<4.0"
 pytest = ">=7.0.0"
 
 [[package]]
+name = "pytest-race"
+version = "0.2.0"
+description = "Race conditions tester for pytest"
+optional = false
+python-versions = ">=3.2"
+files = [
+    {file = "pytest-race-0.2.0.tar.gz", hash = "sha256:92a43179ece42366ae2207bf4160bdb64781dc2ca425d1b37dc310c58ad0ade3"},
+    {file = "pytest_race-0.2.0-py3-none-any.whl", hash = "sha256:f2ae6cf1feece53619a76534a38863565b95f91436e78fb1bc7090234317eaf9"},
+]
+
+[package.dependencies]
+pytest = ">=2.9.0"
+
+[[package]]
 name = "pytest-randomly"
 version = "3.15.0"
 description = "Pytest plugin to randomly order tests and control random.seed."
@@ -978,6 +992,20 @@ python-versions = ">=3.8"
 files = [
     {file = "pytest_randomly-3.15.0-py3-none-any.whl", hash = "sha256:0516f4344b29f4e9cdae8bce31c4aeebf59d0b9ef05927c33354ff3859eeeca6"},
     {file = "pytest_randomly-3.15.0.tar.gz", hash = "sha256:b908529648667ba5e54723088edd6f82252f540cc340d748d1fa985539687047"},
+]
+
+[package.dependencies]
+pytest = "*"
+
+[[package]]
+name = "pytest-repeat"
+version = "0.9.3"
+description = "pytest plugin for repeating tests"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "pytest_repeat-0.9.3-py3-none-any.whl", hash = "sha256:26ab2df18226af9d5ce441c858f273121e92ff55f5bb311d25755b8d7abdd8ed"},
+    {file = "pytest_repeat-0.9.3.tar.gz", hash = "sha256:ffd3836dfcd67bb270bec648b330e20be37d2966448c4148c4092d1e8aba8185"},
 ]
 
 [package.dependencies]
@@ -1324,4 +1352,4 @@ test = ["covdefaults (>=2.3)", "coverage (>=7.2.7)", "coverage-enable-subprocess
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "388636c6be7cc1eae687d98144135f36cd87a9179ddb0bf24cefca9857616401"
+content-hash = "b56c180aa42a2299c75d0bc603b2d7fbc9d8c71295a24d987f3083652d71b7ea"
