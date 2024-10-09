@@ -14,7 +14,7 @@ from collections.abc import (
     Iterable,
     Iterator,
 )
-from contextlib import asynccontextmanager, contextmanager
+from contextlib import asynccontextmanager, contextmanager, nullcontext
 from dataclasses import dataclass
 from typing import (
     Annotated,
@@ -89,10 +89,9 @@ class InternalRegistry:
                 )
 
     def get(self, dependency: DependencyCallable) -> Provider:
-        with self._storage.lock:
-            dependency = self.get_dep_or_override(dependency)
-            self._storage.touched_dependencies.add(dependency)
-            return self._storage.deps[dependency]
+        dependency = self.get_dep_or_override(dependency)
+        self._storage.touched_dependencies.add(dependency)
+        return self._storage.deps[dependency]
 
     def get_dep_or_override(self, dependency: DependencyCallable) -> DependencyCallable:
         return self._storage.overrides.get(dependency, dependency)
@@ -210,16 +209,14 @@ class Registry:
         """
         Clear all overrides. It will remove all overrides, but keep the dependencies.
         """
-        with self._storage.lock:
-            self._storage.overrides.clear()
+        self._storage.overrides.clear()
 
     def clear_touched(self) -> None:
         """
         Clear the touched dependencies.
         It will remove all dependencies resolved during the picodi lifecycle.
         """
-        with self._storage.lock:
-            self._storage.touched_dependencies.clear()
+        self._storage.touched_dependencies.clear()
 
     def clear(self) -> None:
         """
@@ -227,10 +224,9 @@ class Registry:
         This method will not close any dependencies. So you need to manually call
         :func:`shutdown_dependencies` before this method.
         """
-        with self._storage.lock:
-            self._storage.deps.clear()
-            self._storage.overrides.clear()
-            self._storage.touched_dependencies.clear()
+        self._storage.deps.clear()
+        self._storage.overrides.clear()
+        self._storage.touched_dependencies.clear()
 
 
 _registry_storage = RegistryStorage()
@@ -241,7 +237,6 @@ _scopes: dict[type[ScopeType], ScopeType] = {
     SingletonScope: SingletonScope(),
     ContextVarScope: ContextVarScope(),
 }
-_lock = threading.RLock()
 
 
 def Provide(dependency: DependencyCallable, /) -> Any:  # noqa: N802
@@ -725,6 +720,9 @@ def _extract_and_register_dependency_from_parameter(
         _internal_registry.add(fastapi_dependency.call)  # type: ignore[unreachable]
         return fastapi_dependency
     return None
+
+
+_lock = nullcontext()
 
 
 class LazyResolver:
