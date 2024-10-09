@@ -145,7 +145,7 @@ jobs:
       packages: write
     strategy:
       matrix:
-        image-name: [ 'quay.io/pypa/musllinux_1_2_x86_64']
+        image-name: ['quay.io/pypa/manylinux_2_28_x86_64']
 
     steps:
       - uses: actions/checkout@v4

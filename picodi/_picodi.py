@@ -14,7 +14,7 @@ from collections.abc import (
     Iterable,
     Iterator,
 )
-from contextlib import asynccontextmanager, contextmanager, nullcontext
+from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
 from typing import (
     Annotated,
@@ -722,7 +722,7 @@ def _extract_and_register_dependency_from_parameter(
     return None
 
 
-_lock = nullcontext()
+_lock = threading.RLock()
 
 
 class LazyResolver:
