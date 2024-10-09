@@ -271,7 +271,7 @@ def test_can_init_dependencies_with_marker(pytester):
             return dependency
 
 
-        @pytest.mark.init_dependencies
+        @pytest.mark.picodi_init_dependencies
         def test_hello_default():
             assert inited is True
             assert service() == 42
@@ -320,7 +320,7 @@ def test_can_init_dependencies_with_marker_async(pytester):
             return dependency
 
 
-        @pytest.mark.init_dependencies
+        @pytest.mark.picodi_init_dependencies
         def test_hello_default():
             assert inited is True
             assert service() == 42
@@ -345,7 +345,7 @@ def test_cant_use_init_dependencies_with_args(pytester):
         from picodi import Provide, inject, dependency, SingletonScope
 
 
-        @pytest.mark.init_dependencies("position arg")
+        @pytest.mark.picodi_init_dependencies("position arg")
         def test_hello_default():
             pass
     """

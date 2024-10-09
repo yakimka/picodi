@@ -16,7 +16,8 @@ def pytest_configure(config: pytest.Config) -> None:
         "markers", "picodi_override(dep, override): Picodi deps override"
     )
     config.addinivalue_line(
-        "markers", "init_dependencies(scope_class): Helper marker for initializing deps"
+        "markers",
+        "picodi_init_dependencies(scope_class): Helper marker for initializing deps",
     )
 
 
@@ -93,7 +94,7 @@ def _picodi_override_setup(
 
 @pytest.fixture()
 def picodi_init_dependencies_kwargs(request: pytest.FixtureRequest) -> dict | None:
-    for marker in request.node.iter_markers(name="init_dependencies"):
+    for marker in request.node.iter_markers(name="picodi_init_dependencies"):
         if marker.args:
             raise ValueError(
                 "init_dependencies marker don't support positional arguments"
