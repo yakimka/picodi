@@ -48,6 +48,7 @@ pip install picodi
 - 🔍 Type hints support
 - 🐍 Python & PyPy 3.10+ support
 - 🚀 Works well with [FastAPI](https://fastapi.tiangolo.com/)
+- 🧪 Integration with [pytest](https://docs.pytest.org/)
 
 ## Quick Start
 
