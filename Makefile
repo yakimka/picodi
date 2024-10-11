@@ -7,11 +7,11 @@ all: help
 
 .PHONY: pre-commit
 pre-commit:  ## Run pre-commit with args
-	$(RUN) poetry run pre-commit $(args)
+	$(RUN) uv run pre-commit $(args)
 
-.PHONY: poetry
-poetry:  ## Run poetry with args
-	$(RUN) poetry $(args)
+.PHONY: uv
+uv:  ## Run uv with args
+	$(RUN) uv $(args)
 
 .PHONY: lint
 lint:  ## Run flake8, mypy, other linters and verify formatting
@@ -23,27 +23,26 @@ lint:  ## Run flake8, mypy, other linters and verify formatting
 
 .PHONY: mypy
 mypy:  ## Run mypy
-	$(RUN) poetry run mypy $(args)
+	$(RUN) uv run mypy $(args)
 
 .PHONY: test
 test:  ## Run tests
-	$(RUN) poetry run pytest --cov=tests --cov=picodi $(args)
-	$(RUN) poetry run pytest --dead-fixtures
+	$(RUN) uv run pytest --cov=tests --cov=picodi $(args)
+	$(RUN) uv run pytest --dead-fixtures
 
 .PHONY: test-docs
 test-docs:  ## Check docs
 	$(MAKE) -C docs test
-	$(RUN) poetry run pytest --markdown-docs -m markdown-docs $(args)
+	$(RUN) uv run pytest --markdown-docs -m markdown-docs $(args)
 
 .PHONY: package
 package:  ## Run packages (dependencies) checks
-	$(RUN) poetry check
-	$(RUN) poetry run pip check
+	$(RUN) uv pip check
 
 .PHONY: build-package
 build-package:  ## Build package
-	$(RUN) poetry build $(args)
-	$(RUN) poetry export --format=requirements.txt --output=dist/requirements.txt
+	$(RUN) uv build $(args)
+	$(RUN) uv export --format=requirements-txt --output-file=dist/requirements.txt --locked --no-dev --no-emit-project
 
 .PHONY: checks
 checks: lint package test  ## Run linting and tests

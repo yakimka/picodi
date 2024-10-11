@@ -14,8 +14,6 @@ on:
 
 env:
   PIP_NO_CACHE_DIR: "off"
-  POETRY_VIRTUALENVS_IN_PROJECT: "true"
-  POETRY_NO_INTERACTION: "1"
   DOCKER_BUILDKIT: "1"
   COMPOSE_DOCKER_CLI_BUILD: "1"
 
@@ -28,7 +26,7 @@ env:
   CACHE_REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   DOCKER_COMPOSE_SERVICE_NAME: "devtools"
   MAIN_PY_VERSION: "3.11"
-  POETRY_DOCKER_IMAGE: "yakimka/poetry:1.8.2-py3.11-slim"
+  UV_DOCKER_IMAGE: "ghcr.io/astral-sh/uv:latest"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -68,7 +66,7 @@ jobs:
           path: |
             .venv
             .cache
-          key: py${{ matrix.python-version }}-${{ hashFiles('./poetry.lock') }}
+          key: py${{ matrix.python-version }}-${{ hashFiles('./uv.lock') }}
 
       - name: Build docker dev image
         run: |
@@ -118,7 +116,7 @@ jobs:
         with:
           path: |
             .venv
-          key: pypy${{ matrix.pypy-version }}-${{ hashFiles('./poetry.lock') }}
+          key: pypy${{ matrix.pypy-version }}-${{ hashFiles('./uv.lock') }}
 
       - name: Pull docker image
         run: |
@@ -132,9 +130,9 @@ jobs:
           if [ ! -d .venv ]; then
             python -m venv .venv;
           fi
-          && .venv/bin/pip install poetry
-          && .venv/bin/poetry install
-          && .venv/bin/pip install --no-deps -e .
+          && .venv/bin/pip install uv
+          && .venv/bin/uv sync
+          && .venv/bin/uv pip install --no-deps -e .
           && .venv/bin/pytest
           "
 
@@ -162,7 +160,7 @@ jobs:
         with:
           path: |
             .venv
-          key: free-threading${{ matrix.image-name }}-${{ hashFiles('./poetry.lock') }}
+          key: free-threading${{ matrix.image-name }}-${{ hashFiles('./uv.lock') }}
 
       - name: Pull docker image
         run: |
@@ -199,16 +197,9 @@ jobs:
 
       - name: Pull and spin dev container
         run: |
-          docker run -v $(pwd):/code -w /code --rm -d --name=poetry ${POETRY_DOCKER_IMAGE} sleep infinity
+          docker run -v $(pwd):/code -w /code --rm -d --name=uv-img ${UV_DOCKER_IMAGE} sleep infinity
 
-      - run: echo "PROJECT_VERSION=$(docker exec poetry poetry version --short)" >> $GITHUB_ENV
-
-      - name: Login to PyPI
-        env:
-          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
-        run: |
-          echo "Login"
-          docker exec poetry poetry config pypi-token.pypi $PYPI_TOKEN || true
+      - run: echo "PROJECT_VERSION=$(docker exec uv-img uv version --short)" >> $GITHUB_ENV
 
       - name: Check if tag version matches project version
         if: startsWith(github.ref, 'refs/tags/')
@@ -218,10 +209,10 @@ jobs:
           echo $PROJECT_VERSION
           if [[ "$TAG" != "$PROJECT_VERSION" ]]; then exit 1; fi
 
-      - name: Build and publish (dry-run)
-        if: github.actor != 'dependabot[bot]'
-        run: docker exec poetry poetry publish --dry-run
-
       - name: Build and publish
+        env:
+          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
         if: startsWith(github.ref, 'refs/tags/')
-        run: docker exec poetry poetry publish
+        run: |
+          docker exec uv-img rm dist/requirements.txt
+          docker exec uv-img uv publish --token=$PYPI_TOKEN
