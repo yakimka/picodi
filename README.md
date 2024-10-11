@@ -3,7 +3,8 @@
 [![Build Status](https://github.com/yakimka/picodi/actions/workflows/workflow-ci.yml/badge.svg?branch=main&event=push)](https://github.com/yakimka/picodi/actions/workflows/workflow-ci.yml)
 [![Codecov](https://codecov.io/gh/yakimka/picodi/branch/main/graph/badge.svg)](https://codecov.io/gh/yakimka/picodi)
 [![PyPI - Version](https://img.shields.io/pypi/v/picodi.svg)](https://pypi.org/project/picodi/)
-![PyPI - Downloads](https://img.shields.io/pypi/dm/picodi)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/picodi)](https://pypi.org/project/picodi/)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/picodi)](https://pypi.org/project/picodi/)
 [![Documentation Status](https://readthedocs.org/projects/picodi/badge/?version=stable)](https://picodi.readthedocs.io/en/stable/?badge=stable)
 
 [Documentation](https://picodi.readthedocs.io/)
