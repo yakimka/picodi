@@ -42,7 +42,7 @@ package:  ## Run packages (dependencies) checks
 .PHONY: build-package
 build-package:  ## Build package
 	$(RUN) uv build $(args)
-	$(RUN) uv export --format=requirements-txt --output-file=dist/requirements.txt --locked --no-dev --no-emit-project
+	$(RUN) uv export --format=requirements-txt --output-file=dist/requirements --locked --no-dev --no-emit-project
 
 .PHONY: checks
 checks: lint package test  ## Run linting and tests

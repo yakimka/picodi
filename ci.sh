@@ -21,12 +21,11 @@ run_ci () {
   uv sync
   uv run pre-commit run --all-files
   uv run mypy
-  uv check
   uv run pip check
   uv run pytest --cov=tests --cov=picodi --cov-report=xml --junitxml=jcoverage.xml
   uv run pytest --dead-fixtures
   uv build
-  uv export --format=requirements-txt --output-file=dist/requirements.txt --locked --no-dev --no-emit-project
+  uv export --format=requirements-txt --output-file=dist/requirements --locked --no-dev --no-emit-project
   # print shasum of the built packages
   shasum dist/*
   # trying to build the docs
