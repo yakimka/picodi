@@ -4,7 +4,7 @@ Thank you for considering contributing to Picodi! Below are some guidelines to h
 
 ## Making Changes
 
-1. After cloning the repository, install dependencies by running `poetry install`.
+1. After cloning the repository, install dependencies by running `uv sync`.
     This will create a virtual environment in project directory and install all dependencies.
 2. Make your changes.
 3. If you are adding new functionality, add tests for it.
