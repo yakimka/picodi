@@ -4,6 +4,10 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
+## Version 0.29.0
+
+- Support for Python 3.13
+
 ## Version 0.28.2
 
 - Change order of running pytest fixtures
