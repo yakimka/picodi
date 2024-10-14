@@ -1,3 +1,3 @@
 furo==2024.8.6
-Sphinx==8.1.0
+Sphinx==8.1.3
 fastapi-slim
