@@ -961,13 +961,13 @@ pytest = ">=3.0.0"
 
 [[package]]
 name = "pytest-markdown-docs"
-version = "0.5.1"
+version = "0.6.0"
 description = "Run markdown code fences through pytest"
 optional = false
-python-versions = ">=3.8,<4.0"
+python-versions = ">=3.8"
 files = [
-    {file = "pytest_markdown_docs-0.5.1-py3-none-any.whl", hash = "sha256:29849ae0fccb4dce27f86ee82d942a234095804d6f6ef6157473d38a6903aab3"},
-    {file = "pytest_markdown_docs-0.5.1.tar.gz", hash = "sha256:acf9b678b589779e817f740bb1c8c4984a1bdca23ddc1c68ea6377918f5a871c"},
+    {file = "pytest_markdown_docs-0.6.0-py3-none-any.whl", hash = "sha256:c9cf1cf7ef9ea53eb9a4e5d20f766e876f8fa73820974f7192c089f3ab0046c5"},
+    {file = "pytest_markdown_docs-0.6.0.tar.gz", hash = "sha256:a749a4afaa5132455c75f8fd3efec856bc61d9de43baf2961504eefaca93593c"},
 ]
 
 [package.dependencies]
@@ -1357,4 +1357,4 @@ test = ["covdefaults (>=2.3)", "coverage (>=7.2.7)", "coverage-enable-subprocess
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "b56c180aa42a2299c75d0bc603b2d7fbc9d8c71295a24d987f3083652d71b7ea"
+content-hash = "fe291a57ab0b34a495405e959cbf80c4313835d4664b430977fba717a54e002b"
