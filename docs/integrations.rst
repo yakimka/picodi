@@ -85,14 +85,22 @@ you can use ``Depends`` with :func:`picodi.integrations.fastapi.Provide`.
     # curl http://localhost:8000/
     # Output: {"redis":"http://redis:8080"}
 
+Injecting dependencies in FastAPI views without ``@inject``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 ``Depends(Provide(...))`` looks a bit verbose, if you want to make it shorter,
 you can use a ``wrap`` parameter of :func:`picodi.integrations.fastapi.Provide`.
+
+Also because FastAPI already has mechanism of resolving dependencies, we can use it
+without need to use ``@inject`` decorator, just pass ``wrap=True``
+to :func:`picodi.integrations.fastapi.Provide`. This is preferred way to use Picodi
+dependencies in FastAPI views.
 
 .. testcode::
 
     @app.get("/")
-    @inject
-    async def read_root(redis: str = Provide(get_redis_connection, wrap=True)): ...
+    async def read_root(redis: str = Provide(get_redis_connection, wrap=True)):
+        pass
 
 Combining Picodi with FastAPI dependency injection system
 *********************************************************
@@ -205,7 +213,8 @@ Like with Starlette you can use request scope in FastAPI application.
     # Dependencies will be initialized once per request
     #   and closed after the request is finished.
     @dependency(scope_class=RequestScope)
-    def get_cache(): ...
+    def get_cache():
+        pass
 
 Example FastAPI application with Picodi
 ****************************************
@@ -214,3 +223,8 @@ Here is an more complex example of a FastAPI application
 that uses Picodi for dependency injection:
 
 `Picodi FastAPI Example <https://github.com/yakimka/picodi-fastapi-example>`_
+
+Pytest
+------
+
+About ``pytest`` integration you can read at :doc:`testing`
