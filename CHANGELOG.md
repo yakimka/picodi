@@ -4,6 +4,11 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
+## Version 0.30.0
+
+- Now you can use picodi dependencies in FastAPI views without need to
+  decorate view with `@inject`.
+
 ## Version 0.29.0
 
 - Support for Python 3.13

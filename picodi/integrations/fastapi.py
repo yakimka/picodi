@@ -5,6 +5,7 @@ from typing import Any
 from fastapi import Depends as FastAPIDepends
 
 from picodi._picodi import DependencyCallable, Depends
+from picodi.helpers import enter
 from picodi.integrations.starlette import RequestScope, RequestScopeMiddleware
 
 __all__ = [
@@ -19,6 +20,12 @@ class DependsAsyncCallable(Depends):
         return self
 
 
+class DependsAsyncStandaloneCallable(Depends):
+    async def __call__(self) -> Any:
+        async with enter(self.call) as result:
+            yield result
+
+
 def Provide(  # noqa: N802
     dependency: DependencyCallable, /, *, wrap: bool = False
 ) -> Any:
@@ -26,7 +33,13 @@ def Provide(  # noqa: N802
     Drop-in replacement for :func:`picodi.Provide` but for FastAPI.
 
     :param dependency: callable dependency.
-    :param wrap: wrap dependency in ``fastapi.Depends``.
+    :param wrap: wrap dependency in ``fastapi.Depends``. In this mode you can use
+        ``picodi`` dependencies in FastAPI routes
+        without :func:`picodi.inject` decorator.
     """
-    dep = DependsAsyncCallable(dependency)
-    return FastAPIDepends(dep) if wrap else dep  # type: ignore[arg-type]
+    if wrap:
+        return FastAPIDepends(
+            DependsAsyncStandaloneCallable(dependency),  # type: ignore[arg-type]
+        )
+
+    return DependsAsyncCallable(dependency)

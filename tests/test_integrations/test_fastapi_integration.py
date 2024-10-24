@@ -5,7 +5,7 @@ from fastapi import Depends, FastAPI
 from fastapi.exceptions import FastAPIError
 from starlette.middleware import Middleware
 
-from picodi import dependency, inject
+from picodi import SingletonScope, dependency, inject, registry, shutdown_dependencies
 from picodi.integrations.fastapi import Provide, RequestScope, RequestScopeMiddleware
 
 
@@ -58,6 +58,78 @@ async def test_resolve_dependency_in_route_only_with_provide(app, asgi_client):
 
     response = await asgi_client.get("/")
 
+    assert response.json() == {"number": 42}
+
+
+async def test_resolve_dependency_in_route_without_inject_decorator(app, asgi_client):
+    def get_42() -> MyNumber:
+        return MyNumber(42)
+
+    @app.get("/")
+    def root(number: MyNumber = Provide(get_42, wrap=True)):
+        return {"number": number.value}
+
+    response = await asgi_client.get("/")
+
+    assert response.json() == {"number": 42}
+
+
+async def test_can_override_deps_passed_to_fastapi_view_without_inject_decorator(
+    app, asgi_client
+):
+    def get_42() -> MyNumber:
+        return MyNumber(42)
+
+    @app.get("/")
+    def root(number: MyNumber = Provide(get_42, wrap=True)):
+        return {"number": number.value}
+
+    with registry.override(get_42, lambda: MyNumber(24)):
+        response = await asgi_client.get("/")
+
+    assert response.json() == {"number": 24}
+
+
+async def test_dependency_scope_close_only_after_view_is_exited(app, asgi_client):
+    closed = 0
+
+    def get_42():
+        yield MyNumber(42)
+        nonlocal closed
+        closed += 1
+
+    @app.get("/")
+    def root(number: MyNumber = Provide(get_42, wrap=True)):
+        assert closed == 0
+        return {"number": number.value}
+
+    response = await asgi_client.get("/")
+
+    assert closed == 1
+    assert response.json() == {"number": 42}
+
+
+async def test_singleton_dependency_scope_not_closed_after_view_is_exited(
+    app, asgi_client
+):
+    closed = 0
+
+    @dependency(scope_class=SingletonScope)
+    def get_42():
+        yield MyNumber(42)
+        nonlocal closed
+        closed += 1
+
+    @app.get("/")
+    def root(number: MyNumber = Provide(get_42, wrap=True)):
+        assert closed == 0
+        return {"number": number.value}
+
+    response = await asgi_client.get("/")
+
+    assert closed == 0
+    await shutdown_dependencies()
+    assert closed == 1
     assert response.json() == {"number": 42}
 
 
