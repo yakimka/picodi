@@ -122,7 +122,7 @@ Lifespan
 By default, Picodi will automatically call :func:`picodi.shutdown_dependencies`
 and make additional cleanups after each test.
 
-If you need to call :func:`picodi.init_dependencies` - you can use eponymous marker.
+If you need to call :func:`picodi.init_dependencies` - you can use marker.
 
 .. testcode::
 
@@ -130,13 +130,13 @@ If you need to call :func:`picodi.init_dependencies` - you can use eponymous mar
     from picodi import SingletonScope
 
 
-    @pytest.mark.init_dependencies
+    @pytest.mark.picodi_init_dependencies
     async def test_foo():
         pass
 
 
     # Or pass kwargs to fixture
-    @pytest.mark.init_dependencies(scope_class=SingletonScope)
+    @pytest.mark.picodi_init_dependencies(scope_class=SingletonScope)
     async def test_bar():
         pass
 
