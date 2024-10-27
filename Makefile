@@ -30,6 +30,12 @@ test:  ## Run tests
 	$(RUN) poetry run pytest --cov=tests --cov=picodi $(args)
 	$(RUN) poetry run pytest --dead-fixtures
 
+benchmark:  ## Run benchmark
+	$(RUN) poetry run pytest --run-benchmarks $(args)
+
+benchmark-compare:  ## Run benchmark
+	$(RUN) poetry run pytest --run-benchmarks --benchmark-compare --benchmark-compare-fail=mean:10% $(args)
+
 .PHONY: test-docs
 test-docs:  ## Check docs
 	$(MAKE) -C docs test

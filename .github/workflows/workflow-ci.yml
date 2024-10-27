@@ -94,6 +94,12 @@ jobs:
           name: built-package-py${{ matrix.python-version }}
           path: dist/
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results${{ matrix.python-version }}
+          include-hidden-files: true
+          path: .benchmarks/*/*.json
+
   pypy-test:
     runs-on: ubuntu-latest
     permissions:
@@ -176,7 +182,7 @@ jobs:
           if [ ! -d .venv ]; then
             python3.13t -m venv .venv;
           fi
-          && .venv/bin/pip install pytest pytest-asyncio pytest-cov pytest-randomly pytest-race pytest-repeat
+          && .venv/bin/pip install pytest pytest-asyncio pytest-cov pytest-randomly pytest-race pytest-repeat pytest-benchmark
           && .venv/bin/pip install --no-deps -e .
           && .venv/bin/python -VV
           && .venv/bin/pytest --ignore=tests/test_integrations

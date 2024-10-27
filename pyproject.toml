@@ -49,6 +49,7 @@ sphinx = ">=7.3.7,<9.0.0"
 furo = "^2024.5.6"
 pytest-race = "0.2.0"
 pytest-repeat = "^0.9.3"
+pytest-benchmark = "^4.0.0"
 
 [tool.isort]
 # isort configuration:
@@ -90,7 +91,7 @@ asyncio_mode = "auto"
 addopts = [
   # don't add --cov because it breaks pycharm debugger
   #   just add it manaually when needed to cmd args
-  "--import-mode=append",
+  "--import-mode=importlib",
   "--strict-markers",
   "--strict-config",
   "--tb=short",
@@ -98,8 +99,15 @@ addopts = [
 #  "--cov-fail-under=100",
 ]
 
+markers = [
+  "benchmark_test: mark test as a benchmark",
+]
+
 [tool.coverage.run]
 branch = true
+omit = [
+    "tests/*_benchmark.py",
+]
 
 [tool.coverage.report]
 precision = 2
