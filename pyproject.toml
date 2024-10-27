@@ -105,6 +105,9 @@ markers = [
 
 [tool.coverage.run]
 branch = true
+omit = [
+    "tests/*_benchmark.py",
+]
 
 [tool.coverage.report]
 precision = 2
