@@ -1,0 +1,183 @@
+{
+    "machine_info": {
+        "node": "Air.lan",
+        "processor": "arm",
+        "machine": "arm64",
+        "python_compiler": "Clang 16.0.0 (clang-1600.0.26.3)",
+        "python_implementation": "CPython",
+        "python_implementation_version": "3.12.7",
+        "python_version": "3.12.7",
+        "python_build": [
+            "main",
+            "Oct  1 2024 02:05:46"
+        ],
+        "release": "24.0.0",
+        "system": "Darwin",
+        "cpu": {
+            "python_version": "3.12.7.final.0 (64 bit)",
+            "cpuinfo_version": [
+                9,
+                0,
+                0
+            ],
+            "cpuinfo_version_string": "9.0.0",
+            "arch": "ARM_8",
+            "bits": 64,
+            "count": 8,
+            "arch_string_raw": "arm64",
+            "brand_raw": "Apple M1"
+        }
+    },
+    "commit_info": {
+        "id": "f65e92431d01cab84575103e079dee365f3e1550",
+        "time": "2024-10-27T13:25:15+02:00",
+        "author_time": "2024-10-27T13:25:15+02:00",
+        "dirty": true,
+        "project": "nanodi",
+        "branch": "benchmark-compare"
+    },
+    "benchmarks": [
+        {
+            "group": null,
+            "name": "test_reference",
+            "fullname": "tests/test_benchmark.py::test_reference",
+            "params": null,
+            "param": null,
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 4.998873919248581e-07,
+                "max": 4.387483932077885e-05,
+                "mean": 6.043831963481159e-07,
+                "stddev": 2.8550549170886395e-07,
+                "rounds": 67991,
+                "median": 5.83939254283905e-07,
+                "iqr": 4.190951585769653e-08,
+                "q1": 5.830079317092896e-07,
+                "q3": 6.249174475669861e-07,
+                "iqr_outliers": 729,
+                "stddev_outliers": 162,
+                "outliers": "162;729",
+                "ld15iqr": 5.408655852079391e-07,
+                "hd15iqr": 7.078051567077637e-07,
+                "ops": 1654579.4225291708,
+                "total": 0.04109261790290475,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_picodi_injection_async",
+            "fullname": "tests/test_benchmark.py::test_picodi_injection_async",
+            "params": null,
+            "param": null,
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 5.27501106262207e-05,
+                "max": 0.000391834182664752,
+                "mean": 5.754772226493615e-05,
+                "stddev": 8.716393224670057e-06,
+                "rounds": 6652,
+                "median": 5.5625103414058685e-05,
+                "iqr": 2.4170149117708206e-06,
+                "q1": 5.437503568828106e-05,
+                "q3": 5.679205060005188e-05,
+                "iqr_outliers": 679,
+                "stddev_outliers": 401,
+                "outliers": "401;679",
+                "ld15iqr": 5.27501106262207e-05,
+                "hd15iqr": 6.045890040695667e-05,
+                "ops": 17376.882362020093,
+                "total": 0.3828074485063553,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_reference_async",
+            "fullname": "tests/test_benchmark.py::test_reference_async",
+            "params": null,
+            "param": null,
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 2.8499867767095566e-05,
+                "max": 0.00014770799316465855,
+                "mean": 3.0869920686233035e-05,
+                "stddev": 3.6321574935139055e-06,
+                "rounds": 24268,
+                "median": 3.0374852940440178e-05,
+                "iqr": 2.5418121367692947e-06,
+                "q1": 2.9042130336165428e-05,
+                "q3": 3.158394247293472e-05,
+                "iqr_outliers": 757,
+                "stddev_outliers": 967,
+                "outliers": "967;757",
+                "ld15iqr": 2.8499867767095566e-05,
+                "hd15iqr": 3.541586920619011e-05,
+                "ops": 32393.99317426711,
+                "total": 0.7491512352135032,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_picodi_injection",
+            "fullname": "tests/test_benchmark.py::test_picodi_injection",
+            "params": null,
+            "param": null,
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 2.0707957446575165e-05,
+                "max": 0.00011645792983472347,
+                "mean": 2.1437412513632646e-05,
+                "stddev": 1.330276403572281e-06,
+                "rounds": 15687,
+                "median": 2.129189670085907e-05,
+                "iqr": 2.0791776478290558e-07,
+                "q1": 2.1208077669143677e-05,
+                "q3": 2.1415995433926582e-05,
+                "iqr_outliers": 1629,
+                "stddev_outliers": 199,
+                "outliers": "199;1629",
+                "ld15iqr": 2.091587521135807e-05,
+                "hd15iqr": 2.174987457692623e-05,
+                "ops": 46647.42068867091,
+                "total": 0.3362886901013553,
+                "iterations": 1
+            }
+        }
+    ],
+    "datetime": "2024-10-27T11:29:53.660674",
+    "version": "4.0.0"
+}
