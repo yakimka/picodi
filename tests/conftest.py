@@ -5,6 +5,28 @@ from picodi import registry, shutdown_dependencies
 pytest_plugins = ["pytester"]
 
 
+def pytest_addoption(parser):
+    parser.addoption(
+        "--run-benchmarks",
+        action="store_true",
+        default=False,
+        help="Run benchmark tests",
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    is_benchmark_run = config.getoption("--run-benchmarks")
+    for item in items:
+        if is_benchmark_run and "benchmark_test" not in item.keywords:
+            skipper = pytest.mark.skip(
+                reason="Only run when --run-benchmarks is not given"
+            )
+            item.add_marker(skipper)
+        elif not is_benchmark_run and "benchmark_test" in item.keywords:
+            skipper = pytest.mark.skip(reason="Only run when --run-benchmarks is given")
+            item.add_marker(skipper)
+
+
 @pytest.fixture(autouse=True)
 async def _cleanup():
     yield
