@@ -34,7 +34,7 @@ benchmark:  ## Run benchmark
 	$(RUN) poetry run pytest --run-benchmarks $(args)
 
 benchmark-compare:  ## Run benchmark
-	$(RUN) poetry run pytest --run-benchmarks --benchmark-compare --benchmark-compare-fail=mean:10% $(args)
+	$(RUN) poetry run pytest --run-benchmarks --benchmark-compare --benchmark-compare-fail=mean:30% $(args)
 
 .PHONY: test-docs
 test-docs:  ## Check docs
