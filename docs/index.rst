@@ -34,6 +34,7 @@ Key Features
    testing
    integrations
    knownissues
+   bestpractices
 
 .. toctree::
     :hidden:

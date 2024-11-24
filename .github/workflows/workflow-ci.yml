@@ -83,9 +83,9 @@ jobs:
         run: docker compose run -e CI=1 --user=$(id -u) --rm devtools ./ci.sh
 
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v4.6.0
+        uses: codecov/codecov-action@v5.0.7
         with:
-          file: ./coverage.xml
+          files: ./coverage.xml
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: yakimka/picodi
 
