@@ -260,7 +260,7 @@ def test_can_init_dependencies_with_marker(pytester):
 
         inited = False
 
-        @dependency(scope_class=SingletonScope, use_init_hook=True)
+        @dependency(scope_class=SingletonScope)
         def ged_dep():
             global inited
             inited = True
@@ -309,7 +309,7 @@ def test_can_init_dependencies_with_marker_async(pytester):
 
         inited = False
 
-        @dependency(scope_class=SingletonScope, use_init_hook=True)
+        @dependency(scope_class=SingletonScope)
         async def ged_dep():
             global inited
             inited = True
@@ -375,7 +375,7 @@ def test_fixtures_executes_in_strict_order(pytester):
             order.append("picodi_overrides")
             return []
 
-        @dependency(scope_class=SingletonScope, use_init_hook=True)
+        @dependency(scope_class=SingletonScope)
         def auto_init_dependency():
             order.append("auto_init_dependency")
 

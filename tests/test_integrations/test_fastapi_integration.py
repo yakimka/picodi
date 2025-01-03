@@ -265,7 +265,7 @@ async def test_middleware_init_and_shutdown_request_scope(make_app, make_asgi_cl
     init_counter = 0
     closing_counter = 0
 
-    @dependency(scope_class=RequestScope, use_init_hook=True)
+    @dependency(scope_class=RequestScope)
     async def get_42():
         nonlocal init_counter
         init_counter += 1
@@ -295,7 +295,7 @@ async def test_middleware_init_and_shutdown_request_scope_sync(
     init_counter = 0
     closing_counter = 0
 
-    @dependency(scope_class=RequestScope, use_init_hook=True)
+    @dependency(scope_class=RequestScope)
     def get_42():
         nonlocal init_counter
         init_counter += 1
