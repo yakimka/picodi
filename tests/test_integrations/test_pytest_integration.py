@@ -356,6 +356,30 @@ def test_cant_use_init_dependencies_with_args(pytester):
     assert "marker don't support positional arguments" in "".join(result.outlines)
 
 
+def test_cant_use_init_dependencies_without_kwargs(pytester):
+    pytester.makeconftest(
+        """
+        pytest_plugins = ["picodi.integrations._pytest"]
+    """
+    )
+
+    pytester.makepyfile(
+        """
+        import pytest
+        from picodi import Provide, inject, dependency, SingletonScope
+
+
+        @pytest.mark.picodi_init_dependencies
+        def test_hello_default():
+            pass
+    """
+    )
+
+    result = pytester.runpytest()
+
+    assert "marker must have keyword arguments" in "".join(result.outlines)
+
+
 def test_fixtures_executes_in_strict_order(pytester):
     pytester.makeconftest(
         """

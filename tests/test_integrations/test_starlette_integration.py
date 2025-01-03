@@ -11,20 +11,20 @@ from picodi.integrations.starlette import RequestScope, RequestScopeMiddleware
 
 @pytest.fixture()
 def make_app():
-    def maker(dependencies_for_init: InitDependencies | None = None):
+    def maker(dependencies_for_init: InitDependencies):
         def sync_view(request: Request) -> PlainTextResponse:  # noqa: U100
             return PlainTextResponse("sync view")
 
         async def async_view(request: Request) -> PlainTextResponse:  # noqa: U100
             return PlainTextResponse("async view")
 
-        kwargs = {}
-        if dependencies_for_init:
-            kwargs["dependencies_for_init"] = dependencies_for_init
-
         return Starlette(
             routes=[Route("/sync-view", sync_view), Route("/async-view", async_view)],
-            middleware=[Middleware(RequestScopeMiddleware, **kwargs)],
+            middleware=[
+                Middleware(
+                    RequestScopeMiddleware, dependencies_for_init=dependencies_for_init
+                )
+            ],
         )
 
     return maker

@@ -359,6 +359,25 @@ async def test_can_init_injected_singleton_scope_dep_async():
     assert called == 1
 
 
+def test_can_init_injected_singleton_scope_dep_argument_passed_as_callable():
+    called = 0
+
+    def get_42():
+        return 42
+
+    @dependency(scope_class=SingletonScope)
+    @inject
+    def my_singleton_scope_dep(number: int = Provide(get_42)):
+        assert number == 42
+        nonlocal called
+        called += 1
+        return number
+
+    init_dependencies(lambda: [my_singleton_scope_dep])
+
+    assert called == 1
+
+
 async def test_can_resolve_yield_in_yield_with_correct_scopes():
     context_calls = []
 
