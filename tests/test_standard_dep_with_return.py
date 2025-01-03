@@ -118,7 +118,7 @@ def _check_redis_string(redis_string):
 
 
 async def test_resolve_async_singleton_dependency_through_sync():
-    @dependency(scope_class=SingletonScope, use_init_hook=True)
+    @dependency(scope_class=SingletonScope)
     async def get_client():
         return "my_client"
 
@@ -130,7 +130,7 @@ async def test_resolve_async_singleton_dependency_through_sync():
     async def view(client: str = Provide(get_client_sync)):
         return client
 
-    await init_dependencies()
+    await init_dependencies([get_client])
 
     result = await view()
 

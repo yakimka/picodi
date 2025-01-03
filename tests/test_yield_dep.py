@@ -181,7 +181,7 @@ def test_resolve_async_yield_dep_from_sync_function_return_coroutine():
 
 
 async def test_resolve_async_yield_dep_from_sync_function_can_be_inited():
-    @dependency(scope_class=SingletonScope, use_init_hook=True)
+    @dependency(scope_class=SingletonScope)
     async def async_singleton_scope_dep():
         int_service = IntService.create()
         yield int_service
@@ -191,7 +191,7 @@ async def test_resolve_async_yield_dep_from_sync_function_can_be_inited():
     def get_async_dep(port: int = Provide(async_singleton_scope_dep)):
         return port
 
-    await init_dependencies()
+    await init_dependencies([async_singleton_scope_dep])
     result = get_async_dep()
 
     assert isinstance(result, IntService)
@@ -327,7 +327,7 @@ def test_can_init_injected_singleton_scope_dep():
     def get_42():
         return 42
 
-    @dependency(scope_class=SingletonScope, use_init_hook=True)
+    @dependency(scope_class=SingletonScope)
     @inject
     def my_singleton_scope_dep(number: int = Provide(get_42)):
         assert number == 42
@@ -335,7 +335,7 @@ def test_can_init_injected_singleton_scope_dep():
         called += 1
         return number
 
-    init_dependencies()
+    init_dependencies([my_singleton_scope_dep])
 
     assert called == 1
 
@@ -346,7 +346,7 @@ async def test_can_init_injected_singleton_scope_dep_async():
     def get_42():
         return 42
 
-    @dependency(scope_class=SingletonScope, use_init_hook=True)
+    @dependency(scope_class=SingletonScope)
     @inject
     async def my_async_singleton_scope_dep(number: int = Provide(get_42)):
         assert number == 42
@@ -354,7 +354,26 @@ async def test_can_init_injected_singleton_scope_dep_async():
         called += 1
         return number
 
-    await init_dependencies()
+    await init_dependencies([my_async_singleton_scope_dep])
+
+    assert called == 1
+
+
+def test_can_init_injected_singleton_scope_dep_argument_passed_as_callable():
+    called = 0
+
+    def get_42():
+        return 42
+
+    @dependency(scope_class=SingletonScope)
+    @inject
+    def my_singleton_scope_dep(number: int = Provide(get_42)):
+        assert number == 42
+        nonlocal called
+        called += 1
+        return number
+
+    init_dependencies(lambda: [my_singleton_scope_dep])
 
     assert called == 1
 

@@ -76,23 +76,23 @@ async def test_transitive_local_dependency_injected_from_singleton_acts_like_sin
 
 
 async def test_can_sync_enter_inited_async_singleton():
-    @dependency(scope_class=SingletonScope, use_init_hook=True)
+    @dependency(scope_class=SingletonScope)
     async def dep():
         return 42
 
-    await init_dependencies()
+    await init_dependencies([dep])
 
     with enter(dep) as val:
         assert val == 42
 
 
-def test_foo(closeable):
+def test_enter_cm_not_closes_singleton_scoped_deps(closeable):
     @dependency(scope_class=SingletonScope)
     def dep():
         yield 42
         closeable.close()
 
-    init_dependencies()
+    init_dependencies([dep])
 
     with enter(dep) as val:
         assert val == 42

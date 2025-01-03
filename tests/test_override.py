@@ -197,11 +197,11 @@ async def test_can_use_async_dep_with_not_default_scope_in_override_in_sync_cont
         return settings
 
     @registry.override(get_abc_settings)
-    @dependency(scope_class=SingletonScope, use_init_hook=True)
+    @dependency(scope_class=SingletonScope)
     async def real_settings():
         return {"real": "settings"}
 
-    await init_dependencies()
+    await init_dependencies([real_settings])
 
     result = my_service()
 

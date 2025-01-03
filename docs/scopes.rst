@@ -36,9 +36,7 @@ SingletonScope
 
 The :class:`picodi.SingletonScope` scope creates a single instance of the dependency
 and reuses it every time the dependency is injected. The instance is created when the
-dependency is first injected or :func:`picodi.init_dependencies` is called.
-In case of ``picodi.init_dependencies`` yor dependency need to be decorated with
-parameter ``use_init_hook=True`` of :func:`picodi.dependency` decorator
+dependency is first injected.
 
 ``SingletonScope`` is the manual scope, so you need to call :func:`picodi.shutdown_dependencies`
 manually. Usually you want to call it when your application is shutting down.
@@ -48,10 +46,7 @@ ContextVarScope
 
 The :class:`picodi.ContextVarScope` uses the :class:`python:contextvars.ContextVar`
 to store the instance. The instance is created when the
-dependency is first injected or :func:`picodi.init_dependencies` with
-``scope_class=ContextVarScope`` is called.
-In case of ``picodi.init_dependencies`` yor dependency need to be decorated with
-parameter ``use_init_hook=True`` of :func:`picodi.dependency` decorator
+dependency is first injected.
 
 ``ContextVarScope`` is the manual scope, so you need to call :func:`picodi.shutdown_dependencies`
 with ``scope_class=ContextVarScope`` manually.
@@ -78,22 +73,19 @@ Lifecycle of manual scopes
 --------------------------
 
 You can manually initialize your dependencies by calling :func:`picodi.init_dependencies`
-with the ``scope_class`` argument
-(your dependencies need to be decorated with parameter ``use_init_hook=True``
-of :func:`picodi.dependency` decorator).
-Example:
+and pass the dependencies you want to initialize. Example:
 
 .. code-block:: python
 
-    from picodi import ManualScope, SingletonScope, init_dependencies
+    from picodi import ManualScope, SingletonScope, init_dependencies, dependency
 
 
-    # Initialize all SingletonScope dependencies.
-    #   This is default behavior if you don't pass `scope_class` argument.
-    init_dependencies(scope_class=SingletonScope)
+    @dependency(scope_class=SingletonScope)
+    def my_dependency():
+        return "my dependency"
 
-    # Initialize all dependencies with manual scopes.
-    init_dependencies(scope_class=ManualScope)
+
+    init_dependencies(dependencies=[my_dependency])
 
 Also, you need to manually close your dependencies by calling
 :func:`picodi.shutdown_dependencies`.
@@ -112,7 +104,7 @@ scope you can inject it in sync code. Example:
     from picodi import Provide, SingletonScope, dependency, init_dependencies, inject
 
 
-    @dependency(scope_class=SingletonScope, use_init_hook=True)
+    @dependency(scope_class=SingletonScope)
     async def get_async_dependency():
         return "from async"
 
@@ -123,7 +115,9 @@ scope you can inject it in sync code. Example:
 
 
     async def main():
-        await init_dependencies()  # Try to comment this line and see what happens
+        await init_dependencies(
+            [get_async_dependency]
+        )  # Try to comment this line and see what happens
 
         print(my_sync_service())
 
@@ -134,46 +128,9 @@ scope you can inject it in sync code. Example:
 Because ``get_async_dependency`` is ``SingletonScope`` scoped dependency and
 it's initialized on startup, while your app is running you can inject it in sync code.
 
-Managing scopes selectively
-***************************
-
-By default :func:`picodi.init_dependencies` initialize
-dependencies with :class:`SingletonScope`.
-If you want to manage scopes selectively you can use the
-``scope_class`` argument of these functions.
-
-.. testcode::
-
-    from picodi import ContextVarScope, init_dependencies, shutdown_dependencies
-
-
-    init_dependencies(scope_class=ContextVarScope)
-    # Only ContextVarScope dependencies will be initialized
-
-    shutdown_dependencies(scope_class=ContextVarScope)
-    # Only ContextVarScope dependencies will be closed
-
-If you want to manage multiple scopes, you can pass a tuple of scopes or a
-parent class.
-
-.. testcode::
-
-    from picodi import (
-        ContextVarScope,
-        SingletonScope,
-        init_dependencies,
-        shutdown_dependencies,
-    )
-
-
-    init_dependencies(scope_class=(SingletonScope, ContextVarScope))
-    # SingletonScope and ContextVarScope dependencies will be initialized
-
-    shutdown_dependencies(scope_class=(SingletonScope, ContextVarScope))
-    # SingletonScope and ContextVarScope dependencies will be closed
 
 ``lifespan`` decorator
------------------------
+***********************
 
 You can use the :func:`picodi.helpers.lifespan` decorator manage lifecycle of your dependencies.
 It's convenient for using with workers or cli commands.
@@ -186,14 +143,14 @@ It's convenient for using with workers or cli commands.
     from picodi.helpers import lifespan
 
 
-    @dependency(scope_class=SingletonScope, use_init_hook=True)
+    @dependency(scope_class=SingletonScope)
     def get_singleton():
         print("Creating singleton object")
         yield "singleton"
         print("Destroying singleton object")
 
 
-    @lifespan
+    @lifespan(dependencies_for_init=[get_singleton])
     @inject
     def main(dep=Provide(get_singleton)):
         print(dep)
@@ -206,7 +163,7 @@ It's convenient for using with workers or cli commands.
 
 
     # or async
-    @lifespan
+    @lifespan(dependencies_for_init=[get_singleton])
     @inject
     async def main(dep=Provide(get_singleton)):
         print(dep)

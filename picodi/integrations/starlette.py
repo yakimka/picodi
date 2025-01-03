@@ -21,15 +21,19 @@ class RequestScopeMiddleware:
     initializing and closing request scoped dependencies
     """
 
-    def __init__(self, app: ASGIApp) -> None:
+    def __init__(
+        self, app: ASGIApp, dependencies_for_init: picodi.InitDependencies | None = None
+    ) -> None:
         self.app = app
+        self._dependencies_for_init = dependencies_for_init
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
 
-        await picodi.init_dependencies(scope_class=RequestScope)
+        if self._dependencies_for_init:
+            await picodi.init_dependencies(self._dependencies_for_init)
         try:
             await self.app(scope, receive, send)
         finally:

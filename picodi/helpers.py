@@ -18,9 +18,9 @@ from typing import (
 )
 
 from picodi import (
+    InitDependencies,
     ManualScope,
     Provide,
-    SingletonScope,
     init_dependencies,
     inject,
     shutdown_dependencies,
@@ -156,7 +156,7 @@ class _Lifespan:
         self,
         fn: None = None,
         *,
-        init_scope_class: LifespanScopeClass | None = SingletonScope,
+        dependencies_for_init: InitDependencies | None = None,
         shutdown_scope_class: LifespanScopeClass | None = ManualScope,
     ) -> Callable[[Callable[P, T]], Callable[P, T]]:
         """Sync and Async context manager"""
@@ -165,15 +165,14 @@ class _Lifespan:
         self,
         fn: Callable[P, T] | None = None,
         *,
-        init_scope_class: LifespanScopeClass | None = SingletonScope,
+        dependencies_for_init: InitDependencies | None = None,
         shutdown_scope_class: LifespanScopeClass | None = ManualScope,
     ) -> Callable[P, T] | Callable[[Callable[P, T]], Callable[P, T]]:
         """
         Can be used as a decorator or a context manager.
 
         :param fn: function to decorate (if used as a decorator).
-        :param init_scope_class: scope class for initialization
-            (can be omitted by passing None).
+        :param dependencies_for_init: dependencies to initialize
         :param shutdown_scope_class: scope class for shutdown
             (can be omitted by passing None).
         :return: decorated function or decorator.
@@ -182,11 +181,11 @@ class _Lifespan:
         def decorator(fn: Callable[P, T]) -> Callable[P, T]:
             if asyncio.iscoroutinefunction(fn):
                 return self.async_(  # type: ignore[return-value]
-                    init_scope_class=init_scope_class,
+                    dependencies_for_init=dependencies_for_init,
                     shutdown_scope_class=shutdown_scope_class,
                 )(fn)
             return self.sync(
-                init_scope_class=init_scope_class,
+                dependencies_for_init=dependencies_for_init,
                 shutdown_scope_class=shutdown_scope_class,
             )(fn)
 
@@ -196,20 +195,19 @@ class _Lifespan:
     def sync(
         self,
         *,
-        init_scope_class: LifespanScopeClass | None = SingletonScope,
+        dependencies_for_init: InitDependencies | None = None,
         shutdown_scope_class: LifespanScopeClass | None = ManualScope,
     ) -> Generator[None, None, None]:
         """
         :attr:`lifespan` can automatically detect if the decorated function
         is async or not. But if you want to force sync behavior, ``lifespan.sync``.
 
-        :param init_scope_class: scope class for initialization
-            (can be omitted by passing None).
+        :param dependencies_for_init: dependencies to initialize
         :param shutdown_scope_class: scope class for shutdown
             (can be omitted by passing None).
         """
-        if init_scope_class is not None:
-            init_dependencies(init_scope_class)
+        if dependencies_for_init:
+            init_dependencies(dependencies_for_init)
         try:
             yield
         finally:
@@ -220,7 +218,7 @@ class _Lifespan:
     async def async_(
         self,
         *,
-        init_scope_class: LifespanScopeClass | None = SingletonScope,
+        dependencies_for_init: InitDependencies | None = None,
         shutdown_scope_class: LifespanScopeClass | None = ManualScope,
     ) -> AsyncGenerator[None, None]:
         """
@@ -228,13 +226,12 @@ class _Lifespan:
         is async or not.
         But if you want to force async behavior, ``lifespan.async_``.
 
-        :param init_scope_class: scope class for initialization
-            (can be omitted by passing None).
+        :param dependencies_for_init: dependencies to initialize
         :param shutdown_scope_class: scope class for shutdown
             (can be omitted by passing None).
         """
-        if init_scope_class is not None:
-            await init_dependencies(init_scope_class)
+        if dependencies_for_init:
+            await init_dependencies(dependencies_for_init)
         try:
             yield
         finally:

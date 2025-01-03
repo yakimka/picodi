@@ -127,16 +127,15 @@ If you need to call :func:`picodi.init_dependencies` - you can use marker.
 .. testcode::
 
     import pytest
-    from picodi import SingletonScope
+    from picodi import SingletonScope, dependency
 
 
-    @pytest.mark.picodi_init_dependencies
-    async def test_foo():
-        pass
+    @dependency(scope_class=SingletonScope)
+    def my_dependency():
+        return "my_dependency"
 
 
-    # Or pass kwargs to fixture
-    @pytest.mark.picodi_init_dependencies(scope_class=SingletonScope)
+    @pytest.mark.picodi_init_dependencies(dependencies=[my_dependency])
     async def test_bar():
         pass
 
