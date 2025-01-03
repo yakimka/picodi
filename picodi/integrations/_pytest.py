@@ -17,7 +17,7 @@ def pytest_configure(config: pytest.Config) -> None:
     )
     config.addinivalue_line(
         "markers",
-        "picodi_init_dependencies(scope_class): Helper marker for initializing deps",
+        "picodi_init_dependencies(dependencies): Helper marker for initializing deps",
     )
 
 
@@ -99,6 +99,8 @@ def picodi_init_dependencies_kwargs(request: pytest.FixtureRequest) -> dict | No
             raise ValueError(
                 "init_dependencies marker don't support positional arguments"
             )
+        if not marker.kwargs:
+            raise ValueError("init_dependencies marker must have keyword arguments")
         return marker.kwargs
     return None
 

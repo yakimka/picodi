@@ -271,7 +271,7 @@ def test_can_init_dependencies_with_marker(pytester):
             return dependency
 
 
-        @pytest.mark.picodi_init_dependencies
+        @pytest.mark.picodi_init_dependencies(dependencies=[ged_dep])
         def test_hello_default():
             assert inited is True
             assert service() == 42
@@ -320,7 +320,7 @@ def test_can_init_dependencies_with_marker_async(pytester):
             return dependency
 
 
-        @pytest.mark.picodi_init_dependencies
+        @pytest.mark.picodi_init_dependencies(dependencies=[ged_dep])
         def test_hello_default():
             assert inited is True
             assert service() == 42
@@ -379,7 +379,7 @@ def test_fixtures_executes_in_strict_order(pytester):
         def auto_init_dependency():
             order.append("auto_init_dependency")
 
-        @pytest.mark.picodi_init_dependencies
+        @pytest.mark.picodi_init_dependencies(dependencies=[auto_init_dependency])
         def test_hello_default():
             assert order == [
                 "picodi_overrides",

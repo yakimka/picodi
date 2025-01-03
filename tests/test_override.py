@@ -201,7 +201,7 @@ async def test_can_use_async_dep_with_not_default_scope_in_override_in_sync_cont
     async def real_settings():
         return {"real": "settings"}
 
-    await init_dependencies()
+    await init_dependencies([real_settings])
 
     result = my_service()
 

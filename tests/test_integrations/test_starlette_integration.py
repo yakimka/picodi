@@ -5,25 +5,32 @@ from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 from starlette.routing import Route
 
-from picodi import dependency
+from picodi import InitDependencies, dependency
 from picodi.integrations.starlette import RequestScope, RequestScopeMiddleware
 
 
 @pytest.fixture()
-def app():
-    def sync_view(request: Request) -> PlainTextResponse:  # noqa: U100
-        return PlainTextResponse("sync view")
+def make_app():
+    def maker(dependencies_for_init: InitDependencies | None = None):
+        def sync_view(request: Request) -> PlainTextResponse:  # noqa: U100
+            return PlainTextResponse("sync view")
 
-    async def async_view(request: Request) -> PlainTextResponse:  # noqa: U100
-        return PlainTextResponse("async view")
+        async def async_view(request: Request) -> PlainTextResponse:  # noqa: U100
+            return PlainTextResponse("async view")
 
-    return Starlette(
-        routes=[Route("/sync-view", sync_view), Route("/async-view", async_view)],
-        middleware=[Middleware(RequestScopeMiddleware)],
-    )
+        kwargs = {}
+        if dependencies_for_init:
+            kwargs["dependencies_for_init"] = dependencies_for_init
+
+        return Starlette(
+            routes=[Route("/sync-view", sync_view), Route("/async-view", async_view)],
+            middleware=[Middleware(RequestScopeMiddleware, **kwargs)],
+        )
+
+    return maker
 
 
-async def test_middleware_init_and_shutdown_request_scope(asgi_client):
+async def test_middleware_init_and_shutdown_request_scope(make_app, make_asgi_client):
     init_counter = 0
     closing_counter = 0
 
@@ -35,13 +42,18 @@ async def test_middleware_init_and_shutdown_request_scope(asgi_client):
         nonlocal closing_counter
         closing_counter += 1
 
-    await asgi_client.get("/async-view")
+    app = make_app([get_42])
+
+    async with make_asgi_client(app) as asgi_client:
+        await asgi_client.get("/async-view")
 
     assert init_counter == 1
     assert closing_counter == 1
 
 
-async def test_middleware_init_and_shutdown_request_scope_sync(asgi_client):
+async def test_middleware_init_and_shutdown_request_scope_sync(
+    make_app, make_asgi_client
+):
     init_counter = 0
     closing_counter = 0
 
@@ -53,7 +65,10 @@ async def test_middleware_init_and_shutdown_request_scope_sync(asgi_client):
         nonlocal closing_counter
         closing_counter += 1
 
-    await asgi_client.get("/sync-view")
+    app = make_app([get_42])
+
+    async with make_asgi_client(app) as asgi_client:
+        await asgi_client.get("/sync-view")
 
     assert init_counter == 1
     assert closing_counter == 1

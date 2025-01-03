@@ -30,11 +30,11 @@ def async_resource():
     return state, my_resource
 
 
-@pytest.mark.parametrize("decorator", [lifespan, lifespan.sync()])
+@pytest.mark.parametrize("decorator", [lifespan, lifespan.sync])
 def test_can_init_and_shutdown_sync(resource, decorator):
-    state, _ = resource
+    state, dep = resource
 
-    @decorator
+    @decorator(dependencies_for_init=[dep])
     def service():
         assert state["inited"] is True
         assert state["closed"] is False
@@ -45,11 +45,11 @@ def test_can_init_and_shutdown_sync(resource, decorator):
     assert state["closed"] is True
 
 
-@pytest.mark.parametrize("decorator", [lifespan, lifespan.async_()])
+@pytest.mark.parametrize("decorator", [lifespan, lifespan.async_])
 async def test_can_init_and_shutdown_async(async_resource, decorator):
-    state, _ = async_resource
+    state, dep = async_resource
 
-    @decorator
+    @decorator(dependencies_for_init=[dep])
     async def service():
         assert state["inited"] is True
         assert state["closed"] is False
@@ -61,9 +61,9 @@ async def test_can_init_and_shutdown_async(async_resource, decorator):
 
 
 def test_can_init_and_shutdown_sync_as_context_manager(resource):
-    state, _ = resource
+    state, dep = resource
 
-    with lifespan.sync():
+    with lifespan.sync(dependencies_for_init=[dep]):
         assert state["inited"] is True
         assert state["closed"] is False
 
@@ -72,9 +72,9 @@ def test_can_init_and_shutdown_sync_as_context_manager(resource):
 
 
 async def test_can_init_and_shutdown_async_as_context_manager(async_resource):
-    state, _ = async_resource
+    state, dep = async_resource
 
-    async with lifespan.async_():
+    async with lifespan.async_(dependencies_for_init=[dep]):
         assert state["inited"] is True
         assert state["closed"] is False
 
@@ -84,9 +84,9 @@ async def test_can_init_and_shutdown_async_as_context_manager(async_resource):
 
 @pytest.mark.parametrize("decorator", [lifespan, lifespan.sync])
 def test_skip_initialization(resource, decorator):
-    state, _ = resource
+    state, dep = resource
 
-    @decorator(init_scope_class=None)
+    @decorator(dependencies_for_init=None)
     def service():
         pass
 
@@ -97,9 +97,9 @@ def test_skip_initialization(resource, decorator):
 
 @pytest.mark.parametrize("decorator", [lifespan, lifespan.async_])
 async def test_skip_initialization_async(async_resource, decorator):
-    state, _ = async_resource
+    state, dep = async_resource
 
-    @decorator(init_scope_class=None)
+    @decorator(dependencies_for_init=None)
     async def service():
         pass
 
@@ -110,9 +110,9 @@ async def test_skip_initialization_async(async_resource, decorator):
 
 @pytest.mark.parametrize("decorator", [lifespan, lifespan.sync])
 def test_skip_shutdown(resource, decorator):
-    state, _ = resource
+    state, dep = resource
 
-    @decorator(shutdown_scope_class=None)
+    @decorator(dependencies_for_init=[dep], shutdown_scope_class=None)
     def service():
         pass
 
@@ -124,9 +124,9 @@ def test_skip_shutdown(resource, decorator):
 
 @pytest.mark.parametrize("decorator", [lifespan, lifespan.async_])
 async def test_skip_shutdown_async(async_resource, decorator):
-    state, _ = async_resource
+    state, dep = async_resource
 
-    @decorator(shutdown_scope_class=None)
+    @decorator(dependencies_for_init=[dep], shutdown_scope_class=None)
     async def service():
         pass
 

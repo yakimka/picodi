@@ -108,9 +108,6 @@ class InternalRegistry:
     def has_overrides(self) -> bool:
         return bool(self._storage.overrides)
 
-    def filter(self, predicate: Callable[[Provider], bool]) -> Iterable[Provider]:
-        return filter(predicate, self._storage)
-
 
 class Registry:
     """
@@ -416,27 +413,29 @@ def dependency(
     return decorator
 
 
-def init_dependencies(scope_class: LifespanScopeClass = SingletonScope) -> Awaitable:
+InitDependencies = (
+    Iterable[DependencyCallable] | Callable[[], Iterable[DependencyCallable]]
+)
+
+
+def init_dependencies(dependencies: InitDependencies) -> Awaitable:
     """
-    Call this function to close dependencies. Usually, it should be called
+    Call this function to init dependencies. Usually, it should be called
     when your application is starting up.
 
     This function works both for synchronous and asynchronous dependencies.
     If you call it without ``await``, it will initialize only sync dependencies.
-    If you call it ``await init_dependencies()``, it will initialize both sync and async
-    dependencies.
+    If you call it ``await init_dependencies(...)``, it will initialize both sync and
+    async dependencies.
 
-    If you not pass any arguments, it will initialize only :class:`SingletonScope`
-    and its subclasses (that are not ignored for manual init).
-
-    :param scope_class: you can specify the scope class to initialize. If passed -
-        only dependencies of this scope class and its subclasses will be initialized.
+    :param dependencies: iterable of dependencies to initialize.
     """
+    if callable(dependencies):
+        dependencies = dependencies()
+
     async_deps = []
-    filtered_providers = _internal_registry.filter(
-        lambda p: not p.is_ignored() and issubclass(p.scope_class, scope_class)
-    )
-    for provider in filtered_providers:
+    for dep in dependencies:
+        provider = _internal_registry.get(dep)
         resolver = LazyResolver(provider)
         value = resolver(provider.is_async)
         if provider.is_async:
@@ -456,9 +455,7 @@ def init_dependencies(scope_class: LifespanScopeClass = SingletonScope) -> Await
     return NullAwaitable()
 
 
-def shutdown_dependencies(
-    scope_class: LifespanScopeClass = ManualScope,
-) -> Awaitable:
+def shutdown_dependencies(scope_class: LifespanScopeClass = ManualScope) -> Awaitable:
     """
     Call this function to close dependencies. Usually, it should be called
     when your application is shut down.

@@ -2,14 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from picodi import (
-    AutoScope,
-    Provide,
-    SingletonScope,
-    dependency,
-    init_dependencies,
-    inject,
-)
+from picodi import AutoScope, Provide, dependency, inject
 
 if TYPE_CHECKING:
     from collections.abc import Hashable
@@ -62,79 +55,3 @@ async def test_can_add_user_defined_scope_async():
     result = await service()
 
     assert result == 42 * 2 * 2
-
-
-def test_can_optionally_set_manual_initialization():
-    # Arrange
-    inited = False
-
-    @dependency(scope_class=SingletonScope, use_init_hook=True)
-    def get_num():
-        nonlocal inited
-        inited = True
-        yield 42
-
-    # Act
-    init_dependencies()
-
-    # Assert
-    assert inited is True
-
-
-async def test_can_optionally_set_manual_initialization_async():
-    # Arrange
-    inited = False
-
-    @dependency(scope_class=SingletonScope, use_init_hook=True)
-    async def get_num():
-        nonlocal inited
-        inited = True
-        yield 42
-
-    # Act
-    await init_dependencies()
-
-    # Assert
-    assert inited is True
-
-
-def test_can_optionally_set_manual_initialization_with_callable():
-    # Arrange
-    inited = False
-
-    @inject
-    def callable_func(flag: bool = Provide(lambda: True)):
-        return flag
-
-    @dependency(scope_class=SingletonScope, use_init_hook=callable_func)
-    def get_num():
-        nonlocal inited
-        inited = True
-        yield 42
-
-    # Act
-    init_dependencies()
-
-    # Assert
-    assert inited is True
-
-
-async def test_can_optionally_set_manual_initialization_with_callable_async():
-    # Arrange
-    inited = False
-
-    @inject
-    def callable_func(flag: bool = Provide(lambda: True)):
-        return flag
-
-    @dependency(scope_class=SingletonScope, use_init_hook=callable_func)
-    async def get_num():
-        nonlocal inited
-        inited = True
-        yield 42
-
-    # Act
-    await init_dependencies()
-
-    # Assert
-    assert inited is True

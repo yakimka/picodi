@@ -130,7 +130,7 @@ async def test_resolve_async_singleton_dependency_through_sync():
     async def view(client: str = Provide(get_client_sync)):
         return client
 
-    await init_dependencies()
+    await init_dependencies([get_client])
 
     result = await view()
 
