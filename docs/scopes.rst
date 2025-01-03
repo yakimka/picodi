@@ -85,12 +85,7 @@ and pass the dependencies you want to initialize. Example:
         return "my dependency"
 
 
-    # Initialize all SingletonScope dependencies.
-    #   This is default behavior if you don't pass `scope_class` argument.
     init_dependencies(dependencies=[my_dependency])
-
-    # Initialize all dependencies with manual scopes.
-    init_dependencies(scope_class=ManualScope)
 
 Also, you need to manually close your dependencies by calling
 :func:`picodi.shutdown_dependencies`.
@@ -133,46 +128,9 @@ scope you can inject it in sync code. Example:
 Because ``get_async_dependency`` is ``SingletonScope`` scoped dependency and
 it's initialized on startup, while your app is running you can inject it in sync code.
 
-Managing scopes selectively
-***************************
-
-By default :func:`picodi.init_dependencies` initialize
-dependencies with :class:`SingletonScope`.
-If you want to manage scopes selectively you can use the
-``scope_class`` argument of these functions.
-
-.. testcode::
-
-    from picodi import ContextVarScope, init_dependencies, shutdown_dependencies
-
-
-    init_dependencies(scope_class=ContextVarScope)
-    # Only ContextVarScope dependencies will be initialized
-
-    shutdown_dependencies(scope_class=ContextVarScope)
-    # Only ContextVarScope dependencies will be closed
-
-If you want to manage multiple scopes, you can pass a tuple of scopes or a
-parent class.
-
-.. testcode::
-
-    from picodi import (
-        ContextVarScope,
-        SingletonScope,
-        init_dependencies,
-        shutdown_dependencies,
-    )
-
-
-    init_dependencies(scope_class=(SingletonScope, ContextVarScope))
-    # SingletonScope and ContextVarScope dependencies will be initialized
-
-    shutdown_dependencies(scope_class=(SingletonScope, ContextVarScope))
-    # SingletonScope and ContextVarScope dependencies will be closed
 
 ``lifespan`` decorator
------------------------
+***********************
 
 You can use the :func:`picodi.helpers.lifespan` decorator manage lifecycle of your dependencies.
 It's convenient for using with workers or cli commands.
