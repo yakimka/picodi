@@ -4,6 +4,13 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
+- Breaking changes:
+  - argument `init_scope` of `init_dependencies` replaces with `dependecies` argument
+  - removed `use_init_hook` argument of `dependency` decorator
+  - manual dependencies no longer implicitly initialized when `init_dependencies` called
+    instead, you should pass them to `init_dependencies` explicitly. These changes
+    also apply to `lifespan` decorator and another helpers.
+
 ## Version 0.30.0
 
 - Now you can use picodi dependencies in FastAPI views without need to
