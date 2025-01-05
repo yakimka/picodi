@@ -69,7 +69,7 @@ from picodi import (
     SingletonScope,
     shutdown_dependencies,
 )
-from picodi.helpers import get_value
+from picodi.helpers import get_value, lifespan
 
 
 # Regular functions without required arguments can be used as a dependency
@@ -128,15 +128,15 @@ def print_client_info(client: httpx.AsyncClient = Provide(get_nasa_client)):
     print("Client Timeout:", client.timeout)
 
 
+# `lifespan` will initialize dependencies on the application startup.
+#   This will create the
+#   httpx.AsyncClient instance and cache it for later use. Thereby, the same
+#   client will be reused for all requests. This is important for connection
+#   pooling and performance. Because it's created on app startup,
+#   it will allow to pass asynchronous `get_nasa_client` into synchronous functions.
+# And closing all inited dependencies after the function execution.
+@lifespan(dependencies_for_init=[get_nasa_client])
 async def main():
-    # Initialize dependencies on the application startup. This will create the
-    #   httpx.AsyncClient instance and cache it for later use. Thereby, the same
-    #   client will be reused for all requests. This is important for connection
-    #   pooling and performance.
-    # Also `init_dependencies` call will allow to pass asynchronous `get_nasa_client`
-    #   into synchronous functions.
-    await init_dependencies()
-
     print_client_info()
 
     apod_data = await get_apod(date(2011, 7, 19))
@@ -145,12 +145,8 @@ async def main():
     apod_data = await get_apod(date(2011, 7, 26))
     print("Title:", apod_data["title"])
 
-    # Closing all inited dependencies. This needs to be done on the application shutdown.
-    await shutdown_dependencies()
 
-
-if __name__ == "__main__":
-    asyncio.run(main())
+asyncio.run(main())
 # Client ID: 4334576784
 # Client Base URL: https://api.nasa.gov
 # Client Params: api_key=DEMO_KEY
