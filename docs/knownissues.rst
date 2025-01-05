@@ -6,8 +6,8 @@ Receiving a coroutine object instead of the actual value
 
 If you are trying to resolve async dependencies in sync functions, you will receive a coroutine object.
 For regular dependencies, this is intended behavior, so only use async dependencies in async functions.
-However, if your dependency uses a scope inherited from :class:`picodi.ManualScope`,
-you can use :func:`picodi.init_dependencies([my_dependency])` on app startup to resolve dependencies,
+However, if your dependency (e.g. ``my_dependency``) uses a :class:`picodi.SingletonScope` scope,
+you can call :func:`picodi.init_dependencies([my_dependency])` on app startup to resolve dependencies,
 and then Picodi will use cached values, even in sync functions.
 
 flake8-bugbear throws "B008 Do not perform function calls in argument defaults"
@@ -39,3 +39,6 @@ Add ``await shutdown_dependencies()`` at the end of your tests.
     async def _setup_picodi():
         yield
         await picodi.shutdown_dependencies()
+
+
+Or use integration with ``pytest-asyncio``, more details in :doc:`testing` section.

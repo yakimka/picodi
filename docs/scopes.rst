@@ -1,16 +1,18 @@
 Scopes
 ======
 
-Resolving dependency values and injecting them is a good start, but it's not enough.
-We need to be able to control the lifetime of the objects we create. This is where scopes come in.
+While resolving dependency values and injecting them is a good starting point,
+it's insufficient on its own.
+We also need control over the lifecycle of the objects we create.
+This is where scopes come in.
 
-Picodi has two types of scopes: auto and manual. Lifecycle of auto scopes is managed
-by the Picodi itself, auto-scopes will be initialized and closed automatically.
-Manual scopes initialized on first injection or when :func:`picodi.init_dependencies`
-is called by the user and closed when :func:`picodi.shutdown_dependencies` is called.
+Picodi has two types of scopes: auto and manual. The lifecycle of auto-scopes is managed
+by Picodi itself. Auto-scopes are initialized and closed automatically.
+Manual scopes are initialized on the first injection or when :func:`picodi.init_dependencies`
+is explicitly called by the user and closed when :func:`picodi.shutdown_dependencies` is called.
 
-To set the scope for a dependency, you can use the :func:`picodi.dependency` decorator
-with the ``scope_class`` argument. Example:
+Use the :func:`picodi.dependency` decorator with the ``scope_class`` argument
+to set a dependency's scope. Example:
 
 .. code-block:: python
 
@@ -27,26 +29,25 @@ Built-in scopes
 NullScope
 *********
 
-By default, all dependencies are created with the :class:`picodi.NullScope` scope.
+By default, dependencies use the :class:`picodi.NullScope` scope creating
+a new instance every time they are injected.
 This means that a new instance is created every time the dependency is injected
 and closed immediately after root injection is done.
 
 SingletonScope
 **************
 
-The :class:`picodi.SingletonScope` scope creates a single instance of the dependency
-and reuses it every time the dependency is injected. The instance is created when the
-dependency is first injected.
+The :class:`picodi.SingletonScope` creates a single instance of the dependency.
+This instance is reused every time the dependency is injected.
 
-``SingletonScope`` is the manual scope, so you need to call :func:`picodi.shutdown_dependencies`
+``SingletonScope`` is a manual scope, so you need to call :func:`picodi.shutdown_dependencies`
 manually. Usually you want to call it when your application is shutting down.
 
 ContextVarScope
 ***************
 
-The :class:`picodi.ContextVarScope` uses the :class:`python:contextvars.ContextVar`
-to store the instance. The instance is created when the
-dependency is first injected.
+The :class:`picodi.ContextVarScope` relies on :class:`python:contextvars.ContextVar`
+to store instances.
 
 ``ContextVarScope`` is the manual scope, so you need to call :func:`picodi.shutdown_dependencies`
 with ``scope_class=ContextVarScope`` manually.
@@ -69,32 +70,12 @@ You can use it as a reference:
 .. literalinclude:: ../picodi/_scopes.py
    :pyobject: SingletonScope
 
-Lifecycle of manual scopes
---------------------------
-
-You can manually initialize your dependencies by calling :func:`picodi.init_dependencies`
-and pass the dependencies you want to initialize. Example:
-
-.. code-block:: python
-
-    from picodi import ManualScope, SingletonScope, init_dependencies, dependency
-
-
-    @dependency(scope_class=SingletonScope)
-    def my_dependency():
-        return "my dependency"
-
-
-    init_dependencies(dependencies=[my_dependency])
-
-Also, you need to manually close your dependencies by calling
-:func:`picodi.shutdown_dependencies`.
 
 Injecting async dependencies in sync dependants
-***********************************************
+-----------------------------------------------
 
-One even more useful feature is that if you manually initialize your async dependencies
-you can use them in sync injections. While the values is stored in the context of the
+Another powerful feature is the ability to use manually initialized async dependencies
+in synchronous injections. While the values is stored in the context of the
 scope you can inject it in sync code. Example:
 
 .. code-block:: python
@@ -115,9 +96,8 @@ scope you can inject it in sync code. Example:
 
 
     async def main():
-        await init_dependencies(
-            [get_async_dependency]
-        )  # Try to comment this line and see what happens
+        # Try to comment this line below and see what happens
+        await init_dependencies([get_async_dependency])
 
         print(my_sync_service())
 
@@ -132,8 +112,8 @@ it's initialized on startup, while your app is running you can inject it in sync
 ``lifespan`` decorator
 ***********************
 
-You can use the :func:`picodi.helpers.lifespan` decorator manage lifecycle of your dependencies.
-It's convenient for using with workers or cli commands.
+You can use the :func:`picodi.helpers.lifespan` decorator to manage the lifecycle
+of your dependencies. It's convenient for using with workers or cli commands.
 
 .. testcode::
 
