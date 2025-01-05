@@ -14,8 +14,8 @@ Picodi's Lifespan in Tests
 For effective testing, it’s essential to maintain a clean environment for each test.
 Picodi's scopes can introduce issues if not managed properly. To prevent this,
 ensure that dependencies are properly torn down after each test.
-In this example, we showcase example of pseudo framework,
-but you can adapt it to your testing framework.
+The following example demonstrates a pseudo-framework implementation,
+which you can adapt to suit your specific testing framework.
 
 .. testcode::
 
@@ -119,7 +119,7 @@ To use the ``_pytest_asyncio`` plugin, you need to install the
 Lifespan
 ********
 
-By default, Picodi will automatically call :func:`picodi.shutdown_dependencies`
+Picodi will automatically call :func:`picodi.shutdown_dependencies`
 and make additional cleanups after each test.
 
 If you need to call :func:`picodi.init_dependencies` - you can use marker.
