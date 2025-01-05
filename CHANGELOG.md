@@ -4,6 +4,8 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
+## Version 0.31.0
+
 - Breaking changes:
   - argument `init_scope` of `init_dependencies` replaces with `dependecies` argument
   - removed `use_init_hook` argument of `dependency` decorator
