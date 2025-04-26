@@ -56,21 +56,22 @@ TC = TypeVar("TC", bound=Callable)
 unset = object()
 
 
-class RegistryStorage:
+class State:
     def __init__(self) -> None:
         self.deps: dict[DependencyCallable, Provider] = {}
+        self.scopes: dict[type[ScopeType], ScopeType] = {
+            NullScope: NullScope(),
+            SingletonScope: SingletonScope(),
+            ContextVarScope: ContextVarScope(),
+        }
         self.overrides: dict[DependencyCallable, DependencyCallable] = {}
         self.touched_dependencies: set[DependencyCallable] = set()
-        self.lock = threading.RLock()
 
     def __iter__(self) -> Iterator[Provider]:
         return iter(self.deps.values())
 
 
 class InternalRegistry:
-    def __init__(self, storage: RegistryStorage) -> None:
-        self._storage = storage
-
     def add(
         self,
         dependency: DependencyCallable,
@@ -79,32 +80,37 @@ class InternalRegistry:
         """
         Add a dependency to the registry.
         """
-        with self._storage.lock:
-            if dependency not in self._storage.deps:
-                self._storage.deps[dependency] = Provider.from_dependency(
+        state = _get_state()
+        with _lock:
+            if dependency not in state.deps:
+                state.deps[dependency] = Provider.from_dependency(
                     dependency=dependency,
                     scope_class=scope_class,
                 )
 
     def get(self, dependency: DependencyCallable) -> Provider:
         dependency = self.get_dep_or_override(dependency)
-        self._storage.touched_dependencies.add(dependency)
-        return self._storage.deps[dependency]
+        state = _get_state()
+        state.touched_dependencies.add(dependency)
+        return state.deps[dependency]
 
     def get_dep_or_override(self, dependency: DependencyCallable) -> DependencyCallable:
-        return self._storage.overrides.get(dependency, dependency)
+        state = _get_state()
+        return state.overrides.get(dependency, dependency)
 
     def get_override(self, dependency: DependencyCallable) -> DependencyCallable | None:
-        return self._storage.overrides.get(dependency)
+        state = _get_state()
+        return state.overrides.get(dependency)
 
     def get_original(self, override: DependencyCallable) -> DependencyCallable | None:
-        for original, overriden in self._storage.overrides.items():
+        state = _get_state()
+        for original, overriden in state.overrides.items():
             if overriden == override:
                 return original
         return None
 
     def has_overrides(self) -> bool:
-        return bool(self._storage.overrides)
+        return bool(_get_state().overrides)
 
 
 class Registry:
@@ -112,10 +118,7 @@ class Registry:
     Manages dependencies and overrides.
     """
 
-    def __init__(
-        self, storage: RegistryStorage, internal_registry: InternalRegistry
-    ) -> None:
-        self._storage = storage
+    def __init__(self, internal_registry: InternalRegistry) -> None:
         self._internal_registry = internal_registry
 
     @property
@@ -128,7 +131,7 @@ class Registry:
         For example, you can check that mongo
         database was used in the test and clear it after the test.
         """
-        return frozenset(self._storage.touched_dependencies)
+        return frozenset(_get_state().touched_dependencies)
 
     @overload
     def override(
@@ -171,25 +174,27 @@ class Registry:
             registry.override(get_settings, real_settings)
             registry.override(get_settings, None)  # clear override
         """
-        if _internal_registry.get_original(dependency):
+        if self._internal_registry.get_original(dependency):
             raise ValueError("Cannot override an overridden dependency")
 
         def decorator(override_to: DependencyCallable) -> DependencyCallable:
             self._internal_registry.add(override_to)
+            state = _get_state()
             if dependency is override_to:
                 raise ValueError("Cannot override a dependency with itself")
-            self._storage.overrides[dependency] = override_to
+            state.overrides[dependency] = override_to
             return override_to
 
         if new_dependency is unset:
             return decorator
 
-        with self._storage.lock:
-            call_dependency = self._storage.overrides.get(dependency)
+        state = _get_state()
+        with _lock:
+            call_dependency = state.overrides.get(dependency)
             if callable(new_dependency):
                 decorator(new_dependency)
             else:
-                self._storage.overrides.pop(dependency, None)
+                state.overrides.pop(dependency, None)
 
         @contextmanager
         def manage_context() -> Generator[None, None, None]:
@@ -204,14 +209,16 @@ class Registry:
         """
         Clear all overrides. It will remove all overrides, but keep the dependencies.
         """
-        self._storage.overrides.clear()
+        state = _get_state()
+        state.overrides.clear()
 
     def clear_touched(self) -> None:
         """
         Clear the touched dependencies.
         It will remove all dependencies resolved during the picodi lifecycle.
         """
-        self._storage.touched_dependencies.clear()
+        state = _get_state()
+        state.touched_dependencies.clear()
 
     def clear(self) -> None:
         """
@@ -219,19 +226,10 @@ class Registry:
         This method will not close any dependencies. So you need to manually call
         :func:`shutdown_dependencies` before this method.
         """
-        self._storage.deps.clear()
-        self._storage.overrides.clear()
-        self._storage.touched_dependencies.clear()
-
-
-_registry_storage = RegistryStorage()
-_internal_registry = InternalRegistry(_registry_storage)
-registry = Registry(_registry_storage, _internal_registry)
-_scopes: dict[type[ScopeType], ScopeType] = {
-    NullScope: NullScope(),
-    SingletonScope: SingletonScope(),
-    ContextVarScope: ContextVarScope(),
-}
+        state = _get_state()
+        state.deps.clear()
+        state.overrides.clear()
+        state.touched_dependencies.clear()
 
 
 def Provide(dependency: DependencyCallable, /) -> Any:  # noqa: N802
@@ -387,8 +385,8 @@ def dependency(*, scope_class: type[ScopeType] = NullScope) -> Callable[[TC], TC
         :class:`SingletonScope`, :class:`ContextVarScope`.
     """
 
-    if scope_class not in _scopes:
-        _scopes[scope_class] = scope_class()
+    if scope_class not in _state.scopes:
+        _state.scopes[scope_class] = scope_class()
 
     def decorator(fn: TC) -> TC:
         _internal_registry.add(
@@ -420,7 +418,7 @@ def init_dependencies(dependencies: InitDependencies) -> Awaitable:
     if callable(dependencies):
         dependencies = dependencies()
 
-    async_deps = []
+    async_deps: list[Awaitable] = []
     for dep in dependencies:
         provider = _internal_registry.get(dep)
         resolver = LazyResolver(provider)
@@ -459,7 +457,7 @@ def shutdown_dependencies(scope_class: LifespanScopeClass = ManualScope) -> Awai
     """
     tasks = [
         instance.shutdown()  # type: ignore[call-arg]
-        for klass, instance in _scopes.items()
+        for klass, instance in _state.scopes.items()
         if issubclass(klass, scope_class)
     ]
     if all(isinstance(task, NullAwaitable) for task in tasks):
@@ -493,7 +491,7 @@ class Provider:
         )
 
     def get_scope(self) -> ScopeType:
-        return _scopes[self.scope_class]
+        return _state.scopes[self.scope_class]
 
     def resolve_value(self, exit_stack: ExitStack | None, **kwargs: Any) -> Any:
         scope = self.get_scope()
@@ -697,9 +695,6 @@ def _extract_and_register_dependency_from_parameter(
     return None
 
 
-_lock = threading.RLock()
-
-
 class LazyResolver:
     def __init__(
         self,
@@ -747,3 +742,13 @@ class LazyResolver:
                         value = await value
                     scope.set(self.provider.dependency, value)
         return value
+
+
+def _get_state() -> State:
+    return _state
+
+
+_lock = threading.RLock()
+_state = State()
+_internal_registry = InternalRegistry()
+registry = Registry(_internal_registry)
