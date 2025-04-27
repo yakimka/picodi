@@ -1,6 +1,6 @@
 import pytest
 
-from picodi import registry, shutdown_dependencies
+from picodi import Context
 
 pytest_plugins = ["pytester"]
 
@@ -27,13 +27,6 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(skipper)
 
 
-@pytest.fixture(autouse=True)
-async def _cleanup():
-    yield
-    await shutdown_dependencies()
-    registry.clear()
-
-
 @pytest.fixture()
 def make_closeable():
     def maker():
@@ -54,3 +47,17 @@ def make_closeable():
 @pytest.fixture()
 def closeable(make_closeable):
     return make_closeable()
+
+
+@pytest.fixture()
+def make_context():
+    def maker(
+        *dependency_scope,
+        init_dependencies=None,
+    ):
+        return Context(
+            *dependency_scope,
+            init_dependencies=init_dependencies,
+        )
+
+    return maker
