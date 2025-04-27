@@ -56,6 +56,260 @@ TC = TypeVar("TC", bound=Callable)
 unset = object()
 
 
+class Context:
+    def __init__(
+        self,
+        *dependency_scope: tuple[DependencyCallable, type[ScopeType]],
+        init_dependencies: InitDependencies | None = None,
+    ) -> None:
+        self.__state: State | None = None
+        self._dependency_scopes = dependency_scope
+        self._init_dependencies = init_dependencies or []
+
+    @property
+    def _state(self) -> State:
+        if self.__state is None:
+            raise RuntimeError("Context is not opened")
+        return self.__state
+
+    @_state.setter
+    def _state(self, state: State) -> None:
+        if self.__state is not None:
+            raise RuntimeError("Context is already opened")
+        self.__state = state
+
+    def open(self) -> Awaitable:
+        self._state = State()
+        global _state
+        self._old_state = _state
+        _state = self._state
+
+        for dep, scope_class in self._dependency_scopes:
+            if scope_class not in self._state.scopes:
+                self._state.scopes[scope_class] = scope_class()
+            self._state.add(dep, scope_class=scope_class)
+
+        return self.init_dependencies(self._init_dependencies)
+
+    def close(self) -> Awaitable:
+        result = self.shutdown_dependencies()
+        self.clear()
+        global _state
+        if self._old_state is None:
+            _state = None
+        else:
+            _state = self._old_state
+            self._old_state = None
+        return result
+
+    def __enter__(self) -> Context:
+        """
+        Enter the context manager. It will open the context and initialize
+        dependencies.
+        """
+        self.open()
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: Any | None,
+    ) -> None:
+        """
+        Exit the context manager. It will close the context and shutdown
+        dependencies.
+        """
+        self.close()
+
+    async def __aenter__(self) -> Context:
+        """
+        Enter the async context manager. It will open the context and initialize
+        dependencies.
+        """
+        await self.open()
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: Any | None,
+    ) -> None:
+        """
+        Exit the async context manager. It will close the context and shutdown
+        dependencies.
+        """
+        await self.close()
+
+    def init_dependencies(self, dependencies: InitDependencies) -> Awaitable:
+        """
+        Call this function to init dependencies. Usually, it should be called
+        when your application is starting up.
+
+        This function works both for synchronous and asynchronous dependencies.
+        If you call it without ``await``, it will initialize only sync dependencies.
+        If you call it ``await init_dependencies(...)``, it will initialize
+        both sync and async dependencies.
+
+        :param dependencies: iterable of dependencies to initialize.
+        """
+        if callable(dependencies):
+            dependencies = dependencies()
+
+        async_deps: list[Awaitable] = []
+        for dep in dependencies:
+            provider = self._state.get(dep)
+            resolver = LazyResolver(provider)
+            value = resolver(provider.is_async)
+            if provider.is_async:
+                async_deps.append(value)
+
+        if async_deps:
+            # asyncio.gather runs coros in different tasks with different context
+            #   we can run them in current context with contextvars.copy_context()
+            #   but in this case `ContextVarScope` will save values
+            #   in the wrong context.
+            #   So we fix it in dirty way by running all coros one by one until
+            #   come up with better solution.
+            async def init_all() -> None:
+                for dep in async_deps:
+                    await dep
+
+            return init_all()
+        return NullAwaitable()
+
+    def shutdown_dependencies(
+        self, scope_class: LifespanScopeClass = ManualScope
+    ) -> Awaitable:
+        """
+        Call this function to close dependencies. Usually, it should be called
+        when your application is shut down.
+
+        This function works both for synchronous and asynchronous dependencies.
+        If you call it without ``await``, it will shutdown only sync dependencies.
+        If you call it ``await shutdown_dependencies()``, it will shutdown both
+        sync and async dependencies.
+
+        If you not pass any arguments,
+        it will shutdown subclasses of :class:`ManualScope`.
+
+        :param scope_class: you can specify the scope class to shutdown. If passed -
+            only dependencies of this scope class and its subclasses will be shutdown.
+        """
+        tasks = [
+            instance.shutdown()  # type: ignore[call-arg]
+            for klass, instance in self._state.scopes.items()
+            if issubclass(klass, scope_class)
+        ]
+        if all(isinstance(task, NullAwaitable) for task in tasks):
+            return NullAwaitable()
+        return asyncio.gather(*tasks)
+
+    @property
+    def touched(self) -> frozenset[DependencyCallable]:
+        """
+        Get all dependencies that were used during the picodi lifecycle.
+        This method will return a frozenset of dependencies that were resolved.
+        It will not include dependencies that were overridden.
+        Primarily used for testing purposes.
+        For example, you can check that mongo
+        database was used in the test and clear it after the test.
+        """
+        return frozenset(self._state.touched_dependencies)
+
+    @overload
+    def override(
+        self, dependency: DependencyCallable, new_dependency: None = None
+    ) -> Callable[[DependencyCallable], DependencyCallable]:
+        pass
+
+    @overload
+    def override(
+        self, dependency: DependencyCallable, new_dependency: DependencyCallable
+    ) -> ContextManager[None]:
+        pass
+
+    def override(
+        self,
+        dependency: DependencyCallable,
+        new_dependency: DependencyCallable | None | object = unset,
+    ) -> Callable[[DependencyCallable], DependencyCallable] | ContextManager[None]:
+        """
+        Override a dependency with a new one. It can be used as a decorator,
+        as a context manager or as a regular method call. New dependency will be
+        added to the registry.
+
+        :param dependency: dependency to override
+        :param new_dependency: new dependency to use. If explicitly set to ``None``,
+            it will remove the override.
+
+        Examples
+        --------
+        .. code-block:: python
+
+            @registry.override(get_settings)
+            def real_settings():
+                return {"real": "settings"}
+
+
+            with registry.override(get_settings, real_settings):
+                pass
+
+            registry.override(get_settings, real_settings)
+            registry.override(get_settings, None)  # clear override
+        """
+        if self._state.get_original(dependency):
+            raise ValueError("Cannot override an overridden dependency")
+
+        def decorator(override_to: DependencyCallable) -> DependencyCallable:
+            self._state.add(override_to)
+            if dependency is override_to:
+                raise ValueError("Cannot override a dependency with itself")
+            self._state.overrides[dependency] = override_to
+            return override_to
+
+        if new_dependency is unset:
+            return decorator
+
+        with _lock:
+            call_dependency = self._state.overrides.get(dependency)
+            if callable(new_dependency):
+                decorator(new_dependency)
+            else:
+                self._state.overrides.pop(dependency, None)
+
+        @contextmanager
+        def manage_context() -> Generator[None, None, None]:
+            try:
+                yield
+            finally:
+                self.override(dependency, call_dependency)
+
+        return manage_context()
+
+    def clear_overrides(self) -> None:
+        """
+        Clear all overrides. It will remove all overrides, but keep the dependencies.
+        """
+        self._state.overrides.clear()
+
+    def clear_touched(self) -> None:
+        """
+        Clear the touched dependencies.
+        It will remove all dependencies resolved during the picodi lifecycle.
+        """
+        self._state.touched_dependencies.clear()
+
+    def clear(self) -> None:
+        """
+        Clear the registry. It will remove all dependencies and overrides.
+        This method will not close any dependencies. So you need to manually call
+        :func:`shutdown_dependencies` before this method.
+        """
+        self.__state = None
+
+
 class State:
     def __init__(self) -> None:
         self.deps: dict[DependencyCallable, Provider] = {}
@@ -70,8 +324,6 @@ class State:
     def __iter__(self) -> Iterator[Provider]:
         return iter(self.deps.values())
 
-
-class InternalRegistry:
     def add(
         self,
         dependency: DependencyCallable,
@@ -80,46 +332,38 @@ class InternalRegistry:
         """
         Add a dependency to the registry.
         """
-        state = _get_state()
         with _lock:
-            if dependency not in state.deps:
-                state.deps[dependency] = Provider.from_dependency(
+            if dependency not in self.deps:
+                self.deps[dependency] = Provider.from_dependency(
                     dependency=dependency,
                     scope_class=scope_class,
                 )
 
     def get(self, dependency: DependencyCallable) -> Provider:
         dependency = self.get_dep_or_override(dependency)
-        state = _get_state()
-        state.touched_dependencies.add(dependency)
-        return state.deps[dependency]
+        self.touched_dependencies.add(dependency)
+        return self.deps[dependency]
 
     def get_dep_or_override(self, dependency: DependencyCallable) -> DependencyCallable:
-        state = _get_state()
-        return state.overrides.get(dependency, dependency)
+        return self.overrides.get(dependency, dependency)
 
     def get_override(self, dependency: DependencyCallable) -> DependencyCallable | None:
-        state = _get_state()
-        return state.overrides.get(dependency)
+        return self.overrides.get(dependency)
 
     def get_original(self, override: DependencyCallable) -> DependencyCallable | None:
-        state = _get_state()
-        for original, overriden in state.overrides.items():
+        for original, overriden in self.overrides.items():
             if overriden == override:
                 return original
         return None
 
     def has_overrides(self) -> bool:
-        return bool(_get_state().overrides)
+        return bool(self.overrides)
 
 
 class Registry:
     """
     Manages dependencies and overrides.
     """
-
-    def __init__(self, internal_registry: InternalRegistry) -> None:
-        self._internal_registry = internal_registry
 
     @property
     def touched(self) -> frozenset[DependencyCallable]:
@@ -174,12 +418,13 @@ class Registry:
             registry.override(get_settings, real_settings)
             registry.override(get_settings, None)  # clear override
         """
-        if self._internal_registry.get_original(dependency):
+        state = _get_state()
+        if state.get_original(dependency):
             raise ValueError("Cannot override an overridden dependency")
 
         def decorator(override_to: DependencyCallable) -> DependencyCallable:
-            self._internal_registry.add(override_to)
             state = _get_state()
+            state.add(override_to)
             if dependency is override_to:
                 raise ValueError("Cannot override a dependency with itself")
             state.overrides[dependency] = override_to
@@ -385,11 +630,13 @@ def dependency(*, scope_class: type[ScopeType] = NullScope) -> Callable[[TC], TC
         :class:`SingletonScope`, :class:`ContextVarScope`.
     """
 
-    if scope_class not in _state.scopes:
-        _state.scopes[scope_class] = scope_class()
+    state = _get_state()
+    if scope_class not in state.scopes:
+        state.scopes[scope_class] = scope_class()
 
     def decorator(fn: TC) -> TC:
-        _internal_registry.add(
+        state = _get_state()
+        state.add(
             fn,
             scope_class=scope_class,
         )
@@ -420,7 +667,8 @@ def init_dependencies(dependencies: InitDependencies) -> Awaitable:
 
     async_deps: list[Awaitable] = []
     for dep in dependencies:
-        provider = _internal_registry.get(dep)
+        state = _get_state()
+        provider = state.get(dep)
         resolver = LazyResolver(provider)
         value = resolver(provider.is_async)
         if provider.is_async:
@@ -455,9 +703,10 @@ def shutdown_dependencies(scope_class: LifespanScopeClass = ManualScope) -> Awai
     :param scope_class: you can specify the scope class to shutdown. If passed -
         only dependencies of this scope class and its subclasses will be shutdown.
     """
+    state = _get_state()
     tasks = [
         instance.shutdown()  # type: ignore[call-arg]
-        for klass, instance in _state.scopes.items()
+        for klass, instance in state.scopes.items()
         if issubclass(klass, scope_class)
     ]
     if all(isinstance(task, NullAwaitable) for task in tasks):
@@ -491,7 +740,8 @@ class Provider:
         )
 
     def get_scope(self) -> ScopeType:
-        return _state.scopes[self.scope_class]
+        state = _get_state()
+        return state.scopes[self.scope_class]
 
     def resolve_value(self, exit_stack: ExitStack | None, **kwargs: Any) -> Any:
         scope = self.get_scope()
@@ -608,16 +858,15 @@ def _wrapper_helper(
 
 
 def _need_patch(dependant: DependNode) -> bool:
-    if dependant.name is None and not _internal_registry.has_overrides():
+    state = _get_state()
+    if dependant.name is None and not state.has_overrides():
         return False
 
     for dep in dependant.dependencies:  # noqa: SIM110
         if _need_patch(dep):
             return True
 
-    return bool(
-        dependant.name and _internal_registry.get_override(dependant.value.call)
-    )
+    return bool(dependant.name and state.get_override(dependant.value.call))
 
 
 def _patch_dependant(dependant: DependNode) -> None:
@@ -627,7 +876,8 @@ def _patch_dependant(dependant: DependNode) -> None:
     if dependant.name is None:
         return
 
-    if override := _internal_registry.get_override(dependant.value.call):
+    state = _get_state()
+    if override := state.get_override(dependant.value.call):
         dependant.value = Depends(override)
         override_tree = _build_depend_tree(dependant.value)
         dependant.dependencies = override_tree.dependencies
@@ -646,7 +896,8 @@ def _resolve_dependencies(
     if dependant.name is None:
         return resolved_dependencies, list(scopes)
 
-    provider = _internal_registry.get(dependant.value.call)
+    state = _get_state()
+    provider = state.get(dependant.value.call)
     value = LazyResolver(
         provider=provider,
         kwargs=resolved_dependencies,
@@ -675,8 +926,9 @@ def _build_depend_tree(dependency: Depends, name: str | None = None) -> DependNo
 def _extract_and_register_dependency_from_parameter(
     value: inspect.Parameter,
 ) -> Depends | None:
+    state = _get_state()
     if isinstance(value.default, Depends):
-        _internal_registry.add(value.default.call)
+        state.add(value.default.call)
         return value.default
 
     if fastapi is None:
@@ -690,7 +942,7 @@ def _extract_and_register_dependency_from_parameter(
                 fastapi_dependency = metadata.dependency
                 break
     if isinstance(fastapi_dependency, Depends):
-        _internal_registry.add(fastapi_dependency.call)  # type: ignore[unreachable]
+        state.add(fastapi_dependency.call)  # type: ignore[unreachable]
         return fastapi_dependency
     return None
 
@@ -745,10 +997,10 @@ class LazyResolver:
 
 
 def _get_state() -> State:
-    return _state
+    return _state or _default_state
 
 
 _lock = threading.RLock()
-_state = State()
-_internal_registry = InternalRegistry()
-registry = Registry(_internal_registry)
+_state: State | None = None
+_default_state = State()
+registry = Registry()
