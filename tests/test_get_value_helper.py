@@ -24,7 +24,7 @@ SN = SimpleNamespace
         ("foo.bar.baz", {"foo": SN(bar={"baz": 12})}, 12),
     ],
 )
-def test_get_simple_value(path, obj, expected):
+def test_get_value_retrieves_nested_values(path, obj, expected):
     result = get_value(path, obj)
 
     assert result == expected

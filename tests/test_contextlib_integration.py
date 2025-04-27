@@ -29,7 +29,7 @@ async def test_using_inject_decorator_with_asynccontextmanager():
         assert num == 42
 
 
-def test_resources_closed_after_context_manager_close(closeable):
+def test_injected_contextmanager_closes_yield_dependency_on_exit(closeable):
     def get_yield_dep():
         yield closeable
         closeable.close()
@@ -46,7 +46,7 @@ def test_resources_closed_after_context_manager_close(closeable):
     assert closeable.is_closed is True
 
 
-async def test_resources_closed_after_context_manager_close_async(closeable):
+async def test_injected_asynccontextmanager_closes_yield_dependency_on_exit(closeable):
     async def get_yield_dep():
         yield closeable
         closeable.close()
@@ -142,7 +142,7 @@ async def test_resources_not_closed_without_finally_block_async(closeable):
     assert closeable.is_closed is False
 
 
-def test_yield_dep_dont_close_while_parent_not_close(closeable):
+def test_yield_dependency_dont_close_while_parent_not_close(closeable):
     def get_yield_dep():
         yield "my_dep"
         closeable.close()
@@ -162,7 +162,7 @@ def test_yield_dep_dont_close_while_parent_not_close(closeable):
     assert closeable.is_closed is False
 
 
-async def test_yield_dep_dont_close_while_parent_not_close_async(closeable):
+async def test_yield_dependency_dont_close_while_parent_not_close_async(closeable):
     async def get_yield_dep():
         yield "my_dep"
         closeable.close()

@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from picodi import NullScope, Provide, dependency, inject
+from picodi import NullScope, Provide, inject
 
 
 @pytest.fixture()
@@ -17,7 +17,7 @@ def test_scope_not_store_anything(sut):
         sut.get("key")
 
 
-async def test_closing_one_dependency_dont_affect_another(make_closeable):
+async def test_closing_one_dependency_dont_affect_another(make_closeable, make_context):
     closeables = [make_closeable() for _ in range(2)]
     closeable_gen = iter(closeables)
     closeable_task1, closeable_task2 = closeables
@@ -25,7 +25,6 @@ async def test_closing_one_dependency_dont_affect_another(make_closeable):
     second_dep_enter = asyncio.Event()
     first_dep_close = asyncio.Event()
 
-    @dependency(scope_class=NullScope)
     async def dummy_dep():
         closeable = next(closeable_gen)
         yield closeable
@@ -57,10 +56,13 @@ async def test_closing_one_dependency_dont_affect_another(make_closeable):
         await task2()
         assert closeable.is_closed is True
 
-    await asyncio.gather(
-        asyncio.create_task(manager1(closeable_task1)),
-        asyncio.create_task(manager2(closeable_task2)),
-    )
+    async with make_context(
+        (dummy_dep, NullScope),
+    ):
+        await asyncio.gather(
+            asyncio.create_task(manager1(closeable_task1)),
+            asyncio.create_task(manager2(closeable_task2)),
+        )
 
     assert closeable_task1.close_call_count == 1
     assert closeable_task2.close_call_count == 1

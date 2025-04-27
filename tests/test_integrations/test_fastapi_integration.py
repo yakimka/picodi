@@ -5,23 +5,16 @@ from fastapi import Depends, FastAPI
 from fastapi.exceptions import FastAPIError
 from starlette.middleware import Middleware
 
-from picodi import (
-    InitDependencies,
-    SingletonScope,
-    dependency,
-    inject,
-    registry,
-    shutdown_dependencies,
-)
+from picodi import Context, SingletonScope, inject
 from picodi.integrations.fastapi import Provide, RequestScope, RequestScopeMiddleware
 
 
 @pytest.fixture()
 def make_app():
-    def maker(dependencies_for_init: InitDependencies | None = None):
+    def maker(context: Context | None = None):
         kwargs = {}
-        if dependencies_for_init:
-            kwargs["dependencies_for_init"] = dependencies_for_init
+        if context:
+            kwargs["context"] = context
         return FastAPI(
             middleware=[Middleware(RequestScopeMiddleware, **kwargs)],
         )
@@ -103,9 +96,10 @@ async def test_resolve_dependency_in_route_without_inject_decorator(
 
 
 async def test_can_override_deps_passed_to_fastapi_view_without_inject_decorator(
-    make_app, make_asgi_client
+    make_app, make_asgi_client, make_context
 ):
-    app = make_app()
+    context = make_context()
+    app = make_app(context=context)
 
     def get_42() -> MyNumber:
         return MyNumber(42)
@@ -114,9 +108,10 @@ async def test_can_override_deps_passed_to_fastapi_view_without_inject_decorator
     def root(number: MyNumber = Provide(get_42, wrap=True)):
         return {"number": number.value}
 
-    with registry.override(get_42, lambda: MyNumber(24)):
-        async with make_asgi_client(app) as asgi_client:
-            response = await asgi_client.get("/")
+    async with context:
+        with context.override(get_42, lambda: MyNumber(24)):
+            async with make_asgi_client(app) as asgi_client:
+                response = await asgi_client.get("/")
 
     assert response.json() == {"number": 24}
 
@@ -145,27 +140,29 @@ async def test_dependency_scope_close_only_after_view_is_exited(
 
 
 async def test_singleton_dependency_scope_not_closed_after_view_is_exited(
-    make_app, make_asgi_client
+    make_app, make_asgi_client, make_context
 ):
-    app = make_app()
     closed = 0
 
-    @dependency(scope_class=SingletonScope)
     def get_42():
         yield MyNumber(42)
         nonlocal closed
         closed += 1
+
+    context = make_context((get_42, SingletonScope))
+    app = make_app(context=context)
 
     @app.get("/")
     def root(number: MyNumber = Provide(get_42, wrap=True)):
         assert closed == 0
         return {"number": number.value}
 
-    async with make_asgi_client(app) as asgi_client:
-        response = await asgi_client.get("/")
+    async with context:
+        async with make_asgi_client(app) as asgi_client:
+            response = await asgi_client.get("/")
 
-    assert closed == 0
-    await shutdown_dependencies()
+        assert closed == 0
+
     assert closed == 1
     assert response.json() == {"number": 42}
 
@@ -261,11 +258,12 @@ async def test_resolve_annotated_dependency(make_app, make_asgi_client):
     assert response.json() == {"number": 42}
 
 
-async def test_middleware_init_and_shutdown_request_scope(make_app, make_asgi_client):
+async def test_middleware_init_and_shutdown_request_scope(
+    make_app, make_asgi_client, make_context
+):
     init_counter = 0
     closing_counter = 0
 
-    @dependency(scope_class=RequestScope)
     async def get_42():
         nonlocal init_counter
         init_counter += 1
@@ -273,7 +271,8 @@ async def test_middleware_init_and_shutdown_request_scope(make_app, make_asgi_cl
         nonlocal closing_counter
         closing_counter += 1
 
-    app = make_app([get_42])
+    context = make_context((get_42, RequestScope), init_dependencies=[get_42])
+    app = make_app(context=context)
 
     @app.get("/")
     @inject
@@ -282,20 +281,20 @@ async def test_middleware_init_and_shutdown_request_scope(make_app, make_asgi_cl
         assert closing_counter == 0
         return {}
 
-    async with make_asgi_client(app) as asgi_client:
-        await asgi_client.get("/")
+    async with context:
+        async with make_asgi_client(app) as asgi_client:
+            await asgi_client.get("/")
 
     assert init_counter == 1
     assert closing_counter == 1
 
 
 async def test_middleware_init_and_shutdown_request_scope_sync(
-    make_app, make_asgi_client
+    make_app, make_asgi_client, make_context
 ):
     init_counter = 0
     closing_counter = 0
 
-    @dependency(scope_class=RequestScope)
     def get_42():
         nonlocal init_counter
         init_counter += 1
@@ -303,7 +302,8 @@ async def test_middleware_init_and_shutdown_request_scope_sync(
         nonlocal closing_counter
         closing_counter += 1
 
-    app = make_app([get_42])
+    context = make_context((get_42, RequestScope), init_dependencies=[get_42])
+    app = make_app(context=context)
 
     @app.get("/")
     @inject
@@ -312,8 +312,9 @@ async def test_middleware_init_and_shutdown_request_scope_sync(
         assert closing_counter == 0
         return {}
 
-    async with make_asgi_client(app) as asgi_client:
-        await asgi_client.get("/")
+    async with context:
+        async with make_asgi_client(app) as asgi_client:
+            await asgi_client.get("/")
 
     assert init_counter == 1
     assert closing_counter == 1

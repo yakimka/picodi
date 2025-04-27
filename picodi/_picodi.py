@@ -80,6 +80,7 @@ class Context:
 
     def open(self) -> Awaitable:
         self._state = State()
+        self._state.deps.update(_default_state.deps)
         global _state
         self._old_state = _state
         _state = self._state
@@ -89,7 +90,7 @@ class Context:
                 self._state.scopes[scope_class] = scope_class()
             self._state.add(dep, scope_class=scope_class)
 
-        return self.init_dependencies(self._init_dependencies)
+        return self.init_dependencies()
 
     def close(self) -> Awaitable:
         result = self.shutdown_dependencies()
@@ -142,7 +143,7 @@ class Context:
         """
         await self.close()
 
-    def init_dependencies(self, dependencies: InitDependencies) -> Awaitable:
+    def init_dependencies(self) -> Awaitable:
         """
         Call this function to init dependencies. Usually, it should be called
         when your application is starting up.
@@ -154,6 +155,7 @@ class Context:
 
         :param dependencies: iterable of dependencies to initialize.
         """
+        dependencies = self._init_dependencies
         if callable(dependencies):
             dependencies = dependencies()
 
@@ -216,6 +218,8 @@ class Context:
         For example, you can check that mongo
         database was used in the test and clear it after the test.
         """
+        if not self.__state:
+            return frozenset()
         return frozenset(self._state.touched_dependencies)
 
     @overload
@@ -320,6 +324,7 @@ class State:
         }
         self.overrides: dict[DependencyCallable, DependencyCallable] = {}
         self.touched_dependencies: set[DependencyCallable] = set()
+        self.call_tree_cache: dict[DependencyCallable, DependNode] = {}
 
     def __iter__(self) -> Iterator[Provider]:
         return iter(self.deps.values())
@@ -410,14 +415,13 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
             pass
     """
     signature = inspect.signature(fn)
-    dependant = _build_depend_tree(Depends(fn))
 
     if inspect.iscoroutinefunction(fn) or inspect.isasyncgenfunction(fn):
 
         @functools.wraps(fn)
         async def fun_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             gen = _wrapper_helper(
-                dependant,
+                Depends(fn),
                 signature,
                 is_async=True,
                 args=args,
@@ -469,7 +473,7 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
         @functools.wraps(fn)
         def fun_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             gen = _wrapper_helper(
-                dependant,
+                Depends(fn),
                 signature,
                 is_async=False,
                 args=args,
@@ -566,12 +570,18 @@ class Provider:
 
 
 def _wrapper_helper(
-    dependant: DependNode,
+    depends: Depends,
     signature: inspect.Signature,
     is_async: bool,
     args: tuple[Any, ...],
     kwargs: dict[str, Any],
 ) -> Generator[Any, None, None]:
+    state = _get_state()
+    if depends.call in state.call_tree_cache:
+        dependant = state.call_tree_cache[depends.call]
+    else:
+        state.call_tree_cache[depends.call] = dependant = _build_depend_tree(depends)
+
     exit_stack = ExitStack()
     if _need_patch(dependant):
         dependant = copy.deepcopy(dependant)

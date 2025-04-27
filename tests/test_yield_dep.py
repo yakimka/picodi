@@ -4,14 +4,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from picodi import (
-    Provide,
-    SingletonScope,
-    dependency,
-    init_dependencies,
-    inject,
-    shutdown_dependencies,
-)
+from picodi import Provide, SingletonScope, inject
 
 
 @dataclass
@@ -38,7 +31,6 @@ def get_int_service():
 
 @pytest.fixture()
 def int_service_singleton_scope_dep():
-    @dependency(scope_class=SingletonScope)
     def get_int_service_singleton_scope_dep():
         int_service = IntService.create()
         yield int_service
@@ -55,13 +47,25 @@ async def get_int_service_async():
 
 @pytest.fixture()
 def int_service_async_singleton_scope_dep():
-    @dependency(scope_class=SingletonScope)
     async def get_int_service_async_singleton_scope_dep():
         int_service = IntService.create()
         yield int_service
         await int_service.aclose()
 
     return get_int_service_async_singleton_scope_dep
+
+
+@pytest.fixture()
+def context(
+    make_context,
+    int_service_singleton_scope_dep,
+    int_service_async_singleton_scope_dep,
+):
+    with make_context(
+        (int_service_singleton_scope_dep, SingletonScope),
+        (int_service_async_singleton_scope_dep, SingletonScope),
+    ) as ctx:
+        yield ctx
 
 
 def test_resolve_yield_dep_sync():
@@ -125,6 +129,7 @@ async def test_multiple_calls_to_yield_dep_async_return_different_values():
     assert int_service_1 is not int_service_2
 
 
+@pytest.mark.usefixtures("context")
 def test_multiple_calls_to_singleton_scope_dep_sync_return_same_values(
     int_service_singleton_scope_dep,
 ):
@@ -139,6 +144,7 @@ def test_multiple_calls_to_singleton_scope_dep_sync_return_same_values(
     assert int_service_1 is int_service_2
 
 
+@pytest.mark.usefixtures("context")
 async def test_multiple_calls_to_singleton_scope_dep_async_return_same_values(
     int_service_async_singleton_scope_dep,
 ):
@@ -155,7 +161,8 @@ async def test_multiple_calls_to_singleton_scope_dep_async_return_same_values(
     assert int_service_1 is int_service_2
 
 
-async def test_multiple_calls_to_singleton_scope_dep_sync_from_async_context_same_val(
+@pytest.mark.usefixtures("context")
+async def test_singleton_sync_dep_from_async_context_returns_same_instance(
     int_service_singleton_scope_dep,
 ):
     @inject
@@ -169,7 +176,7 @@ async def test_multiple_calls_to_singleton_scope_dep_sync_from_async_context_sam
     assert int_service_1 is int_service_2
 
 
-def test_resolve_async_yield_dep_from_sync_function_return_coroutine():
+def test_resolve_async_yield_dep_from_sync_returns_async_generator():
     @inject
     def get_async_dep(port: int = Provide(get_int_service_async)):
         return port
@@ -180,8 +187,9 @@ def test_resolve_async_yield_dep_from_sync_function_return_coroutine():
     assert result.__name__ == "get_int_service_async"
 
 
-async def test_resolve_async_yield_dep_from_sync_function_can_be_inited():
-    @dependency(scope_class=SingletonScope)
+async def test_resolve_initialized_async_singleton_yield_dep_from_sync_returns_value(
+    make_context,
+):
     async def async_singleton_scope_dep():
         int_service = IntService.create()
         yield int_service
@@ -191,12 +199,16 @@ async def test_resolve_async_yield_dep_from_sync_function_can_be_inited():
     def get_async_dep(port: int = Provide(async_singleton_scope_dep)):
         return port
 
-    await init_dependencies([async_singleton_scope_dep])
-    result = get_async_dep()
+    async with make_context(
+        (async_singleton_scope_dep, SingletonScope),
+        init_dependencies=[async_singleton_scope_dep],
+    ):
+        result = get_async_dep()
 
     assert isinstance(result, IntService)
 
 
+@pytest.mark.usefixtures("context")
 def test_singleton_scope_dep_doesnt_close_automatically(
     int_service_singleton_scope_dep,
 ):
@@ -208,6 +220,7 @@ def test_singleton_scope_dep_doesnt_close_automatically(
     assert int_service.closed is False
 
 
+@pytest.mark.usefixtures("context")
 async def test_singleton_scope_dep_doesnt_close_automatically_async(
     int_service_async_singleton_scope_dep,
 ):
@@ -221,6 +234,7 @@ async def test_singleton_scope_dep_doesnt_close_automatically_async(
     assert int_service.closed is False
 
 
+@pytest.mark.usefixtures("context")
 async def test_singleton_scope_dep_doesnt_close_automatically_sync_from_async_context(
     int_service_singleton_scope_dep,
 ):
@@ -232,8 +246,7 @@ async def test_singleton_scope_dep_doesnt_close_automatically_sync_from_async_co
     assert int_service.closed is False
 
 
-def test_singleton_scope_dep_can_be_closed_manually():
-    @dependency(scope_class=SingletonScope)
+def test_singleton_scope_dep_can_be_closed_manually(make_context):
     def async_singleton_scope_dep():
         int_service = IntService.create()
         yield int_service
@@ -243,16 +256,17 @@ def test_singleton_scope_dep_can_be_closed_manually():
     def get_async_dep(port: int = Provide(async_singleton_scope_dep)):
         return port
 
-    result = get_async_dep()
-    assert result.closed is False
-
-    shutdown_dependencies()
+    with make_context(
+        (async_singleton_scope_dep, SingletonScope),
+        init_dependencies=[async_singleton_scope_dep],
+    ):
+        result = get_async_dep()
+        assert result.closed is False
 
     assert result.closed is True
 
 
-async def test_singleton_scope_dep_can_be_closed_manually_async():
-    @dependency(scope_class=SingletonScope)
+async def test_singleton_scope_dep_can_be_closed_manually_async(make_context):
     async def async_singleton_scope_dep():
         int_service = IntService.create()
         yield int_service
@@ -262,10 +276,12 @@ async def test_singleton_scope_dep_can_be_closed_manually_async():
     async def get_async_dep(port: int = Provide(async_singleton_scope_dep)):
         return port
 
-    result = await get_async_dep()
-    assert result.closed is False
-
-    await shutdown_dependencies()
+    async with make_context(
+        (async_singleton_scope_dep, SingletonScope),
+        init_dependencies=[async_singleton_scope_dep],
+    ):
+        result = await get_async_dep()
+        assert result.closed is False
 
     assert result.closed is True
 
@@ -321,13 +337,12 @@ async def test_can_resolve_sync_injected_generator_in_async_context():
     assert result.closed is True
 
 
-def test_can_init_injected_singleton_scope_dep():
+def test_can_init_injected_singleton_scope_dep(make_context):
     called = 0
 
     def get_42():
         return 42
 
-    @dependency(scope_class=SingletonScope)
     @inject
     def my_singleton_scope_dep(number: int = Provide(get_42)):
         assert number == 42
@@ -335,18 +350,19 @@ def test_can_init_injected_singleton_scope_dep():
         called += 1
         return number
 
-    init_dependencies([my_singleton_scope_dep])
+    with make_context(
+        (my_singleton_scope_dep, SingletonScope),
+        init_dependencies=[my_singleton_scope_dep],
+    ):
+        assert called == 1
 
-    assert called == 1
 
-
-async def test_can_init_injected_singleton_scope_dep_async():
+async def test_can_init_injected_singleton_scope_dep_async(make_context):
     called = 0
 
     def get_42():
         return 42
 
-    @dependency(scope_class=SingletonScope)
     @inject
     async def my_async_singleton_scope_dep(number: int = Provide(get_42)):
         assert number == 42
@@ -354,18 +370,21 @@ async def test_can_init_injected_singleton_scope_dep_async():
         called += 1
         return number
 
-    await init_dependencies([my_async_singleton_scope_dep])
+    async with make_context(
+        (my_async_singleton_scope_dep, SingletonScope),
+        init_dependencies=[my_async_singleton_scope_dep],
+    ):
+        assert called == 1
 
-    assert called == 1
 
-
-def test_can_init_injected_singleton_scope_dep_argument_passed_as_callable():
+def test_can_init_injected_singleton_scope_dep_argument_passed_as_callable(
+    make_context,
+):
     called = 0
 
     def get_42():
         return 42
 
-    @dependency(scope_class=SingletonScope)
     @inject
     def my_singleton_scope_dep(number: int = Provide(get_42)):
         assert number == 42
@@ -373,9 +392,11 @@ def test_can_init_injected_singleton_scope_dep_argument_passed_as_callable():
         called += 1
         return number
 
-    init_dependencies(lambda: [my_singleton_scope_dep])
-
-    assert called == 1
+    with make_context(
+        (my_singleton_scope_dep, SingletonScope),
+        init_dependencies=lambda: [my_singleton_scope_dep],
+    ):
+        assert called == 1
 
 
 async def test_can_resolve_yield_in_yield_with_correct_scopes():

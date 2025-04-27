@@ -1,4 +1,4 @@
-from picodi import Provide, SingletonScope, dependency, inject, registry
+from picodi import Provide, SingletonScope, inject
 from picodi.helpers import enter
 
 
@@ -56,17 +56,18 @@ async def test_enter_injected_async_gen(closeable):
     assert closeable.is_closed is True
 
 
-def test_singleton_sync_gen_not_closed(closeable):
-    @dependency(scope_class=SingletonScope)
+def test_enter_does_not_close_singleton_dependency(make_context, closeable):
     def dep():
         yield 42
         closeable.close()
 
-    with enter(dep) as val:
-        assert val == 42
-        assert closeable.is_closed is False
+    context = make_context((dep, SingletonScope))
+    with context:
+        with enter(dep) as val:
+            assert val == 42
+            assert closeable.is_closed is False
 
-    assert closeable.is_closed is False
+        assert closeable.is_closed is False
 
 
 def test_enter_regular_dependency():
@@ -85,10 +86,13 @@ async def test_enter_regular_dependency_async():
         assert val == 42
 
 
-async def test_can_use_override_enter_dependency():
+async def test_enter_respects_context_override(make_context):
     async def dep():
         return 42  # pragma: no cover
 
-    with registry.override(dep, lambda: 43):  # noqa: SIM117
-        with enter(dep) as val:
-            assert val == 43
+    context = make_context()
+
+    async with context:
+        with context.override(dep, lambda: 43):  # noqa: SIM117
+            with enter(dep) as val:
+                assert val == 43

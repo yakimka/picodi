@@ -3,7 +3,7 @@ import random
 
 import pytest
 
-from picodi import Provide, SingletonScope, dependency, init_dependencies, inject
+from picodi import Provide, SingletonScope, inject
 
 
 def get_random_int():
@@ -117,8 +117,7 @@ def _check_redis_string(redis_string):
     assert int(redis_string.split(":")[-1]) <= 100_000
 
 
-async def test_resolve_async_singleton_dependency_through_sync():
-    @dependency(scope_class=SingletonScope)
+async def test_resolve_async_singleton_dependency_through_sync(make_context):
     async def get_client():
         return "my_client"
 
@@ -130,8 +129,9 @@ async def test_resolve_async_singleton_dependency_through_sync():
     async def view(client: str = Provide(get_client_sync)):
         return client
 
-    await init_dependencies([get_client])
-
-    result = await view()
+    async with make_context(
+        (get_client, SingletonScope), init_dependencies=[get_client]
+    ):
+        result = await view()
 
     assert result == "my_client"

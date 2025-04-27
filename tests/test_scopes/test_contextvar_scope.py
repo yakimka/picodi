@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from picodi import ContextVarScope, Provide, dependency, inject, shutdown_dependencies
+from picodi import ContextVarScope, Provide, inject
 
 
 @pytest.fixture()
@@ -47,7 +47,7 @@ async def test_values_cant_be_retrieved_from_separate_task(sut):
     await asyncio.gather(task1(), task2())
 
 
-async def test_shutdown_from_one_task_dont_affect_another_task(sut):
+async def test_shutdown_in_one_task_does_not_affect_another(sut):
     value_set = asyncio.Event()
     scope_shutdown = asyncio.Event()
 
@@ -65,13 +65,14 @@ async def test_shutdown_from_one_task_dont_affect_another_task(sut):
     await asyncio.gather(task1(), task2())
 
 
-async def test_closing_dependencies_in_one_task_dont_affect_another(make_closeable):
+async def test_shutdown_dependencies_in_one_task_does_not_affect_another(
+    make_closeable, make_context
+):
     closeables = [make_closeable() for _ in range(2)]
     closeable_gen = iter(closeables)
     first_shutdown = asyncio.Event()
     lock = asyncio.Lock()
 
-    @dependency(scope_class=ContextVarScope)
     async def dummy_dep():
         closeable = next(closeable_gen)
         yield closeable
@@ -85,11 +86,15 @@ async def test_closing_dependencies_in_one_task_dont_affect_another(make_closeab
     async def task2(dep: str = Provide(dummy_dep)):  # noqa: U100
         return None
 
+    context = make_context(
+        (dummy_dep, ContextVarScope),
+    )
+
     async def manager1(closeable):
         await task1()
         assert closeable.is_closed is False
         async with lock:
-            await shutdown_dependencies(scope_class=ContextVarScope)
+            await context.shutdown_dependencies(scope_class=ContextVarScope)
             first_shutdown.set()
 
     async def manager2(closeable):
@@ -97,13 +102,14 @@ async def test_closing_dependencies_in_one_task_dont_affect_another(make_closeab
             await task2()
             await first_shutdown.wait()
         assert closeable.is_closed is False
-        await shutdown_dependencies(scope_class=ContextVarScope)
+        await context.shutdown_dependencies(scope_class=ContextVarScope)
 
     closeable_task1, closeable_task2 = closeables
-    await asyncio.gather(
-        asyncio.create_task(manager1(closeable_task1)),
-        asyncio.create_task(manager2(closeable_task2)),
-    )
+    async with context:
+        await asyncio.gather(
+            asyncio.create_task(manager1(closeable_task1)),
+            asyncio.create_task(manager2(closeable_task2)),
+        )
 
     assert closeable_task1.close_call_count == 1
     assert closeable_task2.close_call_count == 1
