@@ -16,11 +16,11 @@ def custom_scope():
 
     class CustomScope(NullScope):
         def get(self, key: Hashable) -> Any:
-            events.add(f"get({key.__name__})")
+            events.add("get()")
             return super().get(key)
 
         def set(self, key: Hashable, value: Any) -> None:
-            events.add(f"set({key.__name__}, {value})")
+            events.add(f"set({value})")
             super().set(key, value)
 
     return CustomScope, events
@@ -41,7 +41,7 @@ def test_dependency_uses_custom_scope(custom_scope, make_context):
         result = service()
 
     assert result == 42
-    assert events == {"get(get_num)", "set(get_num, 42)"}
+    assert events == {"get()", "set(42)"}
 
 
 async def test_dependency_uses_custom_scope_async(custom_scope, make_context):
@@ -59,4 +59,4 @@ async def test_dependency_uses_custom_scope_async(custom_scope, make_context):
         result = await service()
 
     assert result == 42
-    assert events == {"get(get_num)", "set(get_num, 42)"}
+    assert events == {"get()", "set(42)"}

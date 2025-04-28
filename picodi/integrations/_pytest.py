@@ -19,20 +19,22 @@ def picodi_context() -> Context | list[Context]:
 
 
 @pytest.fixture()
-def _ensure_context_list(
+def ensure_context_list(
     picodi_context: Context | list[Context],
 ) -> list[Context]:
     return [picodi_context] if isinstance(picodi_context, Context) else picodi_context
 
 
 @pytest.fixture()
-def _picodi_clear_touched(_ensure_context_list) -> Generator[None, None, None]:
+def _picodi_clear_touched(
+    ensure_context_list: list[Context],
+) -> Generator[None, None, None]:
     """
     Clear touched dependencies after the test.
     Need for tests consistency.
     """
     yield
-    for context in _ensure_context_list:
+    for context in ensure_context_list:
         context.clear_touched()
 
 

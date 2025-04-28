@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
@@ -5,8 +9,10 @@ from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 from starlette.routing import Route
 
-from picodi import Context
 from picodi.integrations.starlette import RequestScope, RequestScopeMiddleware
+
+if TYPE_CHECKING:
+    from picodi import Context
 
 
 @pytest.fixture()
