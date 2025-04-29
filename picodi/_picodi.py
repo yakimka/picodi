@@ -80,7 +80,6 @@ class Context:
 
     def open(self) -> Awaitable:
         self._state = State()
-        self._state.deps.update(_default_state.deps)
         global _state
         self._old_state = _state
         _state = self._state
