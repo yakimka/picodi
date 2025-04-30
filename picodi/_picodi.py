@@ -62,9 +62,9 @@ class Context:
         *dependency_scope: tuple[DependencyCallable, type[ScopeType]],
         init_dependencies: InitDependencies | None = None,
     ) -> None:
-        self.__state: State | None = None
         self._dependency_scopes = dependency_scope
         self._init_dependencies = init_dependencies or []
+        self.__state: State | None = None
 
     @property
     def _state(self) -> State:
@@ -80,9 +80,8 @@ class Context:
 
     def open(self) -> Awaitable:
         self._state = State()
-        global _state
         self._old_state = _state
-        _state = self._state
+        _set_state(self._state)
 
         for dep, scope_class in self._dependency_scopes:
             if scope_class not in self._state.scopes:
@@ -94,12 +93,7 @@ class Context:
     def close(self) -> Awaitable:
         result = self.shutdown_dependencies()
         self.clear()
-        global _state
-        if self._old_state is None:
-            _state = None
-        else:
-            _state = self._old_state
-            self._old_state = None
+        _set_state(self._old_state)
         return result
 
     def __enter__(self) -> Context:
@@ -799,6 +793,11 @@ class LazyResolver:
 
 def _get_state() -> State:
     return _state or _default_state
+
+
+def _set_state(state: State | None) -> None:
+    global _state
+    _state = state
 
 
 _lock = threading.RLock()
