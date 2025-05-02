@@ -175,23 +175,3 @@ def test_can_clear_usage_data(context):
 
     # Assert
     assert not context.touched
-
-
-def test_clearing_registry_also_cleared_touched_cache(make_context):
-    # Arrange
-    def get_in_use():
-        return "in_use"
-
-    @inject
-    def service(dependency: str = Provide(get_in_use)):
-        return dependency
-
-    ctx = make_context()
-    ctx.open()
-    service()
-
-    # Act
-    ctx.clear()
-
-    # Assert
-    assert not ctx.touched

@@ -6,14 +6,7 @@ import functools
 import inspect
 import logging
 import threading
-from collections.abc import (
-    AsyncGenerator,
-    Awaitable,
-    Callable,
-    Generator,
-    Iterable,
-    Iterator,
-)
+from collections.abc import AsyncGenerator, Awaitable, Callable, Generator, Iterable
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
 from typing import (
@@ -62,46 +55,37 @@ class Context:
         *dependency_scope: tuple[DependencyCallable, type[ScopeType]],
         init_dependencies: InitDependencies | None = None,
     ) -> None:
-        self._dependency_scopes = dependency_scope
         self._init_dependencies = init_dependencies or []
-        self.__state: State | None = None
+        self._state: State = State()
+        self._old_context: Context | None = None
 
-    @property
-    def _state(self) -> State:
-        if self.__state is None:
-            raise RuntimeError("Context is not opened")
-        return self.__state
-
-    @_state.setter
-    def _state(self, state: State) -> None:
-        if self.__state is not None:
-            raise RuntimeError("Context is already opened")
-        self.__state = state
-
-    def open(self) -> Awaitable:
-        self._state = State()
-        self._old_state = _state
-        _set_state(self._state)
-
-        for dep, scope_class in self._dependency_scopes:
-            if scope_class not in self._state.scopes:
-                self._state.scopes[scope_class] = scope_class()
+        for dep, scope_class in dependency_scope:
             self._state.add(dep, scope_class=scope_class)
 
-        return self.init_dependencies()
+    def use(self) -> None:
+        with _lock:
+            old_context = _get_current_context()
+            if old_context is self:
+                raise RuntimeError("Context is already open")
+            self._old_context = old_context
+            _set_current_context(self)
 
-    def close(self) -> Awaitable:
-        result = self.shutdown_dependencies()
-        self.clear()
-        _set_state(self._old_state)
-        return result
+    def reset(self) -> None:
+        if self._old_context is unset:
+            return
+        with _lock:
+            current_context = _get_current_context()
+            if current_context is not self:
+                raise RuntimeError("Incorrect closing order")
+            _set_current_context(self._old_context)
 
     def __enter__(self) -> Context:
         """
         Enter the context manager. It will open the context and initialize
         dependencies.
         """
-        self.open()
+        self.use()
+        self.init_dependencies()
         return self
 
     def __exit__(
@@ -114,14 +98,16 @@ class Context:
         Exit the context manager. It will close the context and shutdown
         dependencies.
         """
-        self.close()
+        self.shutdown_dependencies()
+        self.reset()
 
     async def __aenter__(self) -> Context:
         """
         Enter the async context manager. It will open the context and initialize
         dependencies.
         """
-        await self.open()
+        self.use()
+        await self.init_dependencies()
         return self
 
     async def __aexit__(
@@ -134,7 +120,32 @@ class Context:
         Exit the async context manager. It will close the context and shutdown
         dependencies.
         """
-        await self.close()
+        await self.shutdown_dependencies()
+        self.reset()
+
+    @contextmanager
+    def lifespan(self) -> Generator[None, None, None]:
+        """
+        Context manager for lifespan. It will open the context and initialize
+        dependencies.
+        """
+        self.init_dependencies()
+        try:
+            yield
+        finally:
+            self.shutdown_dependencies()
+
+    @asynccontextmanager
+    async def alifespan(self) -> AsyncGenerator[None, None]:
+        """
+        Async context manager for lifespan. It will open the context and initialize
+        dependencies.
+        """
+        await self.init_dependencies()
+        try:
+            yield
+        finally:
+            await self.shutdown_dependencies()  # noqa: ASYNC102
 
     def init_dependencies(self) -> Awaitable:
         """
@@ -211,8 +222,6 @@ class Context:
         For example, you can check that mongo
         database was used in the test and clear it after the test.
         """
-        if not self.__state:
-            return frozenset()
         return frozenset(self._state.touched_dependencies)
 
     @overload
@@ -298,14 +307,6 @@ class Context:
         """
         self._state.touched_dependencies.clear()
 
-    def clear(self) -> None:
-        """
-        Clear the registry. It will remove all dependencies and overrides.
-        This method will not close any dependencies. So you need to manually call
-        :func:`shutdown_dependencies` before this method.
-        """
-        self.__state = None
-
 
 class State:
     def __init__(self) -> None:
@@ -318,20 +319,27 @@ class State:
         self.overrides: dict[DependencyCallable, DependencyCallable] = {}
         self.touched_dependencies: set[DependencyCallable] = set()
         self.call_tree_cache: dict[DependencyCallable, DependNode] = {}
-
-    def __iter__(self) -> Iterator[Provider]:
-        return iter(self.deps.values())
+        self._old_state: State | object = unset
 
     def add(
         self,
         dependency: DependencyCallable,
-        scope_class: type[ScopeType] = NullScope,
+        scope_class: type[ScopeType] | None = None,
     ) -> None:
         """
         Add a dependency to the registry.
         """
         with _lock:
+            if scope_class and scope_class not in self.scopes:
+                self.scopes[scope_class] = scope_class()
+
             if dependency not in self.deps:
+                self.deps[dependency] = Provider.from_dependency(
+                    dependency=dependency,
+                    scope_class=scope_class or NullScope,
+                )
+            elif scope_class is not None:
+                1 / 0
                 self.deps[dependency] = Provider.from_dependency(
                     dependency=dependency,
                     scope_class=scope_class,
@@ -529,7 +537,7 @@ class Provider:
         )
 
     def get_scope(self) -> ScopeType:
-        state = _get_state()
+        state = _get_current_state()
         return state.scopes[self.scope_class]
 
     def resolve_value(self, exit_stack: ExitStack | None, **kwargs: Any) -> Any:
@@ -569,7 +577,7 @@ def _wrapper_helper(
     args: tuple[Any, ...],
     kwargs: dict[str, Any],
 ) -> Generator[Any, None, None]:
-    state = _get_state()
+    state = _get_current_state()
     if depends.call in state.call_tree_cache:
         dependant = state.call_tree_cache[depends.call]
     else:
@@ -653,7 +661,7 @@ def _wrapper_helper(
 
 
 def _need_patch(dependant: DependNode) -> bool:
-    state = _get_state()
+    state = _get_current_state()
     if dependant.name is None and not state.has_overrides():
         return False
 
@@ -671,7 +679,7 @@ def _patch_dependant(dependant: DependNode) -> None:
     if dependant.name is None:
         return
 
-    state = _get_state()
+    state = _get_current_state()
     if override := state.get_override(dependant.value.call):
         dependant.value = Depends(override)
         override_tree = _build_depend_tree(dependant.value)
@@ -691,7 +699,7 @@ def _resolve_dependencies(
     if dependant.name is None:
         return resolved_dependencies, list(scopes)
 
-    state = _get_state()
+    state = _get_current_state()
     provider = state.get(dependant.value.call)
     value = LazyResolver(
         provider=provider,
@@ -721,7 +729,7 @@ def _build_depend_tree(dependency: Depends, name: str | None = None) -> DependNo
 def _extract_and_register_dependency_from_parameter(
     value: inspect.Parameter,
 ) -> Depends | None:
-    state = _get_state()
+    state = _get_current_state()
     if isinstance(value.default, Depends):
         state.add(value.default.call)
         return value.default
@@ -791,15 +799,19 @@ class LazyResolver:
         return value
 
 
-def _get_state() -> State:
-    return _state or _default_state
+def _get_current_context() -> Context:
+    return _current_context or _default_context
 
 
-def _set_state(state: State | None) -> None:
-    global _state
-    _state = state
+def _get_current_state() -> State:
+    return _get_current_context()._state
+
+
+def _set_current_context(context: Context | None) -> None:
+    global _current_context
+    _current_context = context
 
 
 _lock = threading.RLock()
-_state: State | None = None
-_default_state = State()
+_current_context: Context | None = None
+_default_context = Context()
