@@ -49,6 +49,9 @@ logger = logging.getLogger("picodi")
 
 DependencyCallable = Callable[..., Any]
 LifespanScopeClass = type[ManualScope] | tuple[type[ManualScope], ...]
+InitDependencies = (
+    Iterable[DependencyCallable] | Callable[[], Iterable[DependencyCallable]]
+)
 T = TypeVar("T")
 P = ParamSpec("P")
 TC = TypeVar("TC", bound=Callable)
@@ -61,7 +64,6 @@ class RegistryStorage:
         self.deps: dict[DependencyCallable, Provider] = {}
         self.overrides: dict[DependencyCallable, DependencyCallable] = {}
         self.touched_dependencies: set[DependencyCallable] = set()
-        self.lock = threading.RLock()
 
     def __iter__(self) -> Iterator[Provider]:
         return iter(self.deps.values())
@@ -79,7 +81,7 @@ class InternalRegistry:
         """
         Add a dependency to the registry.
         """
-        with self._storage.lock:
+        with _lock:
             if dependency not in self._storage.deps:
                 self._storage.deps[dependency] = Provider.from_dependency(
                     dependency=dependency,
@@ -184,7 +186,7 @@ class Registry:
         if new_dependency is unset:
             return decorator
 
-        with self._storage.lock:
+        with _lock:
             call_dependency = self._storage.overrides.get(dependency)
             if callable(new_dependency):
                 decorator(new_dependency)
@@ -222,16 +224,6 @@ class Registry:
         self._storage.deps.clear()
         self._storage.overrides.clear()
         self._storage.touched_dependencies.clear()
-
-
-_registry_storage = RegistryStorage()
-_internal_registry = InternalRegistry(_registry_storage)
-registry = Registry(_registry_storage, _internal_registry)
-_scopes: dict[type[ScopeType], ScopeType] = {
-    NullScope: NullScope(),
-    SingletonScope: SingletonScope(),
-    ContextVarScope: ContextVarScope(),
-}
 
 
 def Provide(dependency: DependencyCallable, /) -> Any:  # noqa: N802
@@ -400,11 +392,6 @@ def dependency(*, scope_class: type[ScopeType] = NullScope) -> Callable[[TC], TC
     return decorator
 
 
-InitDependencies = (
-    Iterable[DependencyCallable] | Callable[[], Iterable[DependencyCallable]]
-)
-
-
 def init_dependencies(dependencies: InitDependencies) -> Awaitable:
     """
     Call this function to init dependencies. Usually, it should be called
@@ -420,7 +407,7 @@ def init_dependencies(dependencies: InitDependencies) -> Awaitable:
     if callable(dependencies):
         dependencies = dependencies()
 
-    async_deps = []
+    async_deps: list[Awaitable] = []
     for dep in dependencies:
         provider = _internal_registry.get(dep)
         resolver = LazyResolver(provider)
@@ -697,9 +684,6 @@ def _extract_and_register_dependency_from_parameter(
     return None
 
 
-_lock = threading.RLock()
-
-
 class LazyResolver:
     def __init__(
         self,
@@ -747,3 +731,14 @@ class LazyResolver:
                         value = await value
                     scope.set(self.provider.dependency, value)
         return value
+
+
+_lock = threading.RLock()
+_registry_storage = RegistryStorage()
+_internal_registry = InternalRegistry(_registry_storage)
+registry = Registry(_registry_storage, _internal_registry)
+_scopes: dict[type[ScopeType], ScopeType] = {
+    NullScope: NullScope(),
+    SingletonScope: SingletonScope(),
+    ContextVarScope: ContextVarScope(),
+}
