@@ -4,7 +4,7 @@ from typing import Any
 
 from fastapi import Depends as FastAPIDepends
 
-from picodi._picodi import DependencyCallable, Depends
+from picodi._types import DependencyCallable, Depends
 from picodi.helpers import enter
 from picodi.integrations.starlette import RequestScope, RequestScopeMiddleware
 

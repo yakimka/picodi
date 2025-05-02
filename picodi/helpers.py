@@ -29,7 +29,7 @@ from picodi import (
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable, Coroutine, Generator
 
-    from picodi._picodi import LifespanScopeClass
+    from picodi._types import LifespanScopeClass
 
 sentinel = object()
 
