@@ -6,7 +6,7 @@ def get_42():
     return 42
 
 
-def test_enter_sync_gen(closeable):
+def test_resolve_sync_gen(closeable):
     def dep():
         yield 42
         closeable.close()
@@ -18,7 +18,7 @@ def test_enter_sync_gen(closeable):
     assert closeable.is_closed is True
 
 
-async def test_enter_async_gen(closeable):
+async def test_resolve_async_gen(closeable):
     async def dep():
         yield 42
         closeable.close()
@@ -30,7 +30,7 @@ async def test_enter_async_gen(closeable):
     assert closeable.is_closed is True
 
 
-def test_enter_injected_sync_gen(closeable):
+def test_resolve_injected_sync_gen(closeable):
     @inject
     def dep(num: int = Provide(get_42)):
         yield num
@@ -43,7 +43,7 @@ def test_enter_injected_sync_gen(closeable):
     assert closeable.is_closed is True
 
 
-async def test_enter_injected_async_gen(closeable):
+async def test_resolve_injected_async_gen(closeable):
     @inject
     async def dep(num: int = Provide(get_42)):
         yield num
@@ -69,7 +69,7 @@ def test_singleton_sync_gen_not_closed(closeable):
     assert closeable.is_closed is False
 
 
-def test_enter_regular_dependency():
+def test_resolve_regular_dependency():
     def dep():
         return 42
 
@@ -77,7 +77,7 @@ def test_enter_regular_dependency():
         assert val == 42
 
 
-async def test_enter_regular_dependency_async():
+async def test_resolve_regular_dependency_async():
     async def dep():
         return 42
 
@@ -85,7 +85,7 @@ async def test_enter_regular_dependency_async():
         assert val == 42
 
 
-async def test_can_use_override_enter_dependency():
+async def test_can_use_override_resolve_dependency():
     async def dep():
         return 42  # pragma: no cover
 

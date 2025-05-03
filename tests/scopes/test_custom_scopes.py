@@ -1,11 +1,22 @@
 from __future__ import annotations
 
+from contextlib import nullcontext
 from typing import TYPE_CHECKING, Any
 
-from picodi import AutoScope, Provide, dependency, inject
+import pytest
+
+from picodi import AutoScope, ManualScope, Provide, dependency, inject
 
 if TYPE_CHECKING:
     from collections.abc import Hashable
+
+
+@pytest.fixture()
+def manual_scope():
+    class MyManualScope(ManualScope):
+        pass
+
+    return MyManualScope()
 
 
 class IntMultiplierScope(AutoScope):
@@ -19,6 +30,11 @@ class IntMultiplierScope(AutoScope):
 
     def set(self, key: Hashable, value: Any) -> None:
         self._store[key] = value * 2
+
+
+async def test_manual_scope_enter_shutdown(manual_scope):
+    assert await manual_scope.enter(nullcontext()) is None
+    assert await manual_scope.shutdown() is None
 
 
 def test_can_add_user_defined_scope():
