@@ -22,7 +22,7 @@ except ImportError:  # pragma: no cover
     fastapi = None  # type: ignore[assignment] # pragma: no cover
 
 
-def _wrapper_helper(
+def wrapper_helper(
     dependant: DependNode,
     signature: inspect.Signature,
     is_async: bool,
@@ -131,7 +131,7 @@ def _patch_dependant(
 
     if override := internal_registry.get_override(dependant.value.call):
         dependant.value = Depends(override)
-        override_tree = _build_depend_tree(
+        override_tree = build_depend_tree(
             dependant.value, internal_registry=internal_registry
         )
         dependant.dependencies = override_tree.dependencies
@@ -159,7 +159,7 @@ def _resolve_dependencies(
     return {dependant.name: value}, [provider.get_scope()]
 
 
-def _build_depend_tree(
+def build_depend_tree(
     dependency: Depends, *, name: str | None = None, internal_registry: InternalRegistry
 ) -> DependNode:
     signature = inspect.signature(dependency.call)
@@ -171,7 +171,7 @@ def _build_depend_tree(
         )
         if param_dep is not None:
             dependencies.append(
-                _build_depend_tree(
+                build_depend_tree(
                     param_dep, name=name_, internal_registry=internal_registry
                 )
             )

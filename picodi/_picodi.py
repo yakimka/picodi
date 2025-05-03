@@ -7,7 +7,7 @@ import logging
 from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
 from typing import Any, ParamSpec, TypeVar, cast
 
-from picodi._internal import LazyResolver, _build_depend_tree, _wrapper_helper
+from picodi._internal import LazyResolver, build_depend_tree, wrapper_helper
 from picodi._scopes import ManualScope, NullScope, ScopeType
 from picodi._state import internal_registry
 from picodi._types import (
@@ -75,13 +75,13 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
             pass
     """
     signature = inspect.signature(fn)
-    dependant = _build_depend_tree(Depends(fn), internal_registry=internal_registry)
+    dependant = build_depend_tree(Depends(fn), internal_registry=internal_registry)
 
     if inspect.iscoroutinefunction(fn) or inspect.isasyncgenfunction(fn):
 
         @functools.wraps(fn)
         async def fun_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-            gen = _wrapper_helper(
+            gen = wrapper_helper(
                 dependant,
                 signature,
                 is_async=True,
@@ -134,7 +134,7 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
 
         @functools.wraps(fn)
         def fun_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-            gen = _wrapper_helper(
+            gen = wrapper_helper(
                 dependant,
                 signature,
                 is_async=False,
