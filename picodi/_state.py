@@ -35,6 +35,11 @@ class RegistryStorage:
 class InternalRegistry:
     def __init__(self, storage: RegistryStorage) -> None:
         self._storage = storage
+        self.scopes: dict[type[ScopeType], ScopeType] = {
+            NullScope: NullScope(),
+            SingletonScope: SingletonScope(),
+            ContextVarScope: ContextVarScope(),
+        }
 
     def add(
         self,
@@ -211,7 +216,7 @@ class Provider:
         )
 
     def get_scope(self) -> ScopeType:
-        return scopes[self.scope_class]
+        return internal_registry.scopes[self.scope_class]
 
     def resolve_value(self, exit_stack: ExitStack | None, **kwargs: Any) -> Any:
         scope = self.get_scope()
@@ -247,8 +252,3 @@ lock = threading.RLock()
 _registry_storage = RegistryStorage()
 internal_registry = InternalRegistry(_registry_storage)
 registry = Registry(_registry_storage, internal_registry)
-scopes: dict[type[ScopeType], ScopeType] = {
-    NullScope: NullScope(),
-    SingletonScope: SingletonScope(),
-    ContextVarScope: ContextVarScope(),
-}

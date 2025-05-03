@@ -9,7 +9,7 @@ from typing import Any, ParamSpec, TypeVar, cast
 
 from picodi._internal import LazyResolver, _build_depend_tree, _wrapper_helper
 from picodi._scopes import ManualScope, NullScope, ScopeType
-from picodi._state import internal_registry, scopes
+from picodi._state import internal_registry
 from picodi._types import (
     DependencyCallable,
     Depends,
@@ -178,8 +178,8 @@ def dependency(*, scope_class: type[ScopeType] = NullScope) -> Callable[[TC], TC
         :class:`SingletonScope`, :class:`ContextVarScope`.
     """
 
-    if scope_class not in scopes:
-        scopes[scope_class] = scope_class()
+    if scope_class not in internal_registry.scopes:
+        internal_registry.scopes[scope_class] = scope_class()
 
     def decorator(fn: TC) -> TC:
         internal_registry.add(
@@ -245,7 +245,7 @@ def shutdown_dependencies(scope_class: LifespanScopeClass = ManualScope) -> Awai
     """
     tasks = [
         instance.shutdown()  # type: ignore[call-arg]
-        for klass, instance in scopes.items()
+        for klass, instance in internal_registry.scopes.items()
         if issubclass(klass, scope_class)
     ]
     if all(isinstance(task, NullAwaitable) for task in tasks):
