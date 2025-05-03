@@ -42,4 +42,4 @@ class RequestScopeMiddleware:
         try:
             await self.app(scope, receive, send)
         finally:
-            await self._registry.shutdown(scope_class=RequestScope)  # noqa: ASYNC102
+            await self._registry.shutdown(scope_class=RequestScope)

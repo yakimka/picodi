@@ -95,7 +95,7 @@ def wrapper_helper(
                 for scope in scopes:
                     scope.exit_inject(exception)
                     if isinstance(scope, AutoScope):
-                        await scope.shutdown(exit_stack, exception)  # noqa: ASYNC102
+                        await scope.shutdown(exit_stack, exception)
 
         yield gen(), "result"
         return

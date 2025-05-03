@@ -4,7 +4,6 @@ Helper functions and classes for picodi.
 
 from __future__ import annotations
 
-import asyncio
 import contextlib
 from typing import (
     TYPE_CHECKING,
@@ -12,17 +11,13 @@ from typing import (
     AsyncContextManager,
     ContextManager,
     Generic,
-    ParamSpec,
     TypeVar,
-    overload,
 )
 
-from picodi import InitDependencies, ManualScope, Provide, inject
+from picodi import Provide, inject
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable, Coroutine, Generator
-
-    from picodi._types import LifespanScopeClass
 
 sentinel = object()
 
@@ -95,142 +90,6 @@ def _get_item(obj: Any, key: str) -> Any:
 
 
 T = TypeVar("T")
-P = ParamSpec("P")
-
-
-class _Lifespan:
-    """
-    Lifecycle manager for dependencies.
-
-    Example
-    -------
-    .. code-block:: python
-
-        from picodi.helpers import lifespan
-
-
-        @lifespan
-        def main():
-            pass
-
-
-        @lifespan
-        async def async_main():
-            pass
-
-
-        @lifespan.sync()
-        def main():
-            pass
-
-
-        @lifespan.async_()
-        async def async_main():
-            pass
-
-
-        with lifespan.sync():
-            pass
-
-        async with lifespan.async_():
-            pass
-    """
-
-    @overload
-    def __call__(self, fn: Callable[P, T]) -> Callable[P, T]:
-        """
-        Lifespan decorator.
-        """
-
-    @overload
-    def __call__(
-        self,
-        fn: None = None,
-        *,
-        dependencies_for_init: InitDependencies | None = None,
-        shutdown_scope_class: LifespanScopeClass | None = ManualScope,
-    ) -> Callable[[Callable[P, T]], Callable[P, T]]:
-        """Sync and Async context manager"""
-
-    def __call__(
-        self,
-        fn: Callable[P, T] | None = None,
-        *,
-        dependencies_for_init: InitDependencies | None = None,
-        shutdown_scope_class: LifespanScopeClass | None = ManualScope,
-    ) -> Callable[P, T] | Callable[[Callable[P, T]], Callable[P, T]]:
-        """
-        Can be used as a decorator or a context manager.
-
-        :param fn: function to decorate (if used as a decorator).
-        :param dependencies_for_init: dependencies to initialize
-        :param shutdown_scope_class: scope class for shutdown
-            (can be omitted by passing None).
-        :return: decorated function or decorator.
-        """
-
-        def decorator(fn: Callable[P, T]) -> Callable[P, T]:
-            if asyncio.iscoroutinefunction(fn):
-                return self.async_(  # type: ignore[return-value]
-                    dependencies_for_init=dependencies_for_init,
-                    shutdown_scope_class=shutdown_scope_class,
-                )(fn)
-            return self.sync(
-                dependencies_for_init=dependencies_for_init,
-                shutdown_scope_class=shutdown_scope_class,
-            )(fn)
-
-        return decorator if fn is None else decorator(fn)
-
-    @contextlib.contextmanager
-    def sync(
-        self,
-        *,
-        dependencies_for_init: InitDependencies | None = None,
-        shutdown_scope_class: LifespanScopeClass | None = ManualScope,
-    ) -> Generator[None, None, None]:
-        """
-        :attr:`lifespan` can automatically detect if the decorated function
-        is async or not. But if you want to force sync behavior, ``lifespan.sync``.
-
-        :param dependencies_for_init: dependencies to initialize
-        :param shutdown_scope_class: scope class for shutdown
-            (can be omitted by passing None).
-        """
-        if dependencies_for_init:
-            init_dependencies(dependencies_for_init)
-        try:
-            yield
-        finally:
-            if shutdown_scope_class is not None:
-                shutdown_dependencies(shutdown_scope_class)
-
-    @contextlib.asynccontextmanager
-    async def async_(
-        self,
-        *,
-        dependencies_for_init: InitDependencies | None = None,
-        shutdown_scope_class: LifespanScopeClass | None = ManualScope,
-    ) -> AsyncGenerator[None, None]:
-        """
-        :attr:`lifespan` can automatically detect if the decorated function
-        is async or not.
-        But if you want to force async behavior, ``lifespan.async_``.
-
-        :param dependencies_for_init: dependencies to initialize
-        :param shutdown_scope_class: scope class for shutdown
-            (can be omitted by passing None).
-        """
-        if dependencies_for_init:
-            await init_dependencies(dependencies_for_init)
-        try:
-            yield
-        finally:
-            if shutdown_scope_class is not None:
-                await shutdown_dependencies(shutdown_scope_class)  # noqa: ASYNC102
-
-
-lifespan = _Lifespan()
 
 
 class resolve(Generic[T]):  # noqa: N801

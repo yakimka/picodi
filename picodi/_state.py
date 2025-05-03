@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import threading
-from collections.abc import Awaitable, Callable, Generator
+from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, ContextManager, TypeVar, overload
@@ -21,11 +21,13 @@ unset = object()
 
 
 class Storage:
-    def __init__(self) -> None:
+    def __init__(self, for_init: InitDependencies | None = None) -> None:
         self.deps: dict[DependencyCallable, Provider] = {}
         self.overrides: dict[DependencyCallable, DependencyCallable] = {}
         self.touched_dependencies: set[DependencyCallable] = set()
         self.scopes: dict[type[ScopeType], ScopeType] = {}
+        self.for_init = for_init
+        self.for_init_list: list[DependencyCallable] = []
 
     def add(
         self,
@@ -44,6 +46,24 @@ class Storage:
                     dependency=dependency,
                     scope=self.scopes[scope_class],
                 )
+
+    def for_init_merged(self) -> list[DependencyCallable]:
+        dependencies = []
+        for_init = self.for_init() if callable(self.for_init) else self.for_init
+        for item in for_init or []:
+            if item not in dependencies:
+                dependencies.append(item)
+        for item in self.for_init_list:
+            if item not in dependencies:
+                dependencies.append(item)
+        return dependencies
+
+    def add_for_init(self, dependency: DependencyCallable) -> None:
+        """
+        Add a dependency to the list of dependencies to initialize.
+        """
+        if dependency not in self.for_init_list:
+            self.for_init_list.append(dependency)
 
     def get(self, dependency: DependencyCallable) -> Provider:
         dependency = self.get_dep_or_override(dependency)
@@ -71,8 +91,8 @@ class Registry:
     Manages dependencies and overrides.
     """
 
-    def __init__(self) -> None:
-        self._storage = Storage()
+    def __init__(self, for_init: InitDependencies | None = None) -> None:
+        self._storage = Storage(for_init=for_init)
 
     def add(
         self,
@@ -83,6 +103,12 @@ class Registry:
         Add a dependency to the registry.
         """
         self._storage.add(dependency, scope_class)
+
+    def add_for_init(self, dependency: DependencyCallable) -> None:
+        """
+        Add a dependency to the list of dependencies to initialize.
+        """
+        self._storage.add_for_init(dependency)
 
     def set_scope(
         self, *, scope_class: type[ScopeType] = NullScope
@@ -120,10 +146,8 @@ class Registry:
         :param dependencies: iterable of dependencies to initialize.
         """
         if dependencies is None:
-            # TODO: init deps from registry args
-            return NullAwaitable()
-
-        if callable(dependencies):
+            dependencies = self._storage.for_init_merged()
+        elif callable(dependencies):
             dependencies = dependencies()
 
         async_deps: list[Awaitable] = []
@@ -172,6 +196,30 @@ class Registry:
         if all(isinstance(task, NullAwaitable) for task in tasks):
             return NullAwaitable()
         return asyncio.gather(*tasks)
+
+    @contextmanager
+    def lifespan(self) -> Generator[None, None, None]:
+        """
+        Context manager to manage the lifespan of the application.
+        It will automatically call init and shutdown methods.
+        """
+        self.init()
+        try:
+            yield
+        finally:
+            self.shutdown()
+
+    @asynccontextmanager
+    async def alifespan(self) -> AsyncGenerator[None, None]:
+        """
+        Async context manager to manage the lifespan of the application.
+        It will automatically call init and shutdown methods.
+        """
+        await self.init()
+        try:
+            yield
+        finally:
+            await self.shutdown()
 
     @property
     def touched(self) -> frozenset[DependencyCallable]:
@@ -277,6 +325,7 @@ class Registry:
         self._storage.deps.clear()
         self._storage.overrides.clear()
         self._storage.touched_dependencies.clear()
+        self._storage.for_init_list.clear()
 
 
 @dataclass(frozen=True)
