@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from picodi import ContextVarScope, Provide, dependency, inject, shutdown_dependencies
+from picodi import ContextVarScope, Provide, inject, registry
 
 
 @pytest.fixture()
@@ -71,7 +71,7 @@ async def test_closing_dependencies_in_one_task_dont_affect_another(make_closeab
     first_shutdown = asyncio.Event()
     lock = asyncio.Lock()
 
-    @dependency(scope_class=ContextVarScope)
+    @registry.set_scope(scope_class=ContextVarScope)
     async def dummy_dep():
         closeable = next(closeable_gen)
         yield closeable
@@ -89,7 +89,7 @@ async def test_closing_dependencies_in_one_task_dont_affect_another(make_closeab
         await task1()
         assert closeable.is_closed is False
         async with lock:
-            await shutdown_dependencies(scope_class=ContextVarScope)
+            await registry.shutdown(scope_class=ContextVarScope)
             first_shutdown.set()
 
     async def manager2(closeable):
@@ -97,7 +97,7 @@ async def test_closing_dependencies_in_one_task_dont_affect_another(make_closeab
             await task2()
             await first_shutdown.wait()
         assert closeable.is_closed is False
-        await shutdown_dependencies(scope_class=ContextVarScope)
+        await registry.shutdown(scope_class=ContextVarScope)
 
     closeable_task1, closeable_task2 = closeables
     await asyncio.gather(

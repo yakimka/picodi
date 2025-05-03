@@ -256,11 +256,11 @@ def test_can_init_dependencies_with_marker(pytester):
     pytester.makepyfile(
         """
         import pytest
-        from picodi import Provide, inject, dependency, SingletonScope
+        from picodi import Provide, inject, registry, SingletonScope
 
         inited = False
 
-        @dependency(scope_class=SingletonScope)
+        @registry.set_scope(scope_class=SingletonScope)
         def ged_dep():
             global inited
             inited = True
@@ -305,11 +305,11 @@ def test_can_init_dependencies_with_marker_async(pytester):
     pytester.makepyfile(
         """
         import pytest
-        from picodi import Provide, inject, dependency, SingletonScope
+        from picodi import Provide, inject, registry, SingletonScope
 
         inited = False
 
-        @dependency(scope_class=SingletonScope)
+        @registry.set_scope(scope_class=SingletonScope)
         async def ged_dep():
             global inited
             inited = True
@@ -342,7 +342,6 @@ def test_cant_use_init_dependencies_with_args(pytester):
     pytester.makepyfile(
         """
         import pytest
-        from picodi import Provide, inject, dependency, SingletonScope
 
 
         @pytest.mark.picodi_init_dependencies("position arg")
@@ -366,7 +365,6 @@ def test_cant_use_init_dependencies_without_kwargs(pytester):
     pytester.makepyfile(
         """
         import pytest
-        from picodi import Provide, inject, dependency, SingletonScope
 
 
         @pytest.mark.picodi_init_dependencies
@@ -390,7 +388,7 @@ def test_fixtures_executes_in_strict_order(pytester):
     pytester.makepyfile(
         """
         import pytest
-        from picodi import Provide, inject, dependency, SingletonScope
+        from picodi import Provide, inject, registry, SingletonScope
 
         order = []
 
@@ -399,7 +397,7 @@ def test_fixtures_executes_in_strict_order(pytester):
             order.append("picodi_overrides")
             return []
 
-        @dependency(scope_class=SingletonScope)
+        @registry.set_scope(scope_class=SingletonScope)
         def auto_init_dependency():
             order.append("auto_init_dependency")
 

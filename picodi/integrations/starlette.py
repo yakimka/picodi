@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import picodi
-import picodi._types
 
 if TYPE_CHECKING:
     from starlette.types import ASGIApp, Receive, Scope, Send
@@ -25,9 +24,12 @@ class RequestScopeMiddleware:
     def __init__(
         self,
         app: ASGIApp,
-        dependencies_for_init: picodi._types.InitDependencies | None = None,
+        *,
+        registry: picodi.Registry | None = None,
+        dependencies_for_init: picodi.InitDependencies | None = None,
     ) -> None:
         self.app = app
+        self._registry = registry or picodi.registry
         self._dependencies_for_init = dependencies_for_init
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
@@ -36,10 +38,8 @@ class RequestScopeMiddleware:
             return
 
         if self._dependencies_for_init:
-            await picodi.init_dependencies(self._dependencies_for_init)
+            await self._registry.init(self._dependencies_for_init)
         try:
             await self.app(scope, receive, send)
         finally:
-            await picodi.shutdown_dependencies(  # noqa: ASYNC102
-                scope_class=RequestScope
-            )
+            await self._registry.shutdown(scope_class=RequestScope)  # noqa: ASYNC102

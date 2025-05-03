@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest_asyncio
 
-from picodi import init_dependencies, shutdown_dependencies
+from picodi import registry
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -17,7 +17,7 @@ async def _picodi_shutdown() -> AsyncGenerator[None, None]:
     Need for tests consistency.
     """
     yield
-    await shutdown_dependencies()
+    await registry.shutdown()
 
 
 @pytest_asyncio.fixture()
@@ -26,4 +26,4 @@ async def _picodi_init_dependencies(
 ) -> None:
     if picodi_init_dependencies_kwargs is None:
         return
-    await init_dependencies(**picodi_init_dependencies_kwargs)
+    await registry.init(**picodi_init_dependencies_kwargs)

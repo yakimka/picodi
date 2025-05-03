@@ -107,7 +107,7 @@ class Registry:
 
         return decorator
 
-    def init(self, dependencies: InitDependencies) -> Awaitable:
+    def init(self, dependencies: InitDependencies | None = None) -> Awaitable:
         """
         Call this function to init dependencies. Usually, it should be called
         when your application is starting up.
@@ -119,6 +119,10 @@ class Registry:
 
         :param dependencies: iterable of dependencies to initialize.
         """
+        if dependencies is None:
+            # TODO: init deps from registry args
+            return NullAwaitable()
+
         if callable(dependencies):
             dependencies = dependencies()
 

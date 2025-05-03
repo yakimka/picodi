@@ -3,12 +3,12 @@ from random import randint
 
 import pytest
 
-from picodi import Provide, SingletonScope, dependency, inject
+from picodi import Provide, SingletonScope, inject, registry
 
 
 @pytest.mark.repeat(5)
 def test_scope_resolving_races(start_race):
-    @dependency(scope_class=SingletonScope)
+    @registry.set_scope(scope_class=SingletonScope)
     def get_random_int():
         return randint(1, 10000)
 
@@ -28,7 +28,7 @@ def test_scope_resolving_races(start_race):
 
 @pytest.mark.repeat(5)
 def test_scope_resolving_races_async(start_race):
-    @dependency(scope_class=SingletonScope)
+    @registry.set_scope(scope_class=SingletonScope)
     async def get_random_int():
         return randint(1, 10000)
 

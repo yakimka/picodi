@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from picodi import init_dependencies, registry, shutdown_dependencies
+from picodi import registry
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
@@ -28,7 +28,7 @@ def _picodi_shutdown() -> Generator[None, None, None]:
     Need for tests consistency.
     """
     yield
-    shutdown_dependencies()
+    registry.shutdown()
 
 
 @pytest.fixture()
@@ -111,7 +111,7 @@ def _picodi_init_dependencies(
 ) -> None:
     if picodi_init_dependencies_kwargs is None:
         return
-    init_dependencies(**picodi_init_dependencies_kwargs)
+    registry.init(**picodi_init_dependencies_kwargs)
 
 
 @pytest.fixture(autouse=True)

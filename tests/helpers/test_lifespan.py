@@ -1,6 +1,6 @@
 import pytest
 
-from picodi import SingletonScope, dependency
+from picodi import SingletonScope, registry
 from picodi.helpers import lifespan
 
 
@@ -8,7 +8,7 @@ from picodi.helpers import lifespan
 def resource():
     state = {"inited": False, "closed": False}
 
-    @dependency(scope_class=SingletonScope)
+    @registry.set_scope(scope_class=SingletonScope)
     def my_resource():
         state["inited"] = True
         yield state
@@ -21,7 +21,7 @@ def resource():
 def async_resource():
     state = {"inited": False, "closed": False}
 
-    @dependency(scope_class=SingletonScope)
+    @registry.set_scope(scope_class=SingletonScope)
     async def my_resource():
         state["inited"] = True
         yield state

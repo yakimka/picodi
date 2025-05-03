@@ -17,14 +17,7 @@ from typing import (
     overload,
 )
 
-from picodi import (
-    InitDependencies,
-    ManualScope,
-    Provide,
-    init_dependencies,
-    inject,
-    shutdown_dependencies,
-)
+from picodi import InitDependencies, ManualScope, Provide, inject
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable, Coroutine, Generator

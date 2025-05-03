@@ -1,4 +1,4 @@
-from picodi import Provide, SingletonScope, dependency, inject, registry
+from picodi import Provide, SingletonScope, inject, registry
 from picodi.helpers import resolve
 
 
@@ -57,7 +57,7 @@ async def test_resolve_injected_async_gen(closeable):
 
 
 def test_singleton_sync_gen_not_closed(closeable):
-    @dependency(scope_class=SingletonScope)
+    @registry.set_scope(scope_class=SingletonScope)
     def dep():
         yield 42
         closeable.close()
