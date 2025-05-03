@@ -185,7 +185,7 @@ jobs:
           && .venv/bin/pip install pytest pytest-asyncio pytest-cov pytest-randomly pytest-race pytest-repeat pytest-benchmark
           && .venv/bin/pip install --no-deps -e .
           && .venv/bin/python -VV
-          && .venv/bin/pytest --ignore=tests/test_integrations
+          && .venv/bin/pytest --ignore=tests/integrations
           "
 
   release-package:
