@@ -3,15 +3,17 @@ from __future__ import annotations
 import copy
 import functools
 import inspect
+import threading
 from typing import TYPE_CHECKING, Annotated, Any, get_origin
 
 from picodi._scopes import AutoScope, ScopeType
-from picodi._state import Provider, internal_registry, lock
 from picodi._types import DependNode, Depends
 from picodi.support import ExitStack
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator
+
+    from picodi._state import InternalRegistry, Provider
 
 
 try:
@@ -24,13 +26,14 @@ def _wrapper_helper(
     dependant: DependNode,
     signature: inspect.Signature,
     is_async: bool,
+    internal_registry: InternalRegistry,
     args: tuple[Any, ...],
     kwargs: dict[str, Any],
 ) -> Generator[Any, None, None]:
     exit_stack = ExitStack()
-    if _need_patch(dependant):
+    if _need_patch(dependant, internal_registry):
         dependant = copy.deepcopy(dependant)
-        _patch_dependant(dependant)
+        _patch_dependant(dependant, internal_registry)
     bound = signature.bind(*args, **kwargs)
     bound.apply_defaults()
     arguments: dict[str, Any] = bound.arguments
@@ -38,7 +41,9 @@ def _wrapper_helper(
     is_root = any(isinstance(value, Depends) for value in bound.arguments.values())
 
     if is_root:
-        arguments, scopes = _resolve_dependencies(dependant, exit_stack)
+        arguments, scopes = _resolve_dependencies(
+            dependant, exit_stack, internal_registry
+        )
 
     for scope in scopes:
         scope.enter_inject()
@@ -104,37 +109,41 @@ def _wrapper_helper(
             yield scope.shutdown(exit_stack), "close_scope"
 
 
-def _need_patch(dependant: DependNode) -> bool:
+def _need_patch(dependant: DependNode, internal_registry: InternalRegistry) -> bool:
     if dependant.name is None and not internal_registry.has_overrides():
         return False
 
     for dep in dependant.dependencies:  # noqa: SIM110
-        if _need_patch(dep):
+        if _need_patch(dep, internal_registry):
             return True
 
     return bool(dependant.name and internal_registry.get_override(dependant.value.call))
 
 
-def _patch_dependant(dependant: DependNode) -> None:
+def _patch_dependant(
+    dependant: DependNode, internal_registry: InternalRegistry
+) -> None:
     for dep in dependant.dependencies:
-        _patch_dependant(dep)
+        _patch_dependant(dep, internal_registry)
 
     if dependant.name is None:
         return
 
     if override := internal_registry.get_override(dependant.value.call):
         dependant.value = Depends(override)
-        override_tree = _build_depend_tree(dependant.value)
+        override_tree = _build_depend_tree(
+            dependant.value, internal_registry=internal_registry
+        )
         dependant.dependencies = override_tree.dependencies
 
 
 def _resolve_dependencies(
-    dependant: DependNode, exit_stack: ExitStack
+    dependant: DependNode, exit_stack: ExitStack, internal_registry: InternalRegistry
 ) -> tuple[dict[str, LazyResolver], list[ScopeType]]:
     scopes = set()
     resolved_dependencies = {}
     for dep in dependant.dependencies:
-        values, dep_scopes = _resolve_dependencies(dep, exit_stack)
+        values, dep_scopes = _resolve_dependencies(dep, exit_stack, internal_registry)
         resolved_dependencies.update(values)
         scopes.update(dep_scopes)
 
@@ -150,18 +159,27 @@ def _resolve_dependencies(
     return {dependant.name: value}, [provider.get_scope()]
 
 
-def _build_depend_tree(dependency: Depends, name: str | None = None) -> DependNode:
+def _build_depend_tree(
+    dependency: Depends, *, name: str | None = None, internal_registry: InternalRegistry
+) -> DependNode:
     signature = inspect.signature(dependency.call)
     dependencies = []
     for name_, value in signature.parameters.items():
-        param_dep = _extract_and_register_dependency_from_parameter(value)
+        param_dep = _extract_and_register_dependency_from_parameter(
+            value,
+            internal_registry,
+        )
         if param_dep is not None:
-            dependencies.append(_build_depend_tree(param_dep, name=name_))
+            dependencies.append(
+                _build_depend_tree(
+                    param_dep, name=name_, internal_registry=internal_registry
+                )
+            )
     return DependNode(value=dependency, dependencies=dependencies, name=name)
 
 
 def _extract_and_register_dependency_from_parameter(
-    value: inspect.Parameter,
+    value: inspect.Parameter, internal_registry: InternalRegistry
 ) -> Depends | None:
     if isinstance(value.default, Depends):
         internal_registry.add(value.default.call)
@@ -230,3 +248,6 @@ class LazyResolver:
                         value = await value
                     scope.set(self.provider.dependency, value)
         return value
+
+
+lock = threading.RLock()

@@ -75,7 +75,7 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
             pass
     """
     signature = inspect.signature(fn)
-    dependant = _build_depend_tree(Depends(fn))
+    dependant = _build_depend_tree(Depends(fn), internal_registry=internal_registry)
 
     if inspect.iscoroutinefunction(fn) or inspect.isasyncgenfunction(fn):
 
@@ -85,6 +85,7 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
                 dependant,
                 signature,
                 is_async=True,
+                internal_registry=internal_registry,
                 args=args,
                 kwargs=kwargs,
             )
@@ -137,6 +138,7 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
                 dependant,
                 signature,
                 is_async=False,
+                internal_registry=internal_registry,
                 args=args,
                 kwargs=kwargs,
             )
