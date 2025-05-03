@@ -146,9 +146,7 @@ class _Lifespan:
     @overload
     def __call__(self, fn: Callable[P, T]) -> Callable[P, T]:
         """
-        Decorator for functions
-
-        :param fn: function to decorate.
+        Lifespan decorator.
         """
 
     @overload

@@ -1,24 +1,22 @@
 from __future__ import annotations
 
+import asyncio
 import inspect
 import threading
-from collections.abc import Callable, Generator
+from collections.abc import Awaitable, Callable, Generator
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, ContextManager, overload
+from typing import TYPE_CHECKING, Any, ContextManager, TypeVar, overload
 
-from picodi._scopes import (
-    AutoScope,
-    ContextVarScope,
-    NullScope,
-    ScopeType,
-    SingletonScope,
-)
+from picodi._internal import LazyResolver
+from picodi._scopes import AutoScope, ManualScope, NullScope, ScopeType
+from picodi.support import ExitStack, NullAwaitable
 
 if TYPE_CHECKING:
-    from picodi.support import ExitStack
+    from picodi._types import DependencyCallable, InitDependencies, LifespanScopeClass
 
-DependencyCallable = Callable[..., Any]
+
+TC = TypeVar("TC", bound=Callable)
 unset = object()
 
 
@@ -27,11 +25,7 @@ class Storage:
         self.deps: dict[DependencyCallable, Provider] = {}
         self.overrides: dict[DependencyCallable, DependencyCallable] = {}
         self.touched_dependencies: set[DependencyCallable] = set()
-        self.scopes: dict[type[ScopeType], ScopeType] = {
-            NullScope: NullScope(),
-            SingletonScope: SingletonScope(),
-            ContextVarScope: ContextVarScope(),
-        }
+        self.scopes: dict[type[ScopeType], ScopeType] = {}
 
     def add(
         self,
@@ -42,10 +36,13 @@ class Storage:
         Add a dependency to the registry.
         """
         with lock:
+            if scope_class not in self.scopes:
+                self.scopes[scope_class] = scope_class()
+
             if dependency not in self.deps:
                 self.deps[dependency] = Provider.from_dependency(
                     dependency=dependency,
-                    scope_class=scope_class,
+                    scope=self.scopes[scope_class],
                 )
 
     def get(self, dependency: DependencyCallable) -> Provider:
@@ -74,8 +71,103 @@ class Registry:
     Manages dependencies and overrides.
     """
 
-    def __init__(self, storage: Storage) -> None:
-        self._storage = storage
+    def __init__(self) -> None:
+        self._storage = Storage()
+
+    def add(
+        self,
+        dependency: DependencyCallable,
+        scope_class: type[ScopeType] = NullScope,
+    ) -> None:
+        """
+        Add a dependency to the registry.
+        """
+        self._storage.add(dependency, scope_class)
+
+    def set_scope(
+        self, *, scope_class: type[ScopeType] = NullScope
+    ) -> Callable[[TC], TC]:
+        """
+        Decorator to declare a dependency. You don't need to use it with default
+        arguments, use it only if you want to change the scope of the dependency.
+        Should be placed last in the decorator chain (on top).
+
+        :param scope_class: specify the scope class to use for the dependency.
+            Default is :class:`NullScope`.
+            Picodi additionally provides a few built-in scopes:
+            :class:`SingletonScope`, :class:`ContextVarScope`.
+        """
+
+        def decorator(fn: TC) -> TC:
+            self._storage.add(
+                fn,
+                scope_class=scope_class,
+            )
+            return fn
+
+        return decorator
+
+    def init(self, dependencies: InitDependencies) -> Awaitable:
+        """
+        Call this function to init dependencies. Usually, it should be called
+        when your application is starting up.
+
+        This function works both for synchronous and asynchronous dependencies.
+        If you call it without ``await``, it will initialize only sync dependencies.
+        If you call it ``await init(...)``,
+        it will initialize both sync and async dependencies.
+
+        :param dependencies: iterable of dependencies to initialize.
+        """
+        if callable(dependencies):
+            dependencies = dependencies()
+
+        async_deps: list[Awaitable] = []
+        for dep in dependencies:
+            provider = self._storage.get(dep)
+            resolver = LazyResolver(provider)
+            value = resolver(provider.is_async)
+            if provider.is_async:
+                async_deps.append(value)
+
+        if async_deps:
+            # asyncio.gather runs coros in different tasks with different context
+            #   we can run them in current context with contextvars.copy_context()
+            #   but in this case `ContextVarScope`
+            #   will save values in the wrong context.
+            #   So we fix it in dirty way by running all coros one by one until
+            #   come up with better solution.
+            async def init_all() -> None:
+                for dep in async_deps:
+                    await dep
+
+            return init_all()
+        return NullAwaitable()
+
+    def shutdown(self, scope_class: LifespanScopeClass = ManualScope) -> Awaitable:
+        """
+        Call this function to close dependencies. Usually, it should be called
+        when your application is shut down.
+
+        This function works both for synchronous and asynchronous dependencies.
+        If you call it without ``await``, it will shutdown only sync dependencies.
+        If you call it ``await shutdown()``, it will shutdown both
+        sync and async dependencies.
+
+        If you not pass any arguments,
+        it will shutdown subclasses of :class:`ManualScope`.
+
+        :param scope_class: you can specify the scope class to shutdown. If passed -
+            only dependencies of this scope class and its subclasses will be shutdown.
+        """
+        tasks = [
+            instance.shutdown()  # type: ignore[call-arg]
+            for klass, instance in self._storage.scopes.items()
+            if issubclass(klass, scope_class)
+        ]
+        if all(isinstance(task, NullAwaitable) for task in tasks):
+            return NullAwaitable()
+        return asyncio.gather(*tasks)
 
     @property
     def touched(self) -> frozenset[DependencyCallable]:
@@ -176,7 +268,7 @@ class Registry:
         """
         Clear the registry. It will remove all dependencies and overrides.
         This method will not close any dependencies. So you need to manually call
-        :func:`shutdown_dependencies` before this method.
+        :func:`shutdown` before this method.
         """
         self._storage.deps.clear()
         self._storage.overrides.clear()
@@ -187,13 +279,13 @@ class Registry:
 class Provider:
     dependency: DependencyCallable
     is_async: bool
-    scope_class: type[ScopeType]
+    scope: ScopeType
 
     @classmethod
     def from_dependency(
         cls,
         dependency: DependencyCallable,
-        scope_class: type[ScopeType],
+        scope: ScopeType,
     ) -> Provider:
         is_async = inspect.iscoroutinefunction(
             dependency
@@ -201,11 +293,11 @@ class Provider:
         return cls(
             dependency=dependency,
             is_async=is_async,
-            scope_class=scope_class,
+            scope=scope,
         )
 
     def get_scope(self) -> ScopeType:
-        return storage.scopes[self.scope_class]
+        return self.scope
 
     def resolve_value(self, exit_stack: ExitStack | None, **kwargs: Any) -> Any:
         scope = self.get_scope()
@@ -238,5 +330,4 @@ class Provider:
 
 
 lock = threading.RLock()
-storage = Storage()
-registry = Registry(storage)
+registry = Registry()
