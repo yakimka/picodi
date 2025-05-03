@@ -111,7 +111,7 @@ class Registry:
         self._storage.add_for_init(dependency)
 
     def set_scope(
-        self, *, scope_class: type[ScopeType] = NullScope
+        self, *, scope_class: type[ScopeType] = NullScope, auto_init: bool = False
     ) -> Callable[[TC], TC]:
         """
         Decorator to declare a dependency. You don't need to use it with default
@@ -122,6 +122,9 @@ class Registry:
             Default is :class:`NullScope`.
             Picodi additionally provides a few built-in scopes:
             :class:`SingletonScope`, :class:`ContextVarScope`.
+        :param auto_init: if set to ``True``, the dependency will be added to the list
+            of dependencies to initialize. This is useful for dependencies that
+            need to be initialized before the application starts.
         """
 
         def decorator(fn: TC) -> TC:
@@ -129,6 +132,8 @@ class Registry:
                 fn,
                 scope_class=scope_class,
             )
+            if auto_init:
+                self._storage.add_for_init(fn)
             return fn
 
         return decorator

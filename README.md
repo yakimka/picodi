@@ -64,10 +64,10 @@ import httpx
 from picodi import (
     Provide,
     inject,
-    dependency,
+    registry,
     SingletonScope,
 )
-from picodi.helpers import get_value, lifespan
+from picodi.helpers import get_value
 
 
 # Regular functions without required arguments can be used as a dependency
@@ -92,7 +92,10 @@ def get_setting(path: str, settings: dict = Provide(get_settings)) -> Callable[[
 # We want to reuse the same client for all requests, so we declare a dependency
 #   with `SingletonScope` that provides an httpx.AsyncClient instance
 #   with the correct settings.
-@dependency(scope_class=SingletonScope)
+@registry.set_scope(
+    scope_class=SingletonScope,
+    auto_init=True,
+)
 @inject
 async def get_nasa_client(
     api_key: str = Provide(get_setting("nasa_api.api_key")),
@@ -133,7 +136,7 @@ def print_client_info(client: httpx.AsyncClient = Provide(get_nasa_client)):
 #   pooling and performance. Because it's created on app startup,
 #   it will allow to pass asynchronous `get_nasa_client` into synchronous functions.
 # And closing all inited dependencies after the function execution.
-@lifespan(dependencies_for_init=[get_nasa_client])
+@registry.alifespan()
 async def main():
     print_client_info()
 
