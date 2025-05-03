@@ -18,7 +18,7 @@ run_ci () {
   # Testing filesystem and permissions:
   touch .perm && rm -f .perm
 
-  poetry install
+  poetry install --with docs
   poetry run pre-commit run --all-files
   poetry run mypy
   poetry check
