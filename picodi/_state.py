@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import inspect
 import threading
-from collections.abc import Callable, Generator, Iterator
+from collections.abc import Callable, Generator
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, ContextManager, overload
@@ -27,9 +27,6 @@ class RegistryStorage:
         self.deps: dict[DependencyCallable, Provider] = {}
         self.overrides: dict[DependencyCallable, DependencyCallable] = {}
         self.touched_dependencies: set[DependencyCallable] = set()
-
-    def __iter__(self) -> Iterator[Provider]:
-        return iter(self.deps.values())
 
 
 class InternalRegistry:

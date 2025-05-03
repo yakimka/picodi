@@ -111,7 +111,7 @@ markers = [
 [tool.coverage.run]
 branch = true
 omit = [
-    "tests/*_benchmark.py",
+    "tests/*_benchmarks.py",
 ]
 
 [tool.coverage.report]

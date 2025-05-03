@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import pytest
 
 from picodi import (
+    NullScope,
     Provide,
     SingletonScope,
     dependency,
@@ -499,9 +500,11 @@ async def test_resources_closed_after_generator_consumed_async(closeable):
     assert closeable.is_closed is True
 
 
-async def test_resources_not_closed_without_finally_block():
+@pytest.mark.parametrize("scope_class", [NullScope, SingletonScope])
+async def test_resources_not_closed_without_finally_block(scope_class):
     int_service = IntService.create()
 
+    @dependency(scope_class=scope_class)
     def get_int_service():
         yield int_service
 
@@ -516,9 +519,11 @@ async def test_resources_not_closed_without_finally_block():
     assert int_service.closed is False
 
 
-async def test_resources_not_closed_without_finally_block_async():
+@pytest.mark.parametrize("scope_class", [NullScope, SingletonScope])
+async def test_resources_not_closed_without_finally_block_async(scope_class):
     int_service = IntService.create()
 
+    @dependency(scope_class=scope_class)
     async def get_int_service():
         yield int_service
 

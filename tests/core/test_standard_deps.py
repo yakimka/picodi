@@ -1,5 +1,6 @@
 import inspect
 import random
+from typing import Annotated
 
 import pytest
 
@@ -135,3 +136,13 @@ async def test_resolve_async_singleton_dependency_through_sync():
     result = await view()
 
     assert result == "my_client"
+
+
+def test_annotated_doesnt_work_without_default_value():
+
+    @inject
+    def get_number(num: Annotated[int, Provide(lambda: 12)]):
+        return num  # pragma: no cover
+
+    with pytest.raises(TypeError, match="missing a required argument: 'num'"):
+        get_number()  # type: ignore[call-arg]
