@@ -13,7 +13,7 @@ from picodi.support import ExitStack
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator
 
-    from picodi._state import InternalRegistry, Provider
+    from picodi._state import Provider, Storage
 
 
 try:
@@ -26,14 +26,14 @@ def wrapper_helper(
     dependant: DependNode,
     signature: inspect.Signature,
     is_async: bool,
-    internal_registry: InternalRegistry,
+    storage: Storage,
     args: tuple[Any, ...],
     kwargs: dict[str, Any],
 ) -> Generator[Any, None, None]:
     exit_stack = ExitStack()
-    if _need_patch(dependant, internal_registry):
+    if _need_patch(dependant, storage):
         dependant = copy.deepcopy(dependant)
-        _patch_dependant(dependant, internal_registry)
+        _patch_dependant(dependant, storage)
     bound = signature.bind(*args, **kwargs)
     bound.apply_defaults()
     arguments: dict[str, Any] = bound.arguments
@@ -41,9 +41,7 @@ def wrapper_helper(
     is_root = any(isinstance(value, Depends) for value in bound.arguments.values())
 
     if is_root:
-        arguments, scopes = _resolve_dependencies(
-            dependant, exit_stack, internal_registry
-        )
+        arguments, scopes = _resolve_dependencies(dependant, exit_stack, storage)
 
     for scope in scopes:
         scope.enter_inject()
@@ -109,48 +107,44 @@ def wrapper_helper(
             yield scope.shutdown(exit_stack), "close_scope"
 
 
-def _need_patch(dependant: DependNode, internal_registry: InternalRegistry) -> bool:
-    if dependant.name is None and not internal_registry.has_overrides():
+def _need_patch(dependant: DependNode, storage: Storage) -> bool:
+    if dependant.name is None and not storage.has_overrides():
         return False
 
     for dep in dependant.dependencies:  # noqa: SIM110
-        if _need_patch(dep, internal_registry):
+        if _need_patch(dep, storage):
             return True
 
-    return bool(dependant.name and internal_registry.get_override(dependant.value.call))
+    return bool(dependant.name and storage.get_override(dependant.value.call))
 
 
-def _patch_dependant(
-    dependant: DependNode, internal_registry: InternalRegistry
-) -> None:
+def _patch_dependant(dependant: DependNode, storage: Storage) -> None:
     for dep in dependant.dependencies:
-        _patch_dependant(dep, internal_registry)
+        _patch_dependant(dep, storage)
 
     if dependant.name is None:
         return
 
-    if override := internal_registry.get_override(dependant.value.call):
+    if override := storage.get_override(dependant.value.call):
         dependant.value = Depends(override)
-        override_tree = build_depend_tree(
-            dependant.value, internal_registry=internal_registry
-        )
+        override_tree = build_depend_tree(dependant.value, storage=storage)
         dependant.dependencies = override_tree.dependencies
 
 
 def _resolve_dependencies(
-    dependant: DependNode, exit_stack: ExitStack, internal_registry: InternalRegistry
+    dependant: DependNode, exit_stack: ExitStack, storage: Storage
 ) -> tuple[dict[str, LazyResolver], list[ScopeType]]:
     scopes = set()
     resolved_dependencies = {}
     for dep in dependant.dependencies:
-        values, dep_scopes = _resolve_dependencies(dep, exit_stack, internal_registry)
+        values, dep_scopes = _resolve_dependencies(dep, exit_stack, storage)
         resolved_dependencies.update(values)
         scopes.update(dep_scopes)
 
     if dependant.name is None:
         return resolved_dependencies, list(scopes)
 
-    provider = internal_registry.get(dependant.value.call)
+    provider = storage.get(dependant.value.call)
     value = LazyResolver(
         provider=provider,
         kwargs=resolved_dependencies,
@@ -160,29 +154,27 @@ def _resolve_dependencies(
 
 
 def build_depend_tree(
-    dependency: Depends, *, name: str | None = None, internal_registry: InternalRegistry
+    dependency: Depends, *, name: str | None = None, storage: Storage
 ) -> DependNode:
     signature = inspect.signature(dependency.call)
     dependencies = []
     for name_, value in signature.parameters.items():
         param_dep = _extract_and_register_dependency_from_parameter(
             value,
-            internal_registry,
+            storage,
         )
         if param_dep is not None:
             dependencies.append(
-                build_depend_tree(
-                    param_dep, name=name_, internal_registry=internal_registry
-                )
+                build_depend_tree(param_dep, name=name_, storage=storage)
             )
     return DependNode(value=dependency, dependencies=dependencies, name=name)
 
 
 def _extract_and_register_dependency_from_parameter(
-    value: inspect.Parameter, internal_registry: InternalRegistry
+    value: inspect.Parameter, storage: Storage
 ) -> Depends | None:
     if isinstance(value.default, Depends):
-        internal_registry.add(value.default.call)
+        storage.add(value.default.call)
         return value.default
 
     if fastapi is None:
@@ -196,7 +188,7 @@ def _extract_and_register_dependency_from_parameter(
                 fastapi_dependency = metadata.dependency
                 break
     if isinstance(fastapi_dependency, Depends):
-        internal_registry.add(fastapi_dependency.call)  # type: ignore[unreachable]
+        storage.add(fastapi_dependency.call)  # type: ignore[unreachable]
         return fastapi_dependency
     return None
 

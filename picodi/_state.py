@@ -22,16 +22,11 @@ DependencyCallable = Callable[..., Any]
 unset = object()
 
 
-class RegistryStorage:
+class Storage:
     def __init__(self) -> None:
         self.deps: dict[DependencyCallable, Provider] = {}
         self.overrides: dict[DependencyCallable, DependencyCallable] = {}
         self.touched_dependencies: set[DependencyCallable] = set()
-
-
-class InternalRegistry:
-    def __init__(self, storage: RegistryStorage) -> None:
-        self._storage = storage
         self.scopes: dict[type[ScopeType], ScopeType] = {
             NullScope: NullScope(),
             SingletonScope: SingletonScope(),
@@ -47,31 +42,31 @@ class InternalRegistry:
         Add a dependency to the registry.
         """
         with lock:
-            if dependency not in self._storage.deps:
-                self._storage.deps[dependency] = Provider.from_dependency(
+            if dependency not in self.deps:
+                self.deps[dependency] = Provider.from_dependency(
                     dependency=dependency,
                     scope_class=scope_class,
                 )
 
     def get(self, dependency: DependencyCallable) -> Provider:
         dependency = self.get_dep_or_override(dependency)
-        self._storage.touched_dependencies.add(dependency)
-        return self._storage.deps[dependency]
+        self.touched_dependencies.add(dependency)
+        return self.deps[dependency]
 
     def get_dep_or_override(self, dependency: DependencyCallable) -> DependencyCallable:
-        return self._storage.overrides.get(dependency, dependency)
+        return self.overrides.get(dependency, dependency)
 
     def get_override(self, dependency: DependencyCallable) -> DependencyCallable | None:
-        return self._storage.overrides.get(dependency)
+        return self.overrides.get(dependency)
 
     def get_original(self, override: DependencyCallable) -> DependencyCallable | None:
-        for original, overriden in self._storage.overrides.items():
+        for original, overriden in self.overrides.items():
             if overriden == override:
                 return original
         return None
 
     def has_overrides(self) -> bool:
-        return bool(self._storage.overrides)
+        return bool(self.overrides)
 
 
 class Registry:
@@ -79,11 +74,8 @@ class Registry:
     Manages dependencies and overrides.
     """
 
-    def __init__(
-        self, storage: RegistryStorage, internal_registry: InternalRegistry
-    ) -> None:
+    def __init__(self, storage: Storage) -> None:
         self._storage = storage
-        self._internal_registry = internal_registry
 
     @property
     def touched(self) -> frozenset[DependencyCallable]:
@@ -138,11 +130,11 @@ class Registry:
             registry.override(get_settings, real_settings)
             registry.override(get_settings, None)  # clear override
         """
-        if internal_registry.get_original(dependency):
+        if self._storage.get_original(dependency):
             raise ValueError("Cannot override an overridden dependency")
 
         def decorator(override_to: DependencyCallable) -> DependencyCallable:
-            self._internal_registry.add(override_to)
+            self._storage.add(override_to)
             if dependency is override_to:
                 raise ValueError("Cannot override a dependency with itself")
             self._storage.overrides[dependency] = override_to
@@ -213,7 +205,7 @@ class Provider:
         )
 
     def get_scope(self) -> ScopeType:
-        return internal_registry.scopes[self.scope_class]
+        return storage.scopes[self.scope_class]
 
     def resolve_value(self, exit_stack: ExitStack | None, **kwargs: Any) -> Any:
         scope = self.get_scope()
@@ -246,6 +238,5 @@ class Provider:
 
 
 lock = threading.RLock()
-_registry_storage = RegistryStorage()
-internal_registry = InternalRegistry(_registry_storage)
-registry = Registry(_registry_storage, internal_registry)
+storage = Storage()
+registry = Registry(storage)
