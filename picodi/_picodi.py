@@ -9,7 +9,7 @@ from typing import Any, ParamSpec, TypeVar, cast
 
 from picodi._internal import LazyResolver, build_depend_tree, wrapper_helper
 from picodi._scopes import ManualScope, NullScope, ScopeType
-from picodi._state import internal_registry
+from picodi._state import storage
 from picodi._types import (
     DependencyCallable,
     Depends,
@@ -75,7 +75,7 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
             pass
     """
     signature = inspect.signature(fn)
-    dependant = build_depend_tree(Depends(fn), internal_registry=internal_registry)
+    dependant = build_depend_tree(Depends(fn), storage=storage)
 
     if inspect.iscoroutinefunction(fn) or inspect.isasyncgenfunction(fn):
 
@@ -85,7 +85,7 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
                 dependant,
                 signature,
                 is_async=True,
-                internal_registry=internal_registry,
+                storage=storage,
                 args=args,
                 kwargs=kwargs,
             )
@@ -138,7 +138,7 @@ def inject(fn: Callable[P, T]) -> Callable[P, T]:
                 dependant,
                 signature,
                 is_async=False,
-                internal_registry=internal_registry,
+                storage=storage,
                 args=args,
                 kwargs=kwargs,
             )
@@ -180,11 +180,11 @@ def dependency(*, scope_class: type[ScopeType] = NullScope) -> Callable[[TC], TC
         :class:`SingletonScope`, :class:`ContextVarScope`.
     """
 
-    if scope_class not in internal_registry.scopes:
-        internal_registry.scopes[scope_class] = scope_class()
+    if scope_class not in storage.scopes:
+        storage.scopes[scope_class] = scope_class()
 
     def decorator(fn: TC) -> TC:
-        internal_registry.add(
+        storage.add(
             fn,
             scope_class=scope_class,
         )
@@ -210,7 +210,7 @@ def init_dependencies(dependencies: InitDependencies) -> Awaitable:
 
     async_deps: list[Awaitable] = []
     for dep in dependencies:
-        provider = internal_registry.get(dep)
+        provider = storage.get(dep)
         resolver = LazyResolver(provider)
         value = resolver(provider.is_async)
         if provider.is_async:
@@ -247,7 +247,7 @@ def shutdown_dependencies(scope_class: LifespanScopeClass = ManualScope) -> Awai
     """
     tasks = [
         instance.shutdown()  # type: ignore[call-arg]
-        for klass, instance in internal_registry.scopes.items()
+        for klass, instance in storage.scopes.items()
         if issubclass(klass, scope_class)
     ]
     if all(isinstance(task, NullAwaitable) for task in tasks):
