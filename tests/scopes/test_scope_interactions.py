@@ -6,7 +6,7 @@ from picodi import (
     inject,
     shutdown_dependencies,
 )
-from picodi.helpers import enter
+from picodi.helpers import resolve
 
 
 async def test_transitive_dependency_injected_with_enter_closed_properly(closeable):
@@ -19,7 +19,7 @@ async def test_transitive_dependency_injected_with_enter_closed_properly(closeab
     @dependency(scope_class=SingletonScope)
     @inject
     async def get_dep_without_cleanup():
-        async with enter(get_dep_with_cleanup) as dep_with_cleanup:
+        async with resolve(get_dep_with_cleanup) as dep_with_cleanup:
             yield dep_with_cleanup
 
     @inject
@@ -49,7 +49,7 @@ async def test_transitive_local_dependency_injected_from_singleton_acts_like_sin
     @dependency(scope_class=SingletonScope)
     @inject
     async def get_dep_without_cleanup():
-        async with enter(get_dep_with_cleanup) as dep_with_cleanup:
+        async with resolve(get_dep_with_cleanup) as dep_with_cleanup:
             yield dep_with_cleanup
 
     @inject
@@ -82,7 +82,7 @@ async def test_can_sync_enter_inited_async_singleton():
 
     await init_dependencies([dep])
 
-    with enter(dep) as val:
+    with resolve(dep) as val:
         assert val == 42
 
 
@@ -94,7 +94,7 @@ def test_enter_cm_not_closes_singleton_scoped_deps(closeable):
 
     init_dependencies([dep])
 
-    with enter(dep) as val:
+    with resolve(dep) as val:
         assert val == 42
 
     assert closeable.is_closed is False

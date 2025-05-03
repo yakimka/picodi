@@ -69,7 +69,7 @@ You have a MongoDB dependency, and you want to drop the test database during tea
 .. testcode::
 
     from picodi import registry
-    from picodi.helpers import enter
+    from picodi.helpers import resolve
 
     # from deps import get_mongo_database, get_mongo_client, get_mongo_database_name
 
@@ -84,7 +84,7 @@ You have a MongoDB dependency, and you want to drop the test database during tea
         # If the `get_mongo_database` dependency was used, this block will execute,
         # and the test database will be dropped during teardown.
         if get_mongo_database in registry.touched:
-            async with enter(get_mongo_client) as mongo_client:
+            async with resolve(get_mongo_client) as mongo_client:
                 await mongo_client.drop_database(mongo_test_db_name)
 
         # Clear touched dependencies after each test to ensure correct detection
@@ -194,7 +194,7 @@ The previous examples can be rewritten as:
     import pytest
 
     from picodi import registry
-    from picodi.helpers import enter
+    from picodi.helpers import resolve
 
     # from deps import get_mongo_database, get_mongo_client, get_mongo_database_name
 
@@ -209,7 +209,7 @@ The previous examples can be rewritten as:
         # If the `get_mongo_database` dependency was used, this block will execute,
         # and the test database will be dropped during teardown.
         if get_mongo_database in registry.touched:
-            async with enter(get_mongo_client) as mongo_client:
+            async with resolve(get_mongo_client) as mongo_client:
                 await mongo_client.drop_database("test_db")
 
         # `registry.clear_touched()` is called automatically after each test

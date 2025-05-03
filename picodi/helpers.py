@@ -29,7 +29,7 @@ from picodi import (
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable, Coroutine, Generator
 
-    from picodi._picodi import LifespanScopeClass
+    from picodi._types import LifespanScopeClass
 
 sentinel = object()
 
@@ -242,7 +242,7 @@ class _Lifespan:
 lifespan = _Lifespan()
 
 
-class enter(Generic[T]):  # noqa: N801
+class resolve(Generic[T]):  # noqa: N801
     """
     Create a context manager from a dependency.
 
@@ -259,14 +259,14 @@ class enter(Generic[T]):  # noqa: N801
 
     .. code-block:: python
 
-        from picodi.helpers import enter
+        from picodi.helpers import resolve
 
 
         def get_42():
             yield 42
 
 
-        with enter(get_42) as val:
+        with resolve(get_42) as val:
             assert val == 42
     """
 

@@ -4,8 +4,8 @@ from typing import Any
 
 from fastapi import Depends as FastAPIDepends
 
-from picodi._picodi import DependencyCallable, Depends
-from picodi.helpers import enter
+from picodi._types import DependencyCallable, Depends
+from picodi.helpers import resolve
 from picodi.integrations.starlette import RequestScope, RequestScopeMiddleware
 
 __all__ = [
@@ -22,7 +22,7 @@ class DependsAsyncCallable(Depends):
 
 class DependsAsyncStandaloneCallable(Depends):
     async def __call__(self) -> Any:
-        async with enter(self.call) as result:
+        async with resolve(self.call) as result:
             yield result
 
 

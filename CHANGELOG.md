@@ -4,6 +4,9 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
+- Breaking changes:
+  - renamed `helpers.enter` to `helpers.resolve`
+
 ## Version 0.31.0
 
 - Breaking changes:

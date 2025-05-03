@@ -1,5 +1,5 @@
 from picodi import Provide, SingletonScope, dependency, inject, registry
-from picodi.helpers import enter
+from picodi.helpers import resolve
 
 
 def test_can_track_that_dependency_was_in_use():
@@ -104,7 +104,7 @@ async def test_can_track_dependencies_resolved_by_enter_helper():
     async def get_42():
         return 42
 
-    async with enter(get_42) as val:
+    async with resolve(get_42) as val:
         assert val == 42
 
     assert get_42 in registry.touched
