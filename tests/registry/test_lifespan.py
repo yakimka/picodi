@@ -1,10 +1,15 @@
 import pytest
 
-from picodi import SingletonScope, registry
+from picodi import Registry, SingletonScope
 
 
 @pytest.fixture()
-def resource():
+def registry() -> Registry:
+    return Registry()
+
+
+@pytest.fixture()
+def resource(registry):
     state = {"inited": False, "closed": False}
 
     @registry.set_scope(scope_class=SingletonScope)
@@ -17,7 +22,7 @@ def resource():
 
 
 @pytest.fixture()
-def async_resource():
+def async_resource(registry):
     state = {"inited": False, "closed": False}
 
     @registry.set_scope(scope_class=SingletonScope)
@@ -29,9 +34,9 @@ def async_resource():
     return state, my_resource
 
 
-def test_can_init_and_shutdown_sync(resource):
+def test_can_init_and_shutdown_sync(resource, registry):
     state, dep = resource
-    registry.add_for_init(dep)
+    registry.add_for_init([dep])
 
     @registry.lifespan()
     def service():
@@ -44,9 +49,9 @@ def test_can_init_and_shutdown_sync(resource):
     assert state["closed"] is True
 
 
-async def test_can_init_and_shutdown_async(async_resource):
+async def test_can_init_and_shutdown_async(async_resource, registry):
     state, dep = async_resource
-    registry.add_for_init(dep)
+    registry.add_for_init([dep])
 
     @registry.alifespan()
     async def service():
@@ -59,9 +64,9 @@ async def test_can_init_and_shutdown_async(async_resource):
     assert state["closed"] is True
 
 
-def test_can_init_and_shutdown_sync_as_context_manager(resource):
+def test_can_init_and_shutdown_sync_as_context_manager(resource, registry):
     state, dep = resource
-    registry.add_for_init(dep)
+    registry.add_for_init([dep])
 
     with registry.lifespan():
         assert state["inited"] is True
@@ -71,9 +76,9 @@ def test_can_init_and_shutdown_sync_as_context_manager(resource):
     assert state["closed"] is True
 
 
-async def test_can_init_and_shutdown_async_as_context_manager(async_resource):
+async def test_can_init_and_shutdown_async_as_context_manager(async_resource, registry):
     state, dep = async_resource
-    registry.add_for_init(dep)
+    registry.add_for_init([dep])
 
     async with registry.alifespan():
         assert state["inited"] is True

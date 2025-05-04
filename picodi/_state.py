@@ -26,8 +26,6 @@ class Storage:
         self.overrides: dict[DependencyCallable, DependencyCallable] = {}
         self.touched_dependencies: set[DependencyCallable] = set()
         self.scopes: dict[type[ScopeType], ScopeType] = {}
-        self.for_init = for_init
-        self.for_init_list: list[DependencyCallable] = []
 
     def add(
         self,
@@ -46,24 +44,6 @@ class Storage:
                     dependency=dependency,
                     scope=self.scopes[scope_class],
                 )
-
-    def for_init_merged(self) -> list[DependencyCallable]:
-        dependencies = []
-        for_init = self.for_init() if callable(self.for_init) else self.for_init
-        for item in for_init or []:
-            if item not in dependencies:
-                dependencies.append(item)
-        for item in self.for_init_list:
-            if item not in dependencies:
-                dependencies.append(item)
-        return dependencies
-
-    def add_for_init(self, dependency: DependencyCallable) -> None:
-        """
-        Add a dependency to the list of dependencies to initialize.
-        """
-        if dependency not in self.for_init_list:
-            self.for_init_list.append(dependency)
 
     def get(self, dependency: DependencyCallable) -> Provider:
         dependency = self.get_dep_or_override(dependency)
@@ -93,6 +73,7 @@ class Registry:
 
     def __init__(self, for_init: InitDependencies | None = None) -> None:
         self._storage = Storage(for_init=for_init)
+        self._for_init: list[InitDependencies] = [for_init] if for_init else []
 
     def add(
         self,
@@ -104,11 +85,12 @@ class Registry:
         """
         self._storage.add(dependency, scope_class)
 
-    def add_for_init(self, dependency: DependencyCallable) -> None:
+    def add_for_init(self, dependencies: InitDependencies) -> None:
         """
-        Add a dependency to the list of dependencies to initialize.
+        Add a dependencies to the list of dependencies to initialize.
         """
-        self._storage.add_for_init(dependency)
+        if dependencies not in self._for_init:
+            self._for_init.append(dependencies)
 
     def set_scope(
         self, *, scope_class: type[ScopeType] = NullScope, auto_init: bool = False
@@ -133,7 +115,7 @@ class Registry:
                 scope_class=scope_class,
             )
             if auto_init:
-                self._storage.add_for_init(fn)
+                self.add_for_init([fn])
             return fn
 
         return decorator
@@ -151,7 +133,7 @@ class Registry:
         :param dependencies: iterable of dependencies to initialize.
         """
         if dependencies is None:
-            dependencies = self._storage.for_init_merged()
+            dependencies = self._for_init_list()
         elif callable(dependencies):
             dependencies = dependencies()
 
@@ -176,6 +158,14 @@ class Registry:
 
             return init_all()
         return NullAwaitable()
+
+    def _for_init_list(self) -> list[DependencyCallable]:
+        dependencies: list[DependencyCallable] = []
+        for item in self._for_init:
+            if callable(item):
+                item = item()
+            dependencies.extend(item)
+        return dependencies
 
     def shutdown(self, scope_class: LifespanScopeClass = ManualScope) -> Awaitable:
         """
@@ -330,7 +320,6 @@ class Registry:
         self._storage.deps.clear()
         self._storage.overrides.clear()
         self._storage.touched_dependencies.clear()
-        self._storage.for_init_list.clear()
 
 
 @dataclass(frozen=True)
