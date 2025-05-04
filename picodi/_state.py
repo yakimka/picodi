@@ -377,3 +377,7 @@ class Provider:
 
 lock = threading.RLock()
 registry = Registry()
+registry.__doc__ = """
+Picodi registry. You can use it to register dependencies, scopes, overrides,
+initialize and shutdown dependencies.
+"""

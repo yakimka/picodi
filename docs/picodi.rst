@@ -10,20 +10,7 @@ Module contents
    :show-inheritance:
 
 .. autodata:: picodi.registry
-    :no-value:
-
-    .. automethod:: picodi.registry.set_scope
-    .. automethod:: picodi.registry.init
-    .. automethod:: picodi.registry.shutdown
-    .. automethod:: picodi.registry.lifespan
-    .. automethod:: picodi.registry.alifespan
-    .. automethod:: picodi.registry.override
-    .. automethod:: picodi.registry.clear_overrides
-    .. automethod:: picodi.registry.touched
-    .. automethod:: picodi.registry.clear_touched
-    .. automethod:: picodi.registry.clear
-    .. automethod:: picodi.registry.add
-    .. automethod:: picodi.registry.add_for_init
+    :annotation: = <Registry>
 
 Submodules
 ----------
