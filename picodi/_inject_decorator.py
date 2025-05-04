@@ -87,7 +87,7 @@ def inject(
     def inject_decorator(fn: Callable[P, T]) -> Callable[P, T]:
         signature = inspect.signature(fn)
         storage = registry._storage  # noqa: SF01
-        dependant = build_depend_tree(Depends(fn), storage=storage)
+        dependant = build_depend_tree(fn, storage=storage)
 
         if inspect.iscoroutinefunction(fn) or inspect.isasyncgenfunction(fn):
 
