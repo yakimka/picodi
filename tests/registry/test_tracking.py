@@ -129,7 +129,7 @@ async def test_track_async_dependency_that_was_called_from_sync():
 
 async def test_can_track_singleton_dependencies_after_clearing_touch_cache():
     # Arrange
-    @registry.set_scope(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     def get_in_use():
         return "in_use"
 

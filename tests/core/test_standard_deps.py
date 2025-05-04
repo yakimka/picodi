@@ -119,7 +119,7 @@ def _check_redis_string(redis_string):
 
 
 async def test_resolve_async_singleton_dependency_through_sync():
-    @registry.set_scope(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     async def get_client():
         return "my_client"
 

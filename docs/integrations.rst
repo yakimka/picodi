@@ -29,7 +29,7 @@ Dependencies will be resolved in the context of the current request.
     from picodi.integrations.starlette import RequestScope
 
 
-    @registry.set_scope(scope_class=RequestScope)
+    @registry.set_scope(RequestScope)
     def get_cache(): ...
 
 
@@ -212,7 +212,7 @@ Like with Starlette you can use request scope in FastAPI application.
     # Now you can use the RequestScope scope for your dependencies.
     # Dependencies will be initialized once per request
     #   and closed after the request is finished.
-    @registry.set_scope(scope_class=RequestScope)
+    @registry.set_scope(RequestScope)
     def get_cache():
         pass
 

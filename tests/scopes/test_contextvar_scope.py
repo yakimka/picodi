@@ -71,7 +71,7 @@ async def test_closing_dependencies_in_one_task_dont_affect_another(make_closeab
     first_shutdown = asyncio.Event()
     lock = asyncio.Lock()
 
-    @registry.set_scope(scope_class=ContextVarScope)
+    @registry.set_scope(ContextVarScope)
     async def dummy_dep():
         closeable = next(closeable_gen)
         yield closeable

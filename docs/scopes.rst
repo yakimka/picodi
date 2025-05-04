@@ -11,7 +11,7 @@ by Picodi itself. Auto-scopes are initialized and closed automatically.
 Manual scopes are initialized on the first injection or when :func:`picodi.registry.init`
 is explicitly called by the user and closed when :func:`picodi.registry.shutdown` is called.
 
-Use the :func:`picodi.dependency` decorator with the ``scope_class`` argument
+Use the :func:`picodi.registry.set_scope` decorator with the ``scope_class`` argument
 to set a dependency's scope. Example:
 
 .. code-block:: python
@@ -19,7 +19,7 @@ to set a dependency's scope. Example:
     from picodi import SingletonScope, registry
 
 
-    @registry.set_scope(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     def get_singleton():
         return object()
 
@@ -85,7 +85,7 @@ scope you can inject it in sync code. Example:
     from picodi import Provide, SingletonScope, registry, inject
 
 
-    @registry.set_scope(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     async def get_async_dependency():
         return "from async"
 
@@ -124,7 +124,7 @@ It's convenient for using with workers or cli commands.
     from picodi import Provide, SingletonScope, registry, inject
 
 
-    @registry.set_scope(scope_class=SingletonScope, auto_init=True)
+    @registry.set_scope(SingletonScope, auto_init=True)
     def get_singleton():
         print("Creating singleton object")
         yield "singleton"

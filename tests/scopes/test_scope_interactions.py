@@ -4,12 +4,12 @@ from picodi.helpers import resolve
 
 async def test_transitive_dependency_injected_with_enter_closed_properly(closeable):
     # Arrange
-    @registry.set_scope(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     async def get_dep_with_cleanup():
         yield 42
         closeable.close()
 
-    @registry.set_scope(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     @inject
     async def get_dep_without_cleanup():
         async with resolve(get_dep_with_cleanup) as dep_with_cleanup:
@@ -39,7 +39,7 @@ async def test_transitive_local_dependency_injected_from_singleton_acts_like_sin
         yield 42
         closeable.close()
 
-    @registry.set_scope(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     @inject
     async def get_dep_without_cleanup():
         async with resolve(get_dep_with_cleanup) as dep_with_cleanup:
@@ -69,7 +69,7 @@ async def test_transitive_local_dependency_injected_from_singleton_acts_like_sin
 
 
 async def test_can_sync_enter_inited_async_singleton():
-    @registry.set_scope(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     async def dep():
         return 42
 
@@ -80,7 +80,7 @@ async def test_can_sync_enter_inited_async_singleton():
 
 
 def test_enter_cm_not_closes_singleton_scoped_deps(closeable):
-    @registry.set_scope(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     def dep():
         yield 42
         closeable.close()

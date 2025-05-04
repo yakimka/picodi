@@ -12,7 +12,7 @@ def registry() -> Registry:
 def resource(registry):
     state = {"inited": False, "closed": False}
 
-    @registry.set_scope(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     def my_resource():
         state["inited"] = True
         yield state
@@ -25,7 +25,7 @@ def resource(registry):
 def async_resource(registry):
     state = {"inited": False, "closed": False}
 
-    @registry.set_scope(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     async def my_resource():
         state["inited"] = True
         yield state

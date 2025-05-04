@@ -8,7 +8,7 @@ from picodi import Provide, SingletonScope, inject, registry
 
 @pytest.mark.repeat(5)
 def test_scope_resolving_races(start_race):
-    @registry.set_scope(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     def get_random_int():
         return randint(1, 10000)
 
@@ -28,7 +28,7 @@ def test_scope_resolving_races(start_race):
 
 @pytest.mark.repeat(5)
 def test_scope_resolving_races_async(start_race):
-    @registry.set_scope(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     async def get_random_int():
         return randint(1, 10000)
 

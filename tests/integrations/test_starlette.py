@@ -34,7 +34,7 @@ async def test_middleware_init_and_shutdown_request_scope(make_app, make_asgi_cl
     init_counter = 0
     closing_counter = 0
 
-    @registry.set_scope(scope_class=RequestScope)
+    @registry.set_scope(RequestScope)
     async def get_42():
         nonlocal init_counter
         init_counter += 1
@@ -57,7 +57,7 @@ async def test_middleware_init_and_shutdown_request_scope_sync(
     init_counter = 0
     closing_counter = 0
 
-    @registry.set_scope(scope_class=RequestScope)
+    @registry.set_scope(RequestScope)
     def get_42():
         nonlocal init_counter
         init_counter += 1

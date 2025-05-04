@@ -25,7 +25,7 @@ async def test_closing_one_dependency_dont_affect_another(make_closeable):
     second_dep_enter = asyncio.Event()
     first_dep_close = asyncio.Event()
 
-    @registry.set_scope(scope_class=NullScope)
+    @registry.set_scope(NullScope)
     async def dummy_dep():
         closeable = next(closeable_gen)
         yield closeable

@@ -130,7 +130,7 @@ If you need to call :func:`picodi.registry.init` - you can use marker.
     from picodi import SingletonScope, registry
 
 
-    @registry.set_scope(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     def my_dependency():
         return "my_dependency"
 

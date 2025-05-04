@@ -154,7 +154,7 @@ def test_can_use_dep_with_not_default_scope_class_in_override(closeable):
     def my_service(settings: dict = Provide(get_abc_settings)):
         return settings
 
-    @registry.set_scope(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     def real_settings():
         yield {"real": "settings"}
         closeable.close()
@@ -189,7 +189,7 @@ async def test_can_use_async_dep_with_not_default_scope_in_override_in_sync_cont
         return settings
 
     @registry.override(get_abc_settings)
-    @registry.set_scope(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     async def real_settings():
         return {"real": "settings"}
 
