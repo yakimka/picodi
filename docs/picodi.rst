@@ -5,9 +5,14 @@ Module contents
 ---------------
 
 .. automodule:: picodi
+    :members:
+    :no-undoc-members:
+    :show-inheritance:
+    :exclude-members: Registry
+
+.. autoclass:: picodi.Registry
    :members:
-   :no-undoc-members:
-   :show-inheritance:
+   :exclude-members: clear,clear_touched
 
 .. autodata:: picodi.registry
     :annotation: = <Registry>
