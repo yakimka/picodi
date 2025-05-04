@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from picodi import registry
+from picodi import Registry
+from picodi import registry as default_registry
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
@@ -22,23 +23,47 @@ def pytest_configure(config: pytest.Config) -> None:
 
 
 @pytest.fixture()
-def _picodi_shutdown() -> Generator[None, None, None]:
+def custom_registries() -> list[Registry]:
+    """
+    Fixture that returns a list of user-defined registries.
+    This is useful for testing multiple registries at once.
+    """
+    return []
+
+
+@pytest.fixture()
+def registries(
+    custom_registries: list[Registry],
+) -> list[Registry]:
+    """
+    Fixture that returns the default registry and any user-defined registries.
+    """
+    items = list(custom_registries)
+    if default_registry not in items:
+        items.append(default_registry)
+    return items
+
+
+@pytest.fixture()
+def _picodi_shutdown(registries: list[Registry]) -> Generator[None, None, None]:
     """
     Shutdown dependencies after the test.
     Need for tests consistency.
     """
     yield
-    registry.shutdown()
+    for registry in registries:
+        registry.shutdown()
 
 
 @pytest.fixture()
-def _picodi_clear_touched() -> Generator[None, None, None]:
+def _picodi_clear_touched(registries: list[Registry]) -> Generator[None, None, None]:
     """
     Clear touched dependencies after the test.
     Need for tests consistency.
     """
     yield
-    registry.clear_touched()
+    for registry in registries:
+        registry.clear_touched()
 
 
 @pytest.fixture()
@@ -81,6 +106,7 @@ def picodi_overrides_from_marks(
 def _picodi_override_setup(
     picodi_overrides: list[tuple[Callable, Callable]],
     picodi_overrides_from_marks: list[tuple[Callable, Callable]],
+    registries: list[Registry],
 ) -> Generator[None, None, None]:
     overrides = []
     for item in picodi_overrides_from_marks + picodi_overrides:
@@ -88,7 +114,8 @@ def _picodi_override_setup(
             overrides.append(item)
     with ExitStack() as stack:
         for get_dep, override in overrides:
-            stack.enter_context(registry.override(get_dep, override))
+            for registry in registries:
+                stack.enter_context(registry.override(get_dep, override))
         yield
 
 
@@ -108,10 +135,12 @@ def picodi_init_dependencies_kwargs(request: pytest.FixtureRequest) -> dict | No
 @pytest.fixture()
 def _picodi_init_dependencies(
     picodi_init_dependencies_kwargs: dict | None,
+    registries: list[Registry],
 ) -> None:
     if picodi_init_dependencies_kwargs is None:
         return
-    registry.init(**picodi_init_dependencies_kwargs)
+    for registry in registries:
+        registry.init(**picodi_init_dependencies_kwargs)
 
 
 @pytest.fixture(autouse=True)

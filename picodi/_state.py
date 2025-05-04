@@ -21,7 +21,7 @@ unset = object()
 
 
 class Storage:
-    def __init__(self, for_init: InitDependencies | None = None) -> None:
+    def __init__(self) -> None:
         self.deps: dict[DependencyCallable, Provider] = {}
         self.overrides: dict[DependencyCallable, DependencyCallable] = {}
         self.touched_dependencies: set[DependencyCallable] = set()
@@ -31,12 +31,13 @@ class Storage:
         self,
         dependency: DependencyCallable,
         scope_class: type[ScopeType] = NullScope,
+        override: bool = False,
     ) -> None:
         with lock:
             if scope_class not in self.scopes:
                 self.scopes[scope_class] = scope_class()
 
-            if dependency not in self.deps:
+            if dependency not in self.deps or override:
                 self.deps[dependency] = Provider.from_dependency(
                     dependency=dependency,
                     scope=self.scopes[scope_class],
@@ -69,7 +70,7 @@ class Registry:
     """
 
     def __init__(self, for_init: InitDependencies | None = None) -> None:
-        self._storage = Storage(for_init=for_init)
+        self._storage = Storage()
         self._for_init: list[InitDependencies] = [for_init] if for_init else []
 
     def add(
@@ -80,7 +81,7 @@ class Registry:
         """
         Add a dependency to the registry and set scope_class for it.
         """
-        self._storage.add(dependency, scope_class)
+        self._storage.add(dependency, scope_class, override=True)
 
     def add_for_init(self, dependencies: InitDependencies) -> None:
         """
@@ -106,6 +107,7 @@ class Registry:
             self._storage.add(
                 fn,
                 scope_class=scope_class,
+                override=True,
             )
             if auto_init:
                 self.add_for_init([fn])
