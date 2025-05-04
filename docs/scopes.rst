@@ -12,7 +12,9 @@ Manual scopes are initialized on the first injection or when :func:`picodi.regis
 is explicitly called by the user and closed when :func:`picodi.registry.shutdown` is called.
 
 Use the :func:`picodi.registry.set_scope` decorator with the ``scope_class`` argument
-to set a dependency's scope. Example:
+to set a dependency's scope. You can also use the ``auto_init=True`` argument to
+automatically add the dependency to the list of dependencies to initialize on startup.
+Example:
 
 .. code-block:: python
 
@@ -131,7 +133,8 @@ It's convenient for using with workers or cli commands.
         print("Destroying singleton object")
 
 
-    registry.add_for_init(get_singleton)
+    # or with method call
+    # registry.add_for_init(get_singleton)
 
 
     @registry.lifespan()
