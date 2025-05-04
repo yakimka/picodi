@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import functools
 import inspect
-import logging
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, cast, overload
 
 from picodi._internal import build_depend_tree, wrapper_helper
@@ -12,8 +11,6 @@ from picodi._types import DependencyCallable, Depends
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable, Generator
-
-logger = logging.getLogger("picodi")
 
 T = TypeVar("T")
 P = ParamSpec("P")

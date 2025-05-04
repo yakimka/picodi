@@ -1,4 +1,4 @@
-from picodi._picodi import Provide, inject
+from picodi._inject_decorator import Provide, inject
 from picodi._scopes import (
     AutoScope,
     ContextVarScope,

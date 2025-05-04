@@ -32,9 +32,6 @@ class Storage:
         dependency: DependencyCallable,
         scope_class: type[ScopeType] = NullScope,
     ) -> None:
-        """
-        Add a dependency to the registry.
-        """
         with lock:
             if scope_class not in self.scopes:
                 self.scopes[scope_class] = scope_class()
@@ -81,7 +78,7 @@ class Registry:
         scope_class: type[ScopeType] = NullScope,
     ) -> None:
         """
-        Add a dependency to the registry.
+        Add a dependency to the registry and set scope_class for it.
         """
         self._storage.add(dependency, scope_class)
 
@@ -93,17 +90,13 @@ class Registry:
             self._for_init.append(dependencies)
 
     def set_scope(
-        self, *, scope_class: type[ScopeType] = NullScope, auto_init: bool = False
+        self, scope_class: type[ScopeType], *, auto_init: bool = False
     ) -> Callable[[TC], TC]:
         """
-        Decorator to declare a dependency. You don't need to use it with default
-        arguments, use it only if you want to change the scope of the dependency.
+        Decorator to declare a dependency.
         Should be placed last in the decorator chain (on top).
 
-        :param scope_class: specify the scope class to use for the dependency.
-            Default is :class:`NullScope`.
-            Picodi additionally provides a few built-in scopes:
-            :class:`SingletonScope`, :class:`ContextVarScope`.
+        :param scope_class: specify the scope class to use it for the dependency.
         :param auto_init: if set to ``True``, the dependency will be added to the list
             of dependencies to initialize. This is useful for dependencies that
             need to be initialized before the application starts.
@@ -122,15 +115,16 @@ class Registry:
 
     def init(self, dependencies: InitDependencies | None = None) -> Awaitable:
         """
-        Call this function to init dependencies. Usually, it should be called
+        Call this method to init dependencies. Usually, it should be called
         when your application is starting up.
 
-        This function works both for synchronous and asynchronous dependencies.
+        This method works both for synchronous and asynchronous dependencies.
         If you call it without ``await``, it will initialize only sync dependencies.
         If you call it ``await init(...)``,
         it will initialize both sync and async dependencies.
 
-        :param dependencies: iterable of dependencies to initialize.
+        :param dependencies: dependencies to initialize. If this argument
+            is passed - init dependencies specified in the registry will be ignored.
         """
         if dependencies is None:
             dependencies = self._for_init_list()
@@ -169,10 +163,10 @@ class Registry:
 
     def shutdown(self, scope_class: LifespanScopeClass = ManualScope) -> Awaitable:
         """
-        Call this function to close dependencies. Usually, it should be called
+        Call this method to close dependencies. Usually, it should be called
         when your application is shut down.
 
-        This function works both for synchronous and asynchronous dependencies.
+        This method works both for synchronous and asynchronous dependencies.
         If you call it without ``await``, it will shutdown only sync dependencies.
         If you call it ``await shutdown()``, it will shutdown both
         sync and async dependencies.
@@ -307,15 +301,18 @@ class Registry:
     def clear_touched(self) -> None:
         """
         Clear the touched dependencies.
-        It will remove all dependencies resolved during the picodi lifecycle.
+        It will remove list of all dependencies resolved during the picodi lifecycle.
         """
         self._storage.touched_dependencies.clear()
 
     def clear(self) -> None:
         """
-        Clear the registry. It will remove all dependencies and overrides.
+        Clear the registry. It will remove all dependencies, overrides
+        and touched dependencies.
         This method will not close any dependencies. So you need to manually call
         :func:`shutdown` before this method.
+        It is useful for testing purposes, when you want to clear the registry
+        and start from scratch.
         """
         self._storage.deps.clear()
         self._storage.overrides.clear()
