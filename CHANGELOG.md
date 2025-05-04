@@ -4,8 +4,9 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
-- You can now create your own `Registry` instance and pass it to `inject` decorator
-- `inject` decorator now accepts `registry` argument for specifying custom registry
+## Version 0.32.0
+
+- Changed state management of registry
 - Breaking changes:
   - renamed `helpers.enter` to `helpers.resolve`
   - deleted `dependency`, `init_dependencies`, `shutdown_dependencies` in favor of
