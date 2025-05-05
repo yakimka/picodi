@@ -36,12 +36,10 @@ Let's modify our example to use a temporary file managed by a yield dependency.
     # dependencies.py
     import tempfile
     import os
-    from contextlib import contextmanager
 
 
     # We don't need @inject or Provide here for get_temp_file_path
     # because it doesn't depend on any other dependencies.
-    @contextmanager
     def get_temp_file_path():
         """Provides a path to a temporary file and cleans it up afterwards."""
         tf = tempfile.NamedTemporaryFile(delete=False, mode="w+", suffix=".txt")
@@ -111,24 +109,24 @@ Let's modify our example to use a temporary file managed by a yield dependency.
 .. testoutput:: yield_deps
 
     Main: Calling service the first time.
-    Setup: Created temp file: .../tmp....txt
-    Service: Writing to .../tmp....txt
-    Service: Finished writing to .../tmp....txt
-    Teardown: Removed temp file: .../tmp....txt
+    Setup: Created temp file: .../tmp.../tmpwt0haf9v.txt
+    Service: Writing to .../tmp.../tmpwt0haf9v.txt
+    Service: Finished writing to .../tmp.../tmpwt0haf9v.txt
+    Teardown: Removed temp file: .../tmp.../tmpwt0haf9v.txt
     Main: Service call finished.
 
     Main: Calling service the second time.
-    Setup: Created temp file: .../tmp....txt
-    Service: Writing to .../tmp....txt
-    Service: Finished writing to .../tmp....txt
-    Teardown: Removed temp file: .../tmp....txt
+    Setup: Created temp file: .../tmp.../tmpeiljxw8u.txt
+    Service: Writing to .../tmp.../tmpeiljxw8u.txt
+    Service: Finished writing to .../tmp.../tmpeiljxw8u.txt
+    Teardown: Removed temp file: .../tmp.../tmpeiljxw8u.txt
     Main: Service call finished.
 
 *(Note: The exact temporary file paths will vary)*
 
 As you can see, the setup code runs before the service function, and the teardown code runs after it finishes,
 ensuring the resource is managed correctly.
-A new temporary file is created and destroyed for each call because we are still using the default ``NullScope``.
+A new temporary file is created and destroyed for each call because we are still using the default :class:`picodi.NullScope`.
 
 ***********
 Next Steps

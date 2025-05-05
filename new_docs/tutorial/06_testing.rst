@@ -4,15 +4,23 @@
 Tutorial: 06 - Testing
 ######################
 
-Dependency Injection significantly improves the testability of your code. By injecting dependencies, you can easily replace real implementations with mocks or test doubles during your tests. Picodi provides features to make this process straightforward, especially when using frameworks like ``pytest``.
+Dependency Injection significantly improves the testability of your code.
+By injecting dependencies, you can easily replace real implementations with mocks or
+test doubles during your tests. Picodi provides features to make this process straightforward,
+especially when using frameworks like ``pytest``.
 
-********************************
+*****************************
 Testing with Manual Overrides
-********************************
+*****************************
 
-The core mechanism for testing is ``registry.override``, which we saw in the :ref:`previous step <tutorial_dependency_overrides>`. You can use it directly within your test functions as a context manager.
+The core mechanism for testing is :func:`picodi.Registry.override`,
+which we saw in the :ref:`previous step <tutorial_dependency_overrides>`.
+You can use it directly within your test functions as a context manager.
 
-Let's write a test for our ``call_external_api`` service. We want to ensure it constructs the correct URL without actually making a network call. We'll override ``get_api_base_url`` to provide a known test URL.
+Let's write a test for our ``call_external_api``
+service from :ref:`Dependency Overrides <tutorial_dependency_overrides>`.
+We want to ensure it constructs the correct URL without actually making a network call.
+We'll override ``get_api_base_url`` to provide a known test URL.
 
 .. code-block:: python
 
@@ -55,21 +63,24 @@ Running this test with ``pytest -s`` would show:
 
 .. code-block:: text
 
+    test_services.py
     Test: Setting up override context...
-    Test Override: Providing TEST URL
     Test: Calling service inside override context.
+    Test Override: Providing TEST URL
     Service: Calling API at: http://test.server.com/test/endpoint
     Test: Service call returned.
     Test: Exited override context.
-    .                                    [100%]
+    .
 
-The test passes, and we can see that our ``get_test_api_url`` was correctly used instead of the original ``get_api_base_url``. The override was automatically cleaned up after the ``with`` block.
+The test passes, and we can see that our ``get_test_api_url`` was correctly used insteadof the
+original ``get_api_base_url``. The override was automatically cleaned up after the ``with`` block.
 
-********************************
+******************
 Pytest Integration
-********************************
+******************
 
-While manual overrides work, managing them across many tests can be cumbersome. Picodi offers a built-in ``pytest`` plugin to simplify this.
+While manual overrides work, managing them across many tests can be cumbersome.
+Picodi offers a built-in ``pytest`` plugin to simplify this.
 
 **Setup:**
 
@@ -80,7 +91,8 @@ Add the plugin to your root ``conftest.py``:
     # conftest.py
     pytest_plugins = [
         "picodi.integrations._pytest",
-        # If using async tests with pytest-asyncio, add this *after* the main plugin:
+        # If you use asyncio in your tests, add the following plugin as well.
+        # It must be added after the main plugin.
         # "picodi.integrations._pytest_asyncio",
     ]
 
@@ -94,9 +106,10 @@ The plugin automatically handles cleanup after each test:
 
 This ensures tests are isolated from each other.
 
-**``picodi_override`` Marker:**
+**picodi_override Marker:**
 
-Instead of using the ``with registry.override(...)`` context manager, you can use the ``@pytest.mark.picodi_override`` marker directly on your test function.
+Instead of using the ``with registry.override(...)`` context manager,
+you can use the ``@pytest.mark.picodi_override`` marker directly on your test function.
 
 Let's rewrite the previous test using the marker:
 
@@ -104,7 +117,6 @@ Let's rewrite the previous test using the marker:
 
     # test_services_pytest.py
     import pytest
-    from picodi import registry  # No longer needed for override context
     from services import call_external_api
     from dependencies import get_api_base_url
 
@@ -117,7 +129,7 @@ Let's rewrite the previous test using the marker:
 
     # Apply the override using the marker
     @pytest.mark.picodi_override(get_api_base_url, get_test_api_url)
-    def test_call_external_api_with_marker():  # No pytester fixture needed here
+    def test_call_external_api_with_marker():
         """Verify the service constructs the URL correctly using the marker."""
         endpoint = "test/endpoint"
         expected_url = f"http://test.server.com/{endpoint}"
@@ -137,17 +149,22 @@ The output with ``pytest -s`` will be similar, showing the test override being u
 
 .. code-block:: text
 
+    test_services_pytest.py
     Test: Calling service with marker override active.
     Test Override: Providing TEST URL
     Service: Calling API at: http://test.server.com/test/endpoint
     Test: Service call returned.
     Test: Test function finished.
-    .                                     [100%]
+    .
 
-The marker approach is cleaner and less verbose for applying overrides in tests. You can also override multiple dependencies by passing a list of tuples to the marker: ``@pytest.mark.picodi_override([(dep1, override1), (dep2, override2)])``.
+The marker approach is cleaner and less verbose for applying overrides in tests.
+You can also override multiple dependencies by passing a list of tuples to the marker:
+``@pytest.mark.picodi_override([(dep1, override1), (dep2, override2)])``.
 
 ***********
 Next Steps
 ***********
 
-You've completed the core Picodi tutorial! You now have the foundational knowledge to use Picodi for managing dependencies in your projects. Proceed to the :ref:`Conclusion <tutorial_conclusion>` for a summary and pointers to further topics.
+You've completed the core Picodi tutorial! You now have the foundational knowledge
+to use Picodi for managing dependencies in your projects.
+Proceed to the :ref:`Conclusion <tutorial_conclusion>` for a summary and pointers to further topics.

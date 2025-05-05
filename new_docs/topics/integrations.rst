@@ -228,7 +228,7 @@ You can use the same :class:`~picodi.integrations.starlette.RequestScopeMiddlewa
 .. code-block:: python
 
     from fastapi import FastAPI
-    from starlette.middleware import Middleware  # Import from starlette
+    from starlette.middleware import Middleware
     from picodi import registry
     from picodi.integrations.fastapi import RequestScope, RequestScopeMiddleware, Provide
     import uuid
