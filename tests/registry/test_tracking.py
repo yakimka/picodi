@@ -1,4 +1,4 @@
-from picodi import Provide, SingletonScope, dependency, inject, registry
+from picodi import Provide, SingletonScope, inject, registry
 from picodi.helpers import resolve
 
 
@@ -129,7 +129,7 @@ async def test_track_async_dependency_that_was_called_from_sync():
 
 async def test_can_track_singleton_dependencies_after_clearing_touch_cache():
     # Arrange
-    @dependency(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     def get_in_use():
         return "in_use"
 

@@ -5,14 +5,7 @@ from fastapi import Depends, FastAPI
 from fastapi.exceptions import FastAPIError
 from starlette.middleware import Middleware
 
-from picodi import (
-    InitDependencies,
-    SingletonScope,
-    dependency,
-    inject,
-    registry,
-    shutdown_dependencies,
-)
+from picodi import InitDependencies, SingletonScope, inject, registry
 from picodi.integrations.fastapi import Provide, RequestScope, RequestScopeMiddleware
 
 
@@ -150,7 +143,7 @@ async def test_singleton_dependency_scope_not_closed_after_view_is_exited(
     app = make_app()
     closed = 0
 
-    @dependency(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     def get_42():
         yield MyNumber(42)
         nonlocal closed
@@ -165,7 +158,7 @@ async def test_singleton_dependency_scope_not_closed_after_view_is_exited(
         response = await asgi_client.get("/")
 
     assert closed == 0
-    await shutdown_dependencies()
+    await registry.shutdown()
     assert closed == 1
     assert response.json() == {"number": 42}
 
@@ -265,7 +258,7 @@ async def test_middleware_init_and_shutdown_request_scope(make_app, make_asgi_cl
     init_counter = 0
     closing_counter = 0
 
-    @dependency(scope_class=RequestScope)
+    @registry.set_scope(RequestScope)
     async def get_42():
         nonlocal init_counter
         init_counter += 1
@@ -295,7 +288,7 @@ async def test_middleware_init_and_shutdown_request_scope_sync(
     init_counter = 0
     closing_counter = 0
 
-    @dependency(scope_class=RequestScope)
+    @registry.set_scope(RequestScope)
     def get_42():
         nonlocal init_counter
         init_counter += 1

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from picodi import AutoScope, ManualScope, Provide, dependency, inject
+from picodi import AutoScope, ManualScope, Provide, inject, registry
 
 if TYPE_CHECKING:
     from collections.abc import Hashable
@@ -38,7 +38,7 @@ async def test_manual_scope_enter_shutdown(manual_scope):
 
 
 def test_can_add_user_defined_scope():
-    @dependency(scope_class=IntMultiplierScope)
+    @registry.set_scope(IntMultiplierScope)
     def get_num():
         return 42
 
@@ -56,7 +56,7 @@ def test_can_add_user_defined_scope():
 
 
 async def test_can_add_user_defined_scope_async():
-    @dependency(scope_class=IntMultiplierScope)
+    @registry.set_scope(IntMultiplierScope)
     async def get_num():
         return 42
 

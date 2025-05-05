@@ -1,22 +1,15 @@
-from picodi import (
-    Provide,
-    SingletonScope,
-    dependency,
-    init_dependencies,
-    inject,
-    shutdown_dependencies,
-)
+from picodi import Provide, SingletonScope, inject, registry
 from picodi.helpers import resolve
 
 
 async def test_transitive_dependency_injected_with_enter_closed_properly(closeable):
     # Arrange
-    @dependency(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     async def get_dep_with_cleanup():
         yield 42
         closeable.close()
 
-    @dependency(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     @inject
     async def get_dep_without_cleanup():
         async with resolve(get_dep_with_cleanup) as dep_with_cleanup:
@@ -31,7 +24,7 @@ async def test_transitive_dependency_injected_with_enter_closed_properly(closeab
     # Act
     result = await service()
     assert closeable.is_closed is False
-    await shutdown_dependencies()
+    await registry.shutdown()
 
     # Assert
     assert result == 42
@@ -46,7 +39,7 @@ async def test_transitive_local_dependency_injected_from_singleton_acts_like_sin
         yield 42
         closeable.close()
 
-    @dependency(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     @inject
     async def get_dep_without_cleanup():
         async with resolve(get_dep_with_cleanup) as dep_with_cleanup:
@@ -68,7 +61,7 @@ async def test_transitive_local_dependency_injected_from_singleton_acts_like_sin
     await service2()
     await service2()
     assert closeable.close_call_count == 2
-    await shutdown_dependencies()
+    await registry.shutdown()
 
     # Assert
     assert result == 42
@@ -76,23 +69,23 @@ async def test_transitive_local_dependency_injected_from_singleton_acts_like_sin
 
 
 async def test_can_sync_enter_inited_async_singleton():
-    @dependency(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     async def dep():
         return 42
 
-    await init_dependencies([dep])
+    await registry.init([dep])
 
     with resolve(dep) as val:
         assert val == 42
 
 
 def test_enter_cm_not_closes_singleton_scoped_deps(closeable):
-    @dependency(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     def dep():
         yield 42
         closeable.close()
 
-    init_dependencies([dep])
+    registry.init([dep])
 
     with resolve(dep) as val:
         assert val == 42

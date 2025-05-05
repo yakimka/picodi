@@ -4,7 +4,7 @@ from typing import Annotated
 
 import pytest
 
-from picodi import Provide, SingletonScope, dependency, init_dependencies, inject
+from picodi import Provide, SingletonScope, inject, registry
 
 
 def get_random_int():
@@ -119,7 +119,7 @@ def _check_redis_string(redis_string):
 
 
 async def test_resolve_async_singleton_dependency_through_sync():
-    @dependency(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     async def get_client():
         return "my_client"
 
@@ -131,7 +131,7 @@ async def test_resolve_async_singleton_dependency_through_sync():
     async def view(client: str = Provide(get_client_sync)):
         return client
 
-    await init_dependencies([get_client])
+    await registry.init([get_client])
 
     result = await view()
 

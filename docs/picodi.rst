@@ -5,16 +5,17 @@ Module contents
 ---------------
 
 .. automodule:: picodi
+    :members:
+    :no-undoc-members:
+    :show-inheritance:
+    :exclude-members: Registry
+
+.. autoclass:: picodi.Registry
    :members:
-   :no-undoc-members:
-   :show-inheritance:
+   :exclude-members: clear,clear_touched
 
 .. autodata:: picodi.registry
-    :no-value:
-
-    .. automethod:: picodi.registry.override
-    .. automethod:: picodi.registry.clear_overrides
-    .. automethod:: picodi.registry.clear
+    :annotation: = <Registry>
 
 Submodules
 ----------
@@ -45,11 +46,6 @@ picodi.helpers module
    :members:
    :no-undoc-members:
    :show-inheritance:
-
-.. autofunction:: picodi.helpers.lifespan
-
-    .. automethod:: picodi.helpers.lifespan.sync
-    .. automethod:: picodi.helpers.lifespan.async_
 
 picodi.support module
 ---------------------

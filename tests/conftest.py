@@ -1,6 +1,6 @@
 import pytest
 
-from picodi import registry, shutdown_dependencies
+from picodi import registry
 
 pytest_plugins = ["pytester"]
 
@@ -30,7 +30,7 @@ def pytest_collection_modifyitems(config, items):
 @pytest.fixture(autouse=True)
 async def _cleanup():
     yield
-    await shutdown_dependencies()
+    await registry.shutdown()
     registry.clear()
 
 

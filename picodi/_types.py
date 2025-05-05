@@ -19,6 +19,6 @@ class Depends(NamedTuple):
 
 @dataclass
 class DependNode:
-    value: Depends
+    value: DependencyCallable
     name: str | None
     dependencies: list[DependNode]

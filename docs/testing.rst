@@ -19,11 +19,11 @@ which you can adapt to suit your specific testing framework.
 
 .. testcode::
 
-    from picodi import shutdown_dependencies
+    from picodi import registry
 
 
     async def teardown_hook():
-        await shutdown_dependencies()
+        await registry.shutdown()
 
 
 Detecting Dependency Usage
@@ -119,18 +119,18 @@ To use the ``_pytest_asyncio`` plugin, you need to install the
 Lifespan
 ********
 
-Picodi will automatically call :func:`picodi.shutdown_dependencies`
+Picodi will automatically call :func:`picodi.registry.shutdown`
 and make additional cleanups after each test.
 
-If you need to call :func:`picodi.init_dependencies` - you can use marker.
+If you need to call :func:`picodi.registry.init` - you can use marker.
 
 .. testcode::
 
     import pytest
-    from picodi import SingletonScope, dependency
+    from picodi import SingletonScope, registry
 
 
-    @dependency(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     def my_dependency():
         return "my_dependency"
 
@@ -200,7 +200,7 @@ The previous examples can be rewritten as:
 
     pytestmark = pytest.mark.picodi_override(get_mongo_database_name, lambda: "test_db")
 
-    # `shutdown_dependencies` is called automatically after each test
+    # `registry.shutdown` is called automatically after each test
 
 
     @pytest.fixture(autouse=True)

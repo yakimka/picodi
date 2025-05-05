@@ -4,8 +4,14 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
+## Version 0.32.0
+
+- Changed state management of registry
 - Breaking changes:
   - renamed `helpers.enter` to `helpers.resolve`
+  - deleted `dependency`, `init_dependencies`, `shutdown_dependencies` in favor of
+    `registry.set_scope`, `registry.init`, `registry.shutdown`
+  - deleted `helpers.lifespan` in favor of `registry.lifespan` and `registry.alifespan`
 
 ## Version 0.31.0
 

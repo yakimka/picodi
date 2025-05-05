@@ -1,10 +1,4 @@
-from picodi._picodi import (
-    Provide,
-    dependency,
-    init_dependencies,
-    inject,
-    shutdown_dependencies,
-)
+from picodi._inject_decorator import Provide, inject
 from picodi._scopes import (
     AutoScope,
     ContextVarScope,
@@ -14,7 +8,7 @@ from picodi._scopes import (
     ScopeType,
     SingletonScope,
 )
-from picodi._state import registry
+from picodi._state import Registry, registry
 from picodi._types import InitDependencies
 
 __all__ = [
@@ -24,12 +18,10 @@ __all__ = [
     "ManualScope",
     "NullScope",
     "Provide",
+    "Registry",
     "Scope",
     "ScopeType",
     "SingletonScope",
-    "dependency",
-    "init_dependencies",
     "inject",
     "registry",
-    "shutdown_dependencies",
 ]

@@ -4,15 +4,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from picodi import (
-    NullScope,
-    Provide,
-    SingletonScope,
-    dependency,
-    init_dependencies,
-    inject,
-    shutdown_dependencies,
-)
+from picodi import NullScope, Provide, SingletonScope, inject, registry
 
 
 @dataclass
@@ -39,7 +31,7 @@ def get_int_service():
 
 @pytest.fixture()
 def int_service_singleton_scope_dep():
-    @dependency(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     def get_int_service_singleton_scope_dep():
         int_service = IntService.create()
         yield int_service
@@ -56,7 +48,7 @@ async def get_int_service_async():
 
 @pytest.fixture()
 def int_service_async_singleton_scope_dep():
-    @dependency(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     async def get_int_service_async_singleton_scope_dep():
         int_service = IntService.create()
         yield int_service
@@ -182,7 +174,7 @@ def test_resolve_async_yield_dep_from_sync_function_return_coroutine():
 
 
 async def test_resolve_async_yield_dep_from_sync_function_can_be_inited():
-    @dependency(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     async def async_singleton_scope_dep():
         int_service = IntService.create()
         yield int_service
@@ -192,7 +184,7 @@ async def test_resolve_async_yield_dep_from_sync_function_can_be_inited():
     def get_async_dep(port: int = Provide(async_singleton_scope_dep)):
         return port
 
-    await init_dependencies([async_singleton_scope_dep])
+    await registry.init([async_singleton_scope_dep])
     result = get_async_dep()
 
     assert isinstance(result, IntService)
@@ -234,7 +226,7 @@ async def test_singleton_scope_dep_doesnt_close_automatically_sync_from_async_co
 
 
 def test_singleton_scope_dep_can_be_closed_manually():
-    @dependency(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     def async_singleton_scope_dep():
         int_service = IntService.create()
         yield int_service
@@ -247,13 +239,13 @@ def test_singleton_scope_dep_can_be_closed_manually():
     result = get_async_dep()
     assert result.closed is False
 
-    shutdown_dependencies()
+    registry.shutdown()
 
     assert result.closed is True
 
 
 async def test_singleton_scope_dep_can_be_closed_manually_async():
-    @dependency(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     async def async_singleton_scope_dep():
         int_service = IntService.create()
         yield int_service
@@ -266,7 +258,7 @@ async def test_singleton_scope_dep_can_be_closed_manually_async():
     result = await get_async_dep()
     assert result.closed is False
 
-    await shutdown_dependencies()
+    await registry.shutdown()
 
     assert result.closed is True
 
@@ -328,7 +320,7 @@ def test_can_init_injected_singleton_scope_dep():
     def get_42():
         return 42
 
-    @dependency(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     @inject
     def my_singleton_scope_dep(number: int = Provide(get_42)):
         assert number == 42
@@ -336,7 +328,7 @@ def test_can_init_injected_singleton_scope_dep():
         called += 1
         return number
 
-    init_dependencies([my_singleton_scope_dep])
+    registry.init([my_singleton_scope_dep])
 
     assert called == 1
 
@@ -347,7 +339,7 @@ async def test_can_init_injected_singleton_scope_dep_async():
     def get_42():
         return 42
 
-    @dependency(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     @inject
     async def my_async_singleton_scope_dep(number: int = Provide(get_42)):
         assert number == 42
@@ -355,7 +347,7 @@ async def test_can_init_injected_singleton_scope_dep_async():
         called += 1
         return number
 
-    await init_dependencies([my_async_singleton_scope_dep])
+    await registry.init([my_async_singleton_scope_dep])
 
     assert called == 1
 
@@ -366,7 +358,7 @@ def test_can_init_injected_singleton_scope_dep_argument_passed_as_callable():
     def get_42():
         return 42
 
-    @dependency(scope_class=SingletonScope)
+    @registry.set_scope(SingletonScope)
     @inject
     def my_singleton_scope_dep(number: int = Provide(get_42)):
         assert number == 42
@@ -374,7 +366,7 @@ def test_can_init_injected_singleton_scope_dep_argument_passed_as_callable():
         called += 1
         return number
 
-    init_dependencies(lambda: [my_singleton_scope_dep])
+    registry.init(lambda: [my_singleton_scope_dep])
 
     assert called == 1
 
@@ -504,7 +496,7 @@ async def test_resources_closed_after_generator_consumed_async(closeable):
 async def test_resources_not_closed_without_finally_block(scope_class):
     int_service = IntService.create()
 
-    @dependency(scope_class=scope_class)
+    @registry.set_scope(scope_class)
     def get_int_service():
         yield int_service
 
@@ -523,7 +515,7 @@ async def test_resources_not_closed_without_finally_block(scope_class):
 async def test_resources_not_closed_without_finally_block_async(scope_class):
     int_service = IntService.create()
 
-    @dependency(scope_class=scope_class)
+    @registry.set_scope(scope_class)
     async def get_int_service():
         yield int_service
 

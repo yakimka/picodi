@@ -7,7 +7,7 @@ import threading
 from typing import TYPE_CHECKING, Annotated, Any, get_origin
 
 from picodi._scopes import AutoScope, ScopeType
-from picodi._types import DependNode, Depends
+from picodi._types import DependencyCallable, DependNode, Depends
 from picodi.support import ExitStack
 
 if TYPE_CHECKING:
@@ -51,7 +51,7 @@ def wrapper_helper(
             bound.arguments[name] = value
 
     try:
-        result = dependant.value.call(*bound.args, **bound.kwargs)
+        result = dependant.value(*bound.args, **bound.kwargs)
     except Exception as e:
         for scope in scopes:
             scope.exit_inject(e)
@@ -95,7 +95,7 @@ def wrapper_helper(
                 for scope in scopes:
                     scope.exit_inject(exception)
                     if isinstance(scope, AutoScope):
-                        await scope.shutdown(exit_stack, exception)  # noqa: ASYNC102
+                        await scope.shutdown(exit_stack, exception)
 
         yield gen(), "result"
         return
@@ -115,7 +115,7 @@ def _need_patch(dependant: DependNode, storage: Storage) -> bool:
         if _need_patch(dep, storage):
             return True
 
-    return bool(dependant.name and storage.get_override(dependant.value.call))
+    return bool(dependant.name and storage.get_override(dependant.value))
 
 
 def _patch_dependant(dependant: DependNode, storage: Storage) -> None:
@@ -125,8 +125,8 @@ def _patch_dependant(dependant: DependNode, storage: Storage) -> None:
     if dependant.name is None:
         return
 
-    if override := storage.get_override(dependant.value.call):
-        dependant.value = Depends(override)
+    if override := storage.get_override(dependant.value):
+        dependant.value = override
         override_tree = build_depend_tree(dependant.value, storage=storage)
         dependant.dependencies = override_tree.dependencies
 
@@ -144,7 +144,7 @@ def _resolve_dependencies(
     if dependant.name is None:
         return resolved_dependencies, list(scopes)
 
-    provider = storage.get(dependant.value.call)
+    provider = storage.get(dependant.value)
     value = LazyResolver(
         provider=provider,
         kwargs=resolved_dependencies,
@@ -154,9 +154,9 @@ def _resolve_dependencies(
 
 
 def build_depend_tree(
-    dependency: Depends, *, name: str | None = None, storage: Storage
+    dependency: DependencyCallable, *, name: str | None = None, storage: Storage
 ) -> DependNode:
-    signature = inspect.signature(dependency.call)
+    signature = inspect.signature(dependency)
     dependencies = []
     for name_, value in signature.parameters.items():
         param_dep = _extract_and_register_dependency_from_parameter(
@@ -172,10 +172,10 @@ def build_depend_tree(
 
 def _extract_and_register_dependency_from_parameter(
     value: inspect.Parameter, storage: Storage
-) -> Depends | None:
+) -> DependencyCallable | None:
     if isinstance(value.default, Depends):
         storage.add(value.default.call)
-        return value.default
+        return value.default.call
 
     if fastapi is None:
         return None  # type: ignore[unreachable]  # pragma: no cover
@@ -189,7 +189,7 @@ def _extract_and_register_dependency_from_parameter(
                 break
     if isinstance(fastapi_dependency, Depends):
         storage.add(fastapi_dependency.call)  # type: ignore[unreachable]
-        return fastapi_dependency
+        return fastapi_dependency.call
     return None
 
 
