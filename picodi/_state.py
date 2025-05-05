@@ -22,7 +22,6 @@ if TYPE_CHECKING:
 
 
 TC = TypeVar("TC", bound=Callable)
-unset = object()
 
 
 class Storage:
@@ -244,11 +243,11 @@ class Registry:
     def override(
         self,
         dependency: DependencyCallable,
-        new_dependency: DependencyCallable | None | object = unset,
+        new_dependency: DependencyCallable | None,
     ) -> Callable[[DependencyCallable], DependencyCallable] | ContextManager[None]:
         """
-        Override a dependency with a new one. It can be used as a decorator,
-        as a context manager or as a regular method call. New dependency will be
+        Override a dependency with a new one. It can be used as a context manager
+        or as a regular method call. New dependency will be
         added to the registry.
 
         :param dependency: dependency to override
@@ -259,11 +258,6 @@ class Registry:
         --------
         .. code-block:: python
 
-            @registry.override(get_settings)
-            def real_settings():
-                return {"real": "settings"}
-
-
             with registry.override(get_settings, real_settings):
                 pass
 
@@ -273,20 +267,13 @@ class Registry:
         if self._storage.get_original(dependency):
             raise ValueError("Cannot override an overridden dependency")
 
-        def decorator(override_to: DependencyCallable) -> DependencyCallable:
-            self._storage.add(override_to)
-            if dependency is override_to:
-                raise ValueError("Cannot override a dependency with itself")
-            self._storage.overrides[dependency] = override_to
-            return override_to
-
-        if new_dependency is unset:
-            return decorator
-
         with lock:
             call_dependency = self._storage.overrides.get(dependency)
-            if callable(new_dependency):
-                decorator(new_dependency)
+            if new_dependency is not None:
+                self._storage.add(new_dependency)
+                if dependency is new_dependency:
+                    raise ValueError("Cannot override a dependency with itself")
+                self._storage.overrides[dependency] = new_dependency
             else:
                 self._storage.overrides.pop(dependency, None)
 

@@ -86,7 +86,6 @@ async def test_can_track_that_overriden_dependency_was_in_use():
     async def get_abc_dependency():
         raise NotImplementedError  # pragma: no cover
 
-    @registry.override(get_abc_dependency)
     async def get_in_use():
         return "in_use"
 
@@ -94,7 +93,8 @@ async def test_can_track_that_overriden_dependency_was_in_use():
     async def service(dependency: str = Provide(get_abc_dependency)):
         return dependency
 
-    await service()
+    with registry.override(get_abc_dependency, get_in_use):
+        await service()
 
     assert get_in_use in registry.touched
     assert get_abc_dependency not in registry.touched

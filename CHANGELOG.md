@@ -13,6 +13,7 @@ We follow [Semantic Versions](https://semver.org/).
   - deleted `dependency`, `init_dependencies`, `shutdown_dependencies` in favor of
     `registry.set_scope`, `registry.init`, `registry.shutdown`
   - deleted `helpers.lifespan` in favor of `registry.lifespan` and `registry.alifespan`
+  - registry.override now can't be used as decorator
 
 ## Version 0.31.0
 
