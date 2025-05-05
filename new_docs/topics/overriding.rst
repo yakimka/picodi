@@ -21,12 +21,12 @@ Overriding is essential for several scenarios:
 How to Override: ``registry.override()``
 ****************************************
 
-Picodi provides the :meth:`picodi.Registry.override` method on the `registry` object to manage overrides. It offers flexibility by working as both a context manager and a decorator.
+Picodi provides the :meth:`picodi.Registry.override` method on the ``registry`` object to manage overrides. It offers flexibility by working as both a context manager and a decorator.
 
-Using `override` as a Context Manager
-=====================================
+Using ``override`` as a Context Manager
+=======================================
 
-This is the recommended approach for temporary overrides, especially within tests or specific code blocks. The override is active only within the `with` block and is automatically removed upon exiting.
+This is the recommended approach for temporary overrides, especially within tests or specific code blocks. The override is active only within the ``with`` block and is automatically removed upon exiting.
 
 .. code-block:: python
 
@@ -128,10 +128,10 @@ This is the recommended approach for temporary overrides, especially within test
     RealEmail: Sending to prod_user_again@example.com - Welcome!
     Service: User prod_user_again registered.
 
-Using `override` as a Decorator
-===============================
+Using ``override`` as a Decorator
+=================================
 
-You can also apply `override` as a decorator directly onto the overriding function. This registers the override more permanently (it persists until explicitly cleared).
+You can also apply ``override`` as a decorator directly onto the overriding function. This registers the override more permanently (it persists until explicitly cleared).
 
 .. code-block:: python
 
@@ -187,20 +187,20 @@ Clearing Overrides
 As shown above, overrides applied via the decorator persist. You need to clear them manually:
 
 *   **Clear a specific override:**
-    `registry.override(original_dependency, None)`
+    ``registry.override(original_dependency, None)``
 *   **Clear all overrides:**
-    `registry.clear_overrides()`
+    ``registry.clear_overrides()``
 
-Clearing overrides is crucial in test suites to prevent state leakage between tests. The Picodi `pytest` plugin handles this automatically (see :ref:`topics_testing`).
+Clearing overrides is crucial in test suites to prevent state leakage between tests. The Picodi ``pytest`` plugin handles this automatically (see :ref:`topics_testing`).
 
 ****************
 Key Takeaways
 ****************
 
-*   Use `registry.override(original, new_provider)` to replace dependency implementations.
-*   The context manager (`with registry.override(...)`) is ideal for temporary overrides (like in tests) as it handles cleanup automatically.
-*   The decorator (`@registry.override(original)`) creates persistent overrides that require manual clearing.
-*   Clear specific overrides with `registry.override(original, None)` or all overrides with `registry.clear_overrides()`.
+*   Use ``registry.override(original, new_provider)`` to replace dependency implementations.
+*   The context manager (``with registry.override(...)``) is ideal for temporary overrides (like in tests) as it handles cleanup automatically.
+*   The decorator (``@registry.override(original)``) creates persistent overrides that require manual clearing.
+*   Clear specific overrides with ``registry.override(original, None)`` or all overrides with ``registry.clear_overrides()``.
 *   Overriding is fundamental for testing and configuring applications based on environment or features.
 
 Next, let's look at managing the overall application lifecycle, including dependency initialization and shutdown, using :ref:`Lifespan Management <topics_lifespan>`.

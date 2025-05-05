@@ -4,7 +4,7 @@
 Tutorial: 03 - Scopes
 ########################
 
-In the previous steps, you might have noticed that our dependency functions (like `get_api_base_url` or `get_temp_file_path`) were executed *every time* they were needed by an injected function. This is the default behavior, but often not what you want, especially for expensive resources like database connections or configuration objects that should only be created once.
+In the previous steps, you might have noticed that our dependency functions (like ``get_api_base_url`` or ``get_temp_file_path``) were executed *every time* they were needed by an injected function. This is the default behavior, but often not what you want, especially for expensive resources like database connections or configuration objects that should only be created once.
 
 Picodi uses **Scopes** to control the lifecycle and caching of dependency instances.
 
@@ -19,22 +19,22 @@ A scope defines:
 3.  **How long** the instance lives before it's potentially discarded or cleaned up.
 
 ********************************
-Default Scope: `NullScope`
+Default Scope: ``NullScope``
 ********************************
 
-By default, all dependencies use `picodi.NullScope`.
+By default, all dependencies use ``picodi.NullScope``.
 
 *   **Lifecycle:** A new instance is created *every single time* the dependency is injected.
 *   **Caching:** No caching occurs.
-*   **Cleanup (for yield dependencies):** Cleanup code (after `yield`) runs immediately after the function that injected the dependency finishes.
+*   **Cleanup (for yield dependencies):** Cleanup code (after ``yield``) runs immediately after the function that injected the dependency finishes.
 
-This explains the output in the previous steps where we saw "Creating API base URL dependency" or the temp file setup/teardown messages multiple times. `NullScope` is suitable for dependencies that are very cheap to create or must be unique for each use.
+This explains the output in the previous steps where we saw "Creating API base URL dependency" or the temp file setup/teardown messages multiple times. ``NullScope`` is suitable for dependencies that are very cheap to create or must be unique for each use.
 
 ***********************************
 Singleton Scope: ``SingletonScope``
 ***********************************
 
-A very common requirement is to have a single instance of a dependency shared across the entire application (or for its entire lifetime). This is known as the Singleton pattern. Picodi provides `picodi.SingletonScope` for this.
+A very common requirement is to have a single instance of a dependency shared across the entire application (or for its entire lifetime). This is known as the Singleton pattern. Picodi provides ``picodi.SingletonScope`` for this.
 
 *   **Lifecycle:** An instance is created *only the first time* the dependency is requested.
 *   **Caching:** The created instance is stored globally (within the Picodi registry).
@@ -44,9 +44,9 @@ A very common requirement is to have a single instance of a dependency shared ac
 Setting a Dependency's Scope
 ********************************
 
-To assign a scope other than the default `NullScope`, you use the `@registry.set_scope` decorator on your dependency *provider* function.
+To assign a scope other than the default ``NullScope``, you use the ``@registry.set_scope`` decorator on your dependency *provider* function.
 
-Let's apply `SingletonScope` to our `get_temp_file_path` dependency from the previous step:
+Let's apply ``SingletonScope`` to our ``get_temp_file_path`` dependency from the previous step:
 
 .. testcode:: scopes
 
@@ -109,8 +109,8 @@ Let's apply `SingletonScope` to our `get_temp_file_path` dependency from the pre
 
 **Explanation:**
 
-1.  **`@registry.set_scope(SingletonScope)`:** We decorated `get_temp_file_path` to tell Picodi it should be managed by `SingletonScope`.
-2.  **`registry.shutdown()`:** Because `SingletonScope` doesn't clean up automatically after each injection, we need to call `registry.shutdown()` at the end of our application's life to trigger the teardown code (the `finally` block in `get_temp_file_path`).
+1.  **``@registry.set_scope(SingletonScope)``:** We decorated ``get_temp_file_path`` to tell Picodi it should be managed by ``SingletonScope``.
+2.  **``registry.shutdown()``:** Because ``SingletonScope`` doesn't clean up automatically after each injection, we need to call ``registry.shutdown()`` at the end of our application's life to trigger the teardown code (the ``finally`` block in ``get_temp_file_path``).
 
 **Output:**
 
@@ -133,17 +133,17 @@ Let's apply `SingletonScope` to our `get_temp_file_path` dependency from the pre
 
 Look closely at the output:
 
-*   "Setup: Created temp file..." appears only **once**, during the first call to `write_to_temp_file`.
-*   On the second call, the existing file path (cached by `SingletonScope`) is reused directly. No setup code runs.
-*   "Teardown: Removed temp file..." appears only **once** at the very end, after we explicitly called `registry.shutdown()`.
+*   "Setup: Created temp file..." appears only **once**, during the first call to ``write_to_temp_file``.
+*   On the second call, the existing file path (cached by ``SingletonScope``) is reused directly. No setup code runs.
+*   "Teardown: Removed temp file..." appears only **once** at the very end, after we explicitly called ``registry.shutdown()``.
 
-This demonstrates how `SingletonScope` creates a single, long-lived instance and defers cleanup until explicitly requested.
+This demonstrates how ``SingletonScope`` creates a single, long-lived instance and defers cleanup until explicitly requested.
 
 ********************************
 Other Built-in Scopes
 ********************************
 
-Picodi also provides `ContextVarScope` which is useful in asynchronous contexts (like web frameworks) to scope dependencies to a specific task or request. You can also create your own custom scopes. We'll touch on `ContextVarScope` briefly when discussing :ref:`integrations <topics_integrations>`.
+Picodi also provides ``ContextVarScope`` which is useful in asynchronous contexts (like web frameworks) to scope dependencies to a specific task or request. You can also create your own custom scopes. We'll touch on ``ContextVarScope`` briefly when discussing :ref:`integrations <topics_integrations>`.
 
 ***********
 Next Steps

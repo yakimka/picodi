@@ -4,15 +4,15 @@
 Tutorial: 06 - Testing
 ######################
 
-Dependency Injection significantly improves the testability of your code. By injecting dependencies, you can easily replace real implementations with mocks or test doubles during your tests. Picodi provides features to make this process straightforward, especially when using frameworks like `pytest`.
+Dependency Injection significantly improves the testability of your code. By injecting dependencies, you can easily replace real implementations with mocks or test doubles during your tests. Picodi provides features to make this process straightforward, especially when using frameworks like ``pytest``.
 
 ********************************
 Testing with Manual Overrides
 ********************************
 
-The core mechanism for testing is `registry.override`, which we saw in the :ref:`previous step <tutorial_dependency_overrides>`. You can use it directly within your test functions as a context manager.
+The core mechanism for testing is ``registry.override``, which we saw in the :ref:`previous step <tutorial_dependency_overrides>`. You can use it directly within your test functions as a context manager.
 
-Let's write a test for our `call_external_api` service. We want to ensure it constructs the correct URL without actually making a network call. We'll override `get_api_base_url` to provide a known test URL.
+Let's write a test for our ``call_external_api`` service. We want to ensure it constructs the correct URL without actually making a network call. We'll override ``get_api_base_url`` to provide a known test URL.
 
 .. code-block:: python
 
@@ -47,7 +47,7 @@ Let's write a test for our `call_external_api` service. We want to ensure it con
     # To run this test: pytest test_services.py -s
     # The -s flag shows print statements
 
-Running this test with `pytest -s` would show:
+Running this test with ``pytest -s`` would show:
 
 .. code-block:: text
 
@@ -59,17 +59,17 @@ Running this test with `pytest -s` would show:
     Test: Exited override context.
     .                                    [100%]
 
-The test passes, and we can see that our `get_test_api_url` was correctly used instead of the original `get_api_base_url`. The override was automatically cleaned up after the `with` block.
+The test passes, and we can see that our ``get_test_api_url`` was correctly used instead of the original ``get_api_base_url``. The override was automatically cleaned up after the ``with`` block.
 
 ********************************
 Pytest Integration
 ********************************
 
-While manual overrides work, managing them across many tests can be cumbersome. Picodi offers a built-in `pytest` plugin to simplify this.
+While manual overrides work, managing them across many tests can be cumbersome. Picodi offers a built-in ``pytest`` plugin to simplify this.
 
 **Setup:**
 
-Add the plugin to your root `conftest.py`:
+Add the plugin to your root ``conftest.py``:
 
 .. code-block:: python
 
@@ -84,15 +84,15 @@ Add the plugin to your root `conftest.py`:
 
 The plugin automatically handles cleanup after each test:
 
-*   Calls `registry.shutdown()` to clean up scoped dependencies (like Singletons).
-*   Calls `registry.clear_overrides()` to remove any overrides set during the test.
-*   Calls `registry.clear_touched()` (more on this in advanced topics).
+*   Calls ``registry.shutdown()`` to clean up scoped dependencies (like Singletons).
+*   Calls ``registry.clear_overrides()`` to remove any overrides set during the test.
+*   Calls ``registry.clear_touched()`` (more on this in advanced topics).
 
 This ensures tests are isolated from each other.
 
-**`picodi_override` Marker:**
+**``picodi_override`` Marker:**
 
-Instead of using the `with registry.override(...)` context manager, you can use the `@pytest.mark.picodi_override` marker directly on your test function.
+Instead of using the ``with registry.override(...)`` context manager, you can use the ``@pytest.mark.picodi_override`` marker directly on your test function.
 
 Let's rewrite the previous test using the marker:
 
@@ -126,7 +126,7 @@ Let's rewrite the previous test using the marker:
 
     # To run: pytest test_services_pytest.py -s
 
-The output with `pytest -s` will be similar, showing the test override being used:
+The output with ``pytest -s`` will be similar, showing the test override being used:
 
 .. code-block:: text
 
@@ -137,7 +137,7 @@ The output with `pytest -s` will be similar, showing the test override being use
     Test: Test function finished.
     .                                     [100%]
 
-The marker approach is cleaner and less verbose for applying overrides in tests. You can also override multiple dependencies by passing a list of tuples to the marker: `@pytest.mark.picodi_override([(dep1, override1), (dep2, override2)])`.
+The marker approach is cleaner and less verbose for applying overrides in tests. You can also override multiple dependencies by passing a list of tuples to the marker: ``@pytest.mark.picodi_override([(dep1, override1), (dep2, override2)])``.
 
 ***********
 Next Steps

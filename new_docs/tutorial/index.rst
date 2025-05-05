@@ -9,7 +9,7 @@ This tutorial provides a hands-on introduction to Picodi. We'll build a simple a
 By the end of this tutorial, you will understand:
 
 *   How to define basic dependencies.
-*   How to inject dependencies into your functions using `@inject` and `Provide`.
+*   How to inject dependencies into your functions using ``@inject`` and ``Provide``.
 *   How to work with dependencies that require setup and teardown (yield dependencies).
 *   How to use different scopes to manage dependency lifecycles.
 *   How to handle asynchronous dependencies.
@@ -31,4 +31,4 @@ Let's get started!
 **Prerequisites:**
 
 *   Python 3.10 or higher.
-*   Picodi installed (`pip install picodi`).
+*   Picodi installed (``pip install picodi``).

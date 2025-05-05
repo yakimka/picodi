@@ -17,14 +17,14 @@ Common use cases for overriding include:
 *   **Feature Flags:** Swapping implementations based on feature flags.
 
 ********************************
-Using `registry.override`
+Using ``registry.override``
 ********************************
 
-The primary tool for this is `picodi.registry.override()`. It can be used as a context manager or a decorator.
+The primary tool for this is ``picodi.registry.override()``. It can be used as a context manager or a decorator.
 
 **Override as a Context Manager**
 
-Using `registry.override` as a context manager is ideal for temporarily replacing a dependency, often within tests or specific code blocks. The override is automatically removed when the `with` block exits.
+Using ``registry.override`` as a context manager is ideal for temporarily replacing a dependency, often within tests or specific code blocks. The override is automatically removed when the ``with`` block exits.
 
 Let's reuse our first example and override the `get_api_base_url` dependency to point to a staging server instead of the production one.
 
@@ -77,9 +77,9 @@ Let's reuse our first example and override the `get_api_base_url` dependency to 
 
 **Explanation:**
 
-1.  **`registry.override(original, override)`:** We call `registry.override`, passing the original dependency function (`get_api_base_url`) and the function we want to use instead (`get_staging_api_base_url`).
-2.  **Context:** Inside the `with` block, any injection requesting `get_api_base_url` will actually receive the result from `get_staging_api_base_url`.
-3.  **Reversion:** Once the `with` block exits, the override is automatically removed, and subsequent calls use the original `get_api_base_url` again.
+1.  **``registry.override(original, override)``:** We call ``registry.override``, passing the original dependency function (``get_api_base_url``) and the function we want to use instead (``get_staging_api_base_url``).
+2.  **Context:** Inside the ``with`` block, any injection requesting ``get_api_base_url`` will actually receive the result from ``get_staging_api_base_url``.
+3.  **Reversion:** Once the ``with`` block exits, the override is automatically removed, and subsequent calls use the original ``get_api_base_url`` again.
 
 **Output:**
 
@@ -103,7 +103,7 @@ Let's reuse our first example and override the `get_api_base_url` dependency to 
 
 **Override as a Decorator**
 
-You can also use `@registry.override(original)` to decorate the overriding function. This permanently registers the override (until cleared). This is less common than the context manager but can be useful for setting up test environments globally.
+You can also use ``@registry.override(original)`` to decorate the overriding function. This permanently registers the override (until cleared). This is less common than the context manager but can be useful for setting up test environments globally.
 
 .. testcode:: overrides_decorator
 
@@ -185,8 +185,8 @@ You can also use `@registry.override(original)` to decorate the overriding funct
 Clearing Overrides
 ********************
 
-*   To clear a *specific* override, call `registry.override(original_dependency, None)`.
-*   To clear *all* active overrides, call `registry.clear_overrides()`.
+*   To clear a *specific* override, call ``registry.override(original_dependency, None)``.
+*   To clear *all* active overrides, call ``registry.clear_overrides()``.
 
 This is crucial in testing frameworks to ensure overrides from one test don't leak into others.
 
@@ -194,4 +194,4 @@ This is crucial in testing frameworks to ensure overrides from one test don't le
 Next Steps
 ***********
 
-Overrides are essential for testing. Let's dive deeper into how Picodi integrates with testing workflows, particularly with `pytest`: :ref:`Testing <tutorial_testing>`.
+Overrides are essential for testing. Let's dive deeper into how Picodi integrates with testing workflows, particularly with ``pytest``: :ref:`Testing <tutorial_testing>`.

@@ -10,7 +10,7 @@ Modern Python applications often rely on asynchronous operations for I/O-bound t
 Defining Async Dependencies
 ********************************
 
-Defining an asynchronous dependency is as simple as using `async def` for your dependency provider function.
+Defining an asynchronous dependency is as simple as using ``async def`` for your dependency provider function.
 
 Let's create an async dependency that simulates fetching user data from an external service:
 
@@ -36,9 +36,9 @@ Let's create an async dependency that simulates fetching user data from an exter
 Injecting Async Dependencies
 ********************************
 
-If a function needs to inject an *asynchronous* dependency, that function itself **must** also be `async def`. Picodi needs an async context (`await`) to resolve the async dependency.
+If a function needs to inject an *asynchronous* dependency, that function itself **must** also be ``async def``. Picodi needs an async context (``await``) to resolve the async dependency.
 
-Let's create an async service function that uses our `fetch_user_data` dependency:
+Let's create an async service function that uses our ``fetch_user_data`` dependency:
 
 .. testcode:: async_deps
 
@@ -59,7 +59,7 @@ Let's create an async service function that uses our `fetch_user_data` dependenc
 Running Async Code
 ********************************
 
-To run our async service, we need an event loop, typically using `asyncio.run()`:
+To run our async service, we need an event loop, typically using ``asyncio.run()``:
 
 .. testcode:: async_deps
 
@@ -82,13 +82,13 @@ To run our async service, we need an event loop, typically using `asyncio.run()`
     Async Service: Finished processing user 123
     Main: Async service finished.
 
-Picodi correctly awaited the `fetch_user_data` coroutine before injecting the result into `process_user`.
+Picodi correctly awaited the ``fetch_user_data`` coroutine before injecting the result into ``process_user``.
 
 ********************************
 Async Yield Dependencies
 ********************************
 
-Just like synchronous dependencies, async dependencies can use `yield` for setup and teardown, often involving async operations. This is similar to using `@contextlib.asynccontextmanager`.
+Just like synchronous dependencies, async dependencies can use ``yield`` for setup and teardown, often involving async operations. This is similar to using ``@contextlib.asynccontextmanager``.
 
 Let's define an async dependency managing a (simulated) async database connection:
 
@@ -160,13 +160,13 @@ Let's define an async dependency managing a (simulated) async database connectio
     Main: Got result: Query Result
     Main: Async DB service finished.
 
-Picodi correctly handles the async setup (`__aenter__`) before injecting the `db_conn` and the async teardown (`__aexit__`) after `run_db_query` completes.
+Picodi correctly handles the async setup (``__aenter__``) before injecting the ``db_conn`` and the async teardown (``__aexit__``) after ``run_db_query`` completes.
 
 ********************************
 Scopes and Async Dependencies
 ********************************
 
-Scopes like `SingletonScope` work exactly the same way for async dependencies as they do for sync ones. If we added `@registry.set_scope(SingletonScope)` to `get_db_connection`, the connection would be established only once and reused, with disconnection happening only upon `registry.shutdown()`. Remember that `registry.shutdown()` returns an awaitable if there are async dependencies to clean up, so you'd need `await registry.shutdown()`.
+Scopes like ``SingletonScope`` work exactly the same way for async dependencies as they do for sync ones. If we added ``@registry.set_scope(SingletonScope)`` to ``get_db_connection``, the connection would be established only once and reused, with disconnection happening only upon ``registry.shutdown()``. Remember that ``registry.shutdown()`` returns an awaitable if there are async dependencies to clean up, so you'd need ``await registry.shutdown()``.
 
 ***********
 Next Steps

@@ -29,7 +29,7 @@ The most basic form of a dependency provider is a function that directly returns
 
 **Asynchronous Example:**
 
-If creating the dependency involves I/O operations, you can use an `async def` function.
+If creating the dependency involves I/O operations, you can use an ``async def`` function.
 
 .. code-block:: python
 
@@ -47,13 +47,13 @@ These functions are ready to be used with :func:`~picodi.Provide` within an :fun
 Yield Dependencies (Resource Management)
 ****************************************
 
-Often, dependencies represent resources that need setup before use and cleanup afterward (e.g., database connections, file handles, network clients). Picodi handles this elegantly using generator functions with a single `yield`.
+Often, dependencies represent resources that need setup before use and cleanup afterward (e.g., database connections, file handles, network clients). Picodi handles this elegantly using generator functions with a single ``yield``.
 
 Picodi treats such generators like context managers:
 
-1.  **Setup:** Code before `yield` runs when the dependency is first requested.
+1.  **Setup:** Code before ``yield`` runs when the dependency is first requested.
 2.  **Value:** The value yielded is injected into the dependent function.
-3.  **Teardown:** Code after `yield` (ideally in a `finally` block) runs after the dependent function finishes execution (or when the dependency's scope dictates cleanup).
+3.  **Teardown:** Code after ``yield`` (ideally in a ``finally`` block) runs after the dependent function finishes execution (or when the dependency's scope dictates cleanup).
 
 **Synchronous Example:**
 
@@ -172,8 +172,8 @@ Key Takeaways
 
 *   A Picodi dependency provider is typically a zero-argument callable (often a function).
 *   Use regular functions for simple value dependencies (sync or async).
-*   Use generator functions with a single `yield` for dependencies requiring setup/teardown (sync or async).
+*   Use generator functions with a single ``yield`` for dependencies requiring setup/teardown (sync or async).
 *   Factories can be used to create parameterized dependency providers.
-*   Dependencies can depend on other dependencies using `@inject` and `Provide`.
+*   Dependencies can depend on other dependencies using ``@inject`` and ``Provide``.
 
 Next, let's look at how these dependencies are actually provided to your code using :ref:`Injection <topics_injection>`.

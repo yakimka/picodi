@@ -11,7 +11,7 @@ This involves two main operations:
 1.  **Initialization:** Eagerly creating certain dependencies (especially singletons) when the application starts.
 2.  **Shutdown:** Cleaning up resources held by manual-scoped dependencies when the application stops.
 
-Picodi offers methods on the `registry` object and convenient context managers to handle this.
+Picodi offers methods on the ``registry`` object and convenient context managers to handle this.
 
 ***********************************
 Initialization: ``registry.init()``
@@ -27,7 +27,7 @@ The :meth:`picodi.Registry.init` method is used to initialize dependencies proac
 
 **How it Works:**
 
-`registry.init()` initializes dependencies that have been registered for initialization in one of two ways:
+``registry.init()`` initializes dependencies that have been registered for initialization in one of two ways:
 
 1.  Using `auto_init=True` in :meth:`~picodi.Registry.set_scope`:
 
@@ -56,9 +56,9 @@ The :meth:`picodi.Registry.init` method is used to initialize dependencies proac
         # Explicitly add it to the init list
         registry.add_for_init([get_db_pool]) # Can pass a list or callable returning a list
 
-**Calling `init()`:**
+**Calling ``init()``:**
 
-You typically call `registry.init()` once during application startup.
+You typically call ``registry.init()`` once during application startup.
 
 .. code-block:: python
 
@@ -73,7 +73,7 @@ You typically call `registry.init()` once during application startup.
 
 **Async Initialization:**
 
-If any dependencies marked for initialization (via `auto_init` or `add_for_init`) are `async def` or async generators, `registry.init()` returns an **awaitable**. You *must* `await` this awaitable in an async context to ensure those dependencies are properly initialized. If all initializable dependencies are synchronous, the awaitable does nothing when awaited.
+If any dependencies marked for initialization (via ``auto_init`` or ``add_for_init``) are ``async def`` or async generators, ``registry.init()`` returns an **awaitable**. You *must* ``await`` this awaitable in an async context to ensure those dependencies are properly initialized. If all initializable dependencies are synchronous, the awaitable does nothing when awaited.
 
 .. code-block:: python
 
@@ -96,21 +96,21 @@ If any dependencies marked for initialization (via `auto_init` or `add_for_init`
 
 **Explicit Dependencies:**
 
-You can also pass an explicit list (or callable returning a list) of dependencies to `registry.init()` if you want to initialize specific dependencies ad-hoc, ignoring those registered via `auto_init` or `add_for_init`.
+You can also pass an explicit list (or callable returning a list) of dependencies to ``registry.init()`` if you want to initialize specific dependencies ad-hoc, ignoring those registered via ``auto_init`` or ``add_for_init``.
 
 .. code-block:: python
 
     # registry.init([my_specific_dep_1, my_specific_dep_2])
 
-********************************
-Shutdown: `registry.shutdown()`
-********************************
+*********************************
+Shutdown: ``registry.shutdown()``
+*********************************
 
-The :meth:`picodi.Registry.shutdown` method is used to trigger the cleanup phase for dependencies managed by **manual scopes** (`SingletonScope`, `ContextVarScope`, or custom manual scopes). This is typically called once when the application is stopping.
+The :meth:`picodi.Registry.shutdown` method is used to trigger the cleanup phase for dependencies managed by **manual scopes** (``SingletonScope``, ``ContextVarScope``, or custom manual scopes). This is typically called once when the application is stopping.
 
 **How it Works:**
 
-`registry.shutdown()` iterates through the specified manual scopes (or all manual scopes if none are specified) and calls their respective `shutdown` methods. For yield dependencies within these scopes, this triggers the execution of the code after the `yield` statement (usually in the `finally` block).
+``registry.shutdown()`` iterates through the specified manual scopes (or all manual scopes if none are specified) and calls their respective ``shutdown`` methods. For yield dependencies within these scopes, this triggers the execution of the code after the ``yield`` statement (usually in the ``finally`` block).
 
 .. code-block:: python
 
@@ -149,7 +149,7 @@ The :meth:`picodi.Registry.shutdown` method is used to trigger the cleanup phase
 
 **Specifying Scopes:**
 
-By default, `registry.shutdown()` cleans up all manual scopes (`SingletonScope`, `ContextVarScope`, etc.). You can target specific scope classes using the `scope_class` argument:
+By default, ``registry.shutdown()`` cleans up all manual scopes (``SingletonScope``, ``ContextVarScope``, etc.). You can target specific scope classes using the ``scope_class`` argument:
 
 .. code-block:: python
 
@@ -161,16 +161,16 @@ By default, `registry.shutdown()` cleans up all manual scopes (`SingletonScope`,
 
 **Async Shutdown:**
 
-Similar to `init()`, if any manual-scoped dependencies requiring cleanup are asynchronous (async generators), `registry.shutdown()` returns an **awaitable**. You *must* `await` it in an async context to ensure proper asynchronous cleanup.
+Similar to ``init()``, if any manual-scoped dependencies requiring cleanup are asynchronous (async generators), ``registry.shutdown()`` returns an **awaitable**. You *must* ``await`` it in an async context to ensure proper asynchronous cleanup.
 
 *************************************************
-Context Managers: `lifespan` and `alifespan`
+Context Managers: ``lifespan`` and ``alifespan``
 *************************************************
 
-Manually calling `init()` at the start and `shutdown()` at the end works, but Picodi provides convenient context managers to handle this automatically, which is ideal for scripts, background workers, or simple applications.
+Manually calling ``init()`` at the start and ``shutdown()`` at the end works, but Picodi provides convenient context managers to handle this automatically, which is ideal for scripts, background workers, or simple applications.
 
-`registry.lifespan()` (Synchronous)
-===================================
+``registry.lifespan()`` (Synchronous)
+=====================================
 Use this for applications where the main lifecycle is synchronous.
 
 .. code-block:: python
@@ -204,7 +204,7 @@ Use this for applications where the main lifecycle is synchronous.
 
 ``registry.alifespan()`` (Asynchronous)
 =======================================
-Use this for applications with an asynchronous main lifecycle. It handles `await registry.init()` and `await registry.shutdown()`.
+Use this for applications with an asynchronous main lifecycle. It handles ``await registry.init()`` and ``await registry.shutdown()``.
 
 .. code-block:: python
 
@@ -247,10 +247,10 @@ These context managers significantly simplify managing the setup and teardown ph
 Key Takeaways
 ****************
 
-*   Use `registry.init()` (often with `auto_init=True` or `add_for_init`) at startup to eagerly initialize dependencies. `await` it if initializing async dependencies.
-*   Use `registry.shutdown()` at exit to clean up manual-scoped dependencies (`SingletonScope`, `ContextVarScope`). `await` it if cleaning up async dependencies.
-*   Use `with registry.lifespan():` for simple synchronous application lifecycles.
-*   Use `async with registry.alifespan():` for simple asynchronous application lifecycles.
+*   Use ``registry.init()`` (often with ``auto_init=True`` or ``add_for_init``) at startup to eagerly initialize dependencies. ``await`` it if initializing async dependencies.
+*   Use ``registry.shutdown()`` at exit to clean up manual-scoped dependencies (``SingletonScope``, ``ContextVarScope``). ``await`` it if cleaning up async dependencies.
+*   Use ``with registry.lifespan():`` for simple synchronous application lifecycles.
+*   Use ``async with registry.alifespan():`` for simple asynchronous application lifecycles.
 *   Proper lifespan management ensures resources are initialized correctly and released cleanly.
 
 Next, let's focus specifically on considerations when working with :ref:`Asynchronous Code <topics_async>`.

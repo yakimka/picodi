@@ -7,10 +7,10 @@ Dependency Injection
 Once you have defined your :ref:`dependency providers <topics_dependencies>`, you need a way to supply their results to the functions or methods that require them. This process is called **injection**, and Picodi handles it using the :func:`~picodi.inject` decorator and the :func:`~picodi.Provide` marker.
 
 ***************************
-The `@inject` Decorator
+The ``@inject`` Decorator
 ***************************
 
-The `@inject` decorator is the core mechanism that enables dependency injection for a specific function or method.
+The ``@inject`` decorator is the core mechanism that enables dependency injection for a specific function or method.
 
 .. code-block:: python
 
@@ -29,16 +29,16 @@ The `@inject` decorator is the core mechanism that enables dependency injection 
 
 **How it works:**
 
-*   `@inject` wraps the decorated function (`my_function` in this case).
-*   When the wrapped function is called, `@inject` intercepts the call *before* the original function's code executes.
-*   It inspects the function's signature for parameters whose default values are `Provide()` markers.
-*   For each such parameter, it resolves the specified dependency provider (e.g., calls `get_dependency`).
+*   ``@inject`` wraps the decorated function (``my_function`` in this case).
+*   When the wrapped function is called, ``@inject`` intercepts the call *before* the original function's code executes.
+*   It inspects the function's signature for parameters whose default values are ``Provide()`` markers.
+*   For each such parameter, it resolves the specified dependency provider (e.g., calls ``get_dependency``).
 *   It manages the lifecycle of the resolved dependency based on its :ref:`scope <topics_scopes>`.
 *   Finally, it calls the original function, passing the resolved dependencies as arguments for the corresponding parameters (unless arguments were explicitly passed during the call).
 
 **Placement:**
 
-The `@inject` decorator should generally be the **first decorator** applied to your function (i.e., the one closest to the `def` keyword). This ensures it can correctly analyze the function signature before other decorators potentially modify it.
+The ``@inject`` decorator should generally be the **first decorator** applied to your function (i.e., the one closest to the ``def`` keyword). This ensures it can correctly analyze the function signature before other decorators potentially modify it.
 
 .. code-block:: python
 
@@ -53,10 +53,10 @@ The `@inject` decorator should generally be the **first decorator** applied to y
     def my_func(...): ...
 
 ***************************
-The `Provide()` Marker
+The ``Provide()`` Marker
 ***************************
 
-:func:`~picodi.Provide` is used as a **default value** for a function parameter to signal to `@inject` that this parameter should be filled by a dependency.
+:func:`~picodi.Provide` is used as a **default value** for a function parameter to signal to ``@inject`` that this parameter should be filled by a dependency.
 
 .. code-block:: python
 
@@ -80,8 +80,8 @@ The `Provide()` Marker
 
 **Key Points:**
 
-*   `Provide()` takes exactly one argument: the **dependency provider callable** (e.g., `get_user_id`). Do *not* call the provider function inside `Provide` (e.g., `Provide(get_user_id())` is incorrect).
-*   It acts as a placeholder default value. If you explicitly pass an argument for a parameter marked with `Provide` when calling the function, your explicitly passed value will be used instead of the injected dependency.
+*   ``Provide()`` takes exactly one argument: the **dependency provider callable** (e.g., ``get_user_id``). Do *not* call the provider function inside ``Provide`` (e.g., ``Provide(get_user_id())`` is incorrect).
+*   It acts as a placeholder default value. If you explicitly pass an argument for a parameter marked with ``Provide`` when calling the function, your explicitly passed value will be used instead of the injected dependency.
 
     .. code-block:: python
 
@@ -89,7 +89,7 @@ The `Provide()` Marker
         process_user(user_id=999)
         # Output: Processing user Alice (ID: 999)
 
-*   Type hints (`user_id: int`, `name: str`) are strongly recommended for clarity and static analysis but are not strictly required by Picodi for injection itself. Picodi relies on the `Provide()` marker.
+*   Type hints (``user_id: int``, ``name: str``) are strongly recommended for clarity and static analysis but are not strictly required by Picodi for injection itself. Picodi relies on the ``Provide()`` marker.
 
 ********************************
 Dependency Resolution Graph
@@ -136,7 +136,7 @@ Picodi resolved the chain: `get_config` -> `get_db_connection` -> `get_user_repo
 Injecting into Methods
 ********************************
 
-You can use `@inject` on methods, including `__init__`, just like regular functions.
+You can use ``@inject`` on methods, including ``__init__``, just like regular functions.
 
 .. code-block:: python
 
@@ -170,17 +170,17 @@ You can use `@inject` on methods, including `__init__`, just like regular functi
 Sync vs. Async Injection
 ********************************
 
-*   A **synchronous** function (`def`) can only inject **synchronous** dependencies. Attempting to `Provide` an `async def` dependency in a synchronous function will result in the coroutine object being injected, not its result. (Exception: See the section on injecting async dependencies into sync functions in :doc:`/topics/async` for manually initialized async dependencies).
-*   An **asynchronous** function (`async def`) can inject **both synchronous and asynchronous** dependencies. Picodi will correctly `await` async dependencies when resolving them within an async function.
+*   A **synchronous** function (``def``) can only inject **synchronous** dependencies. Attempting to ``Provide`` an ``async def`` dependency in a synchronous function will result in the coroutine object being injected, not its result. (Exception: See the section on injecting async dependencies into sync functions in :doc:`/topics/async` for manually initialized async dependencies).
+*   An **asynchronous** function (``async def``) can inject **both synchronous and asynchronous** dependencies. Picodi will correctly ``await`` async dependencies when resolving them within an async function.
 
 ****************
 Key Takeaways
 ****************
 
-*   Use `@inject` (placed first) to enable dependency injection for a function/method.
-*   Use `Provide(dependency_provider)` as the default value for parameters that need injection.
+*   Use ``@inject`` (placed first) to enable dependency injection for a function/method.
+*   Use ``Provide(dependency_provider)`` as the default value for parameters that need injection.
 *   Picodi resolves the full dependency graph automatically.
-*   Injection works for regular functions and methods (like `__init__`).
+*   Injection works for regular functions and methods (like ``__init__``).
 *   Sync functions generally require sync dependencies; async functions can handle both.
 
 Next, let's dive deeper into controlling the lifecycle of these injected dependencies using :ref:`Scopes <topics_scopes>`.

@@ -50,8 +50,8 @@ Now, let's create a function that needs this API base URL to perform its task. W
 
 **Explanation:**
 
-1.  **`@inject`:** This decorator modifies `call_external_api` so that Picodi can manage its dependencies before the function's actual code runs. It should generally be the *first* decorator applied (closest to the `def`).
-2.  **`Provide(get_api_base_url)`:** This is used as the *default value* for the `base_url` parameter. It tells `@inject`: "When `call_external_api` is called, if no value is explicitly passed for `base_url`, call the `get_api_base_url` function and use its return value for this parameter."
+1.  **``@inject``:** This decorator modifies ``call_external_api`` so that Picodi can manage its dependencies before the function's actual code runs. It should generally be the *first* decorator applied (closest to the ``def``).
+2.  **``Provide(get_api_base_url)``:** This is used as the *default value* for the ``base_url`` parameter. It tells ``@inject``: "When ``call_external_api`` is called, if no value is explicitly passed for ``base_url``, call the ``get_api_base_url`` function and use its return value for this parameter."
 
 ***************************
 Using the Injected Function
@@ -81,7 +81,7 @@ Now you can call `call_external_api` like a regular function. Picodi handles the
     Calling API at: https://api.example.com/products
     Response from https://api.example.com/products
 
-Notice that `get_api_base_url` was called each time `call_external_api` was invoked. This is the default behavior (using `NullScope`). We'll explore how to change this later using :ref:`scopes <tutorial_scopes>`.
+Notice that ``get_api_base_url`` was called each time ``call_external_api`` was invoked. This is the default behavior (using ``NullScope``). We'll explore how to change this later using :ref:`scopes <tutorial_scopes>`.
 
 *********************************
 Dependencies Depending on Others
@@ -138,7 +138,7 @@ Let's define a configuration dependency and have our URL dependency use it:
     Calling API at: https://api.config.com/orders
     Response from https://api.config.com/orders
 
-Picodi first called `get_config`, then injected its result into `get_api_base_url` when resolving the dependencies for `call_external_api`, and finally injected the result of `get_api_base_url` into the `call_external_api` execution.
+Picodi first called ``get_config``, then injected its result into ``get_api_base_url`` when resolving the dependencies for ``call_external_api``, and finally injected the result of ``get_api_base_url`` into the ``call_external_api`` execution.
 
 ***********
 Next Steps

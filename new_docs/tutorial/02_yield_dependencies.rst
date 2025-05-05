@@ -12,17 +12,17 @@ The Need for Setup and Teardown
 
 Imagine a dependency that provides a temporary file for writing data. This file needs to be created before use and deleted afterward.
 
-A simple `return` statement isn't enough because we need to execute cleanup code *after* the dependency has been used by the function that injected it.
+A simple ``return`` statement isn't enough because we need to execute cleanup code *after* the dependency has been used by the function that injected it.
 
 ****************************************
 Using ``yield`` for Lifecycle Management
 ****************************************
 
-Picodi leverages Python's generators for this. If a dependency function is a generator that yields exactly once, Picodi treats it like a context manager (similar to those created with `@contextlib.contextmanager`).
+Picodi leverages Python's generators for this. If a dependency function is a generator that yields exactly once, Picodi treats it like a context manager (similar to those created with ``@contextlib.contextmanager``).
 
-*   The code **before** the `yield` is executed during the setup phase (when the dependency is first needed).
+*   The code **before** the ``yield`` is executed during the setup phase (when the dependency is first needed).
 *   The value **yielded** is the actual dependency instance provided to the injecting function.
-*   The code **after** the `yield` is executed during the teardown phase (after the function that injected the dependency finishes).
+*   The code **after** the ``yield`` is executed during the teardown phase (after the function that injected the dependency finishes).
 
 Let's modify our example to use a temporary file managed by a yield dependency.
 
@@ -81,15 +81,15 @@ Let's modify our example to use a temporary file managed by a yield dependency.
 
 **Explanation:**
 
-1.  **`get_temp_file_path`:** This function now uses `yield`. It creates a temporary file, yields its path, and then removes the file in a `finally` block. The `@contextlib.contextmanager` decorator is used here for clarity and standard practice, although Picodi only requires the single `yield` structure.
-2.  **Injection:** `write_to_temp_file` injects the *yielded value* (the file path string) from `get_temp_file_path`.
-3.  **Execution Flow:** When `write_to_temp_file` is called:
-    *   Picodi calls `get_temp_file_path`.
-    *   The code before `yield` runs (file created).
-    *   The file path is yielded and injected into `write_to_temp_file`.
-    *   The body of `write_to_temp_file` executes (writing to the file).
-    *   After `write_to_temp_file` finishes, Picodi resumes the `get_temp_file_path` generator.
-    *   The code after `yield` (in the `finally` block) runs (file removed).
+1.  **``get_temp_file_path``:** This function now uses ``yield``. It creates a temporary file, yields its path, and then removes the file in a ``finally`` block. The ``@contextlib.contextmanager`` decorator is used here for clarity and standard practice, although Picodi only requires the single ``yield`` structure.
+2.  **Injection:** ``write_to_temp_file`` injects the *yielded value* (the file path string) from ``get_temp_file_path``.
+3.  **Execution Flow:** When ``write_to_temp_file`` is called:
+    *   Picodi calls ``get_temp_file_path``.
+    *   The code before ``yield`` runs (file created).
+    *   The file path is yielded and injected into ``write_to_temp_file``.
+    *   The body of ``write_to_temp_file`` executes (writing to the file).
+    *   After ``write_to_temp_file`` finishes, Picodi resumes the ``get_temp_file_path`` generator.
+    *   The code after ``yield`` (in the ``finally`` block) runs (file removed).
 
 **Output:**
 
@@ -111,10 +111,10 @@ Let's modify our example to use a temporary file managed by a yield dependency.
 
 *(Note: The exact temporary file paths will vary)*
 
-As you can see, the setup code runs before the service function, and the teardown code runs after it finishes, ensuring the resource is managed correctly. A new temporary file is created and destroyed for each call because we are still using the default `NullScope`.
+As you can see, the setup code runs before the service function, and the teardown code runs after it finishes, ensuring the resource is managed correctly. A new temporary file is created and destroyed for each call because we are still using the default ``NullScope``.
 
 ***********
 Next Steps
 ***********
 
-Now that you know how to manage dependency lifecycles with `yield`, let's explore how to control *how often* dependencies are created using :ref:`Scopes <tutorial_scopes>`.
+Now that you know how to manage dependency lifecycles with ``yield``, let's explore how to control *how often* dependencies are created using :ref:`Scopes <tutorial_scopes>`.

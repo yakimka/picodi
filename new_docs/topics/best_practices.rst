@@ -35,7 +35,7 @@ This is arguably the most important principle. Dependencies should primarily be 
 
     # --- Service Layer (NO injection here) ---
     class UserService:
-        # Receives dependencies via constructor, but NOT via @inject
+        # Receives dependencies via constructor, but NOT via ``@inject``
         def __init__(self, db: Database, cache: Cache):
             self.db = db
             self.cache = cache
@@ -45,7 +45,7 @@ This is arguably the most important principle. Dependencies should primarily be 
             ...
 
     # --- Dependency for Service (NO injection here either) ---
-    # This function *creates* the service, but doesn't use @inject itself
+    # This function *creates* the service, but doesn't use ``@inject`` itself
     # It might receive its own dependencies (db, cache) via parameters if needed,
     # but those would be injected *into this function* if it were decorated.
     # For simplicity here, assume get_db/get_cache are globally available or
@@ -61,7 +61,7 @@ This is arguably the most important principle. Dependencies should primarily be 
         db: Database = Provide(get_db),
         cache: Cache = Provide(get_cache)
     ) -> UserService:
-        # The service itself doesn't use @inject for its constructor
+        # The service itself doesn't use ``@inject`` for its constructor
         return UserService(db=db, cache=cache)
 
 
@@ -88,11 +88,11 @@ Use Scopes Wisely
 
 Scopes are powerful but add complexity if misused. Carefully consider the required lifecycle of each dependency:
 
-*   **`NullScope` (Default):** Use for cheap, stateless dependencies or when a unique instance is strictly required per use.
-*   **`SingletonScope`:** Use for expensive, shared resources like connection pools, HTTP clients, or configuration objects that should live for the entire application lifetime. Remember they require manual shutdown.
-*   **`ContextVarScope` / `RequestScope`:** Use for resources that need to be isolated per request (in web apps) or per task/thread context. Remember they require manual shutdown, often tied to the request/task end.
+*   **``NullScope`` (Default):** Use for cheap, stateless dependencies or when a unique instance is strictly required per use.
+*   **``SingletonScope``:** Use for expensive, shared resources like connection pools, HTTP clients, or configuration objects that should live for the entire application lifetime. Remember they require manual shutdown.
+*   **``ContextVarScope`` / ``RequestScope``:** Use for resources that need to be isolated per request (in web apps) or per task/thread context. Remember they require manual shutdown, often tied to the request/task end.
 
-Overusing singletons can lead to global state issues, while overusing `NullScope` can hurt performance if dependencies are expensive to create. Choose the scope that best matches the semantics of the dependency.
+Overusing singletons can lead to global state issues, while overusing ``NullScope`` can hurt performance if dependencies are expensive to create. Choose the scope that best matches the semantics of the dependency.
 
 **************************
 Keep Dependencies Simple
@@ -109,7 +109,7 @@ Keep business logic in your service layer or domain model, not hidden inside dep
 Leverage Type Hints
 *********************
 
-While Picodi works without them (relying on `Provide`), using Python type hints (`-> ReturnType`, `param: Type`) for both dependency providers and injected parameters is strongly recommended:
+While Picodi works without them (relying on ``Provide``), using Python type hints (``-> ReturnType``, ``param: Type``) for both dependency providers and injected parameters is strongly recommended:
 
 *   **Readability:** Clearly documents what type of object a dependency provides or expects.
 *   **Static Analysis:** Allows tools like MyPy to catch type errors early.

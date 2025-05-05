@@ -39,7 +39,7 @@ Dependency Injection is a design pattern used to achieve Inversion of Control (I
             # ... uses self.db_connection
             pass
 
-In this example, `UserService` is tightly coupled to `DatabaseConnection`. Testing `UserService` without a real database connection is difficult.
+In this example, ``UserService`` is tightly coupled to ``DatabaseConnection``. Testing ``UserService`` without a real database connection is difficult.
 
 **Example with DI:**
 
@@ -62,7 +62,7 @@ In this example, `UserService` is tightly coupled to `DatabaseConnection`. Testi
     db_conn = DatabaseConnection("my_db_string")
     user_service = UserService(db_conn) # Injection happens here
 
-Now, `UserService` receives its `DatabaseConnection` dependency. We can easily provide a different `DatabaseConnection` (e.g., a mock for testing) without changing `UserService`.
+Now, ``UserService`` receives its ``DatabaseConnection`` dependency. We can easily provide a different ``DatabaseConnection`` (e.g., a mock for testing) without changing ``UserService``.
 
 ****************
 How Picodi Helps
@@ -73,9 +73,9 @@ Picodi provides a simple and elegant way to manage this injection process. It ac
 Key concepts in Picodi:
 
 *   **Dependency Function:** A regular Python function (sync or async) that knows how to create an instance of a dependency. It might return a value directly or yield it (for dependencies needing cleanup).
-*   **`@inject` Decorator:** Marks a function or method as requiring dependency injection.
-*   **`Provide()` Marker:** Used within the signature of an `@inject`-ed function to specify which dependency function should provide the value for a parameter.
-*   **Registry (`picodi.registry`):** The central object managing dependencies, their scopes, and overrides.
+*   **``@inject`` Decorator:** Marks a function or method as requiring dependency injection.
+*   **``Provide()`` Marker:** Used within the signature of an ``@inject``-ed function to specify which dependency function should provide the value for a parameter.
+*   **Registry (``picodi.registry``):** The central object managing dependencies, their scopes, and overrides.
 
 Picodi handles resolving the dependency graph (dependencies that depend on other dependencies) and manages their lifecycle (creation and cleanup) based on defined **scopes**.
 

@@ -16,7 +16,7 @@ The core feature enabling testing is :ref:`dependency overriding <topics_overrid
 Manual Overrides in Tests
 ********************************
 
-You can directly use `registry.override` as a context manager within your test functions. This is useful for simple cases or when not using a testing framework with specific Picodi integration.
+You can directly use ``registry.override`` as a context manager within your test functions. This is useful for simple cases or when not using a testing framework with specific Picodi integration.
 
 .. code-block:: python
 
@@ -58,6 +58,6 @@ Remember to manage cleanup if your overrides involve dependencies with manual sc
 Pytest Integration
 ********************************
 
-Picodi provides a dedicated `pytest` plugin that significantly simplifies testing workflows by automating setup and cleanup.
+Picodi provides a dedicated ``pytest`` plugin that significantly simplifies testing workflows by automating setup and cleanup.
 
 Setup
