@@ -4,13 +4,18 @@ import asyncio
 import inspect
 import threading
 from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
-from contextlib import asynccontextmanager, contextmanager
+from contextlib import (
+    AbstractAsyncContextManager,
+    AbstractContextManager,
+    asynccontextmanager,
+    contextmanager,
+)
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, ContextManager, TypeVar, overload
 
 from picodi._internal import LazyResolver
 from picodi._scopes import AutoScope, ManualScope, NullScope, ScopeType
-from picodi.support import ExitStack, NullAwaitable
+from picodi.support import ExitStack, NullAwaitable, is_async_function
 
 if TYPE_CHECKING:
     from picodi._types import DependencyCallable, InitDependencies, LifespanScopeClass
@@ -333,12 +338,9 @@ class Provider:
         dependency: DependencyCallable,
         scope: ScopeType,
     ) -> Provider:
-        is_async = inspect.iscoroutinefunction(
-            dependency
-        ) or inspect.isasyncgenfunction(dependency)
         return cls(
             dependency=dependency,
-            is_async=is_async,
+            is_async=is_async_function(dependency),
             scope=scope,
         )
 
@@ -348,7 +350,7 @@ class Provider:
     def resolve_value(self, exit_stack: ExitStack | None, **kwargs: Any) -> Any:
         scope = self.get_scope()
         value_or_gen = self.dependency(**kwargs)
-        if self.is_async:
+        if self.is_async or isinstance(value_or_gen, AbstractAsyncContextManager):
 
             async def resolve_value_inner() -> Any:
                 value_or_gen_ = value_or_gen
@@ -362,6 +364,13 @@ class Provider:
                         assert exit_stack is not None, "exit_stack is required"
                         return await scope.enter(exit_stack, context_manager())
                     return await scope.enter(context_manager())
+                elif isinstance(value_or_gen_, AbstractAsyncContextManager):
+                    if isinstance(scope, AutoScope):
+                        assert exit_stack is not None, "exit_stack is required"
+                        return await scope.enter(
+                            exit_stack, value_or_gen_._recreate_cm()
+                        )
+                    return await scope.enter(value_or_gen_._recreate_cm())
                 return value_or_gen_
 
             return resolve_value_inner()
@@ -372,6 +381,11 @@ class Provider:
                 assert exit_stack is not None, "exit_stack is required"
                 return scope.enter(exit_stack, context_manager())
             return scope.enter(context_manager())
+        elif isinstance(value_or_gen, AbstractContextManager):
+            if isinstance(scope, AutoScope):
+                assert exit_stack is not None, "exit_stack is required"
+                return scope.enter(exit_stack, value_or_gen._recreate_cm())
+            return scope.enter(value_or_gen._recreate_cm())
         return value_or_gen
 
 

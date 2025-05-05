@@ -180,3 +180,31 @@ async def test_yield_dep_dont_close_while_parent_not_close_async(closeable):
 
     assert result == "my_dep"
     assert closeable.is_closed is False
+
+
+def test_can_use_context_manager_as_dependency():
+    @contextmanager
+    def get_int():
+        yield 42
+
+    @inject
+    def service(val: int = Provide(get_int)) -> int:
+        return val
+
+    result = service()
+
+    assert result == 42
+
+
+async def test_can_use_async_context_manager_as_dependency():
+    @asynccontextmanager
+    async def get_int():
+        yield 42
+
+    @inject
+    async def service(val: int = Provide(get_int)) -> int:
+        return val
+
+    result = await service()
+
+    assert result == 42

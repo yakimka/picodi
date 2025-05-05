@@ -1,3 +1,4 @@
+import contextlib
 import inspect
 import random
 from dataclasses import dataclass
@@ -5,6 +6,20 @@ from dataclasses import dataclass
 import pytest
 
 from picodi import NullScope, Provide, SingletonScope, inject, registry
+
+
+@pytest.fixture(params=[None, contextlib.contextmanager])
+def gen_decorator_sync(request):
+    if request.param is None:
+        return lambda f: f
+    return request.param
+
+
+@pytest.fixture(params=[None, contextlib.asynccontextmanager])
+def gen_decorator_async(request):
+    if request.param is None:
+        return lambda f: f
+    return request.param
 
 
 @dataclass
@@ -23,15 +38,21 @@ class IntService:
         self.closed = True
 
 
-def get_int_service():
-    int_service = IntService.create()
-    yield int_service
-    int_service.close()
+@pytest.fixture()
+def get_int_service(gen_decorator_sync):
+    @gen_decorator_sync
+    def get_int_service_():
+        int_service = IntService.create()
+        yield int_service
+        int_service.close()
+
+    return get_int_service_
 
 
 @pytest.fixture()
-def int_service_singleton_scope_dep():
+def int_service_singleton_scope_dep(gen_decorator_sync):
     @registry.set_scope(SingletonScope)
+    @gen_decorator_sync
     def get_int_service_singleton_scope_dep():
         int_service = IntService.create()
         yield int_service
@@ -40,15 +61,21 @@ def int_service_singleton_scope_dep():
     return get_int_service_singleton_scope_dep
 
 
-async def get_int_service_async():
-    int_service = IntService.create()
-    yield int_service
-    await int_service.aclose()
+@pytest.fixture()
+def get_int_service_async(gen_decorator_async):
+    @gen_decorator_async
+    async def get_int_service_async_():
+        int_service = IntService.create()
+        yield int_service
+        await int_service.aclose()
+
+    return get_int_service_async_
 
 
 @pytest.fixture()
-def int_service_async_singleton_scope_dep():
+def int_service_async_singleton_scope_dep(gen_decorator_async):
     @registry.set_scope(SingletonScope)
+    @gen_decorator_async
     async def get_int_service_async_singleton_scope_dep():
         int_service = IntService.create()
         yield int_service
@@ -57,7 +84,7 @@ def int_service_async_singleton_scope_dep():
     return get_int_service_async_singleton_scope_dep
 
 
-def test_resolve_yield_dep_sync():
+def test_resolve_yield_dep_sync(get_int_service):
     @inject
     def get_int(service: IntService = Provide(get_int_service)):
         assert service.closed is False
@@ -68,7 +95,7 @@ def test_resolve_yield_dep_sync():
     assert int_service.closed is True
 
 
-def test_multiple_calls_to_yield_dep_sync_return_different_values():
+def test_multiple_calls_to_yield_dep_sync_return_different_values(get_int_service):
     @inject
     def get_int(service: IntService = Provide(get_int_service)):
         return service
@@ -81,7 +108,7 @@ def test_multiple_calls_to_yield_dep_sync_return_different_values():
     assert int_service_1 is not int_service_2
 
 
-async def test_resolve_yield_dep_async():
+async def test_resolve_yield_dep_async(get_int_service_async):
     @inject
     async def get_int(service: IntService = Provide(get_int_service_async)):
         assert service.closed is False
@@ -93,7 +120,7 @@ async def test_resolve_yield_dep_async():
     assert int_service.closed is True
 
 
-async def test_resolve_yield_dep_sync_from_async_context():
+async def test_resolve_yield_dep_sync_from_async_context(get_int_service):
     @inject
     async def get_int(service: IntService = Provide(get_int_service)):
         assert service.closed is False
@@ -105,7 +132,9 @@ async def test_resolve_yield_dep_sync_from_async_context():
     assert int_service.closed is True
 
 
-async def test_multiple_calls_to_yield_dep_async_return_different_values():
+async def test_multiple_calls_to_yield_dep_async_return_different_values(
+    get_int_service_async,
+):
     @inject
     async def get_int(service: IntService = Provide(get_int_service_async)):
         return service
@@ -163,18 +192,38 @@ async def test_multiple_calls_to_singleton_scope_dep_sync_from_async_context_sam
 
 
 def test_resolve_async_yield_dep_from_sync_function_return_coroutine():
+    async def get_yield_dep():
+        yield None  # pragma: no cover
+
     @inject
-    def get_async_dep(port: int = Provide(get_int_service_async)):
+    def get_async_dep(port: int = Provide(get_yield_dep)):
         return port
 
     result = get_async_dep()
 
     assert inspect.isasyncgen(result)
-    assert result.__name__ == "get_int_service_async"
+    assert result.__name__ == "get_yield_dep"
 
 
-async def test_resolve_async_yield_dep_from_sync_function_can_be_inited():
+def test_resolve_async_cm_dep_from_sync_function_return_it_value():
+    @contextlib.asynccontextmanager
+    async def get_yield_dep():
+        yield None  # pragma: no cover
+
+    @inject
+    def get_async_dep(port: int = Provide(get_yield_dep)):
+        return port
+
+    result = get_async_dep()
+
+    assert isinstance(result, contextlib.AbstractAsyncContextManager), result
+
+
+async def test_resolve_async_yield_dep_from_sync_function_can_be_inited(
+    gen_decorator_async,
+):
     @registry.set_scope(SingletonScope)
+    @gen_decorator_async
     async def async_singleton_scope_dep():
         int_service = IntService.create()
         yield int_service
@@ -225,8 +274,9 @@ async def test_singleton_scope_dep_doesnt_close_automatically_sync_from_async_co
     assert int_service.closed is False
 
 
-def test_singleton_scope_dep_can_be_closed_manually():
+def test_singleton_scope_dep_can_be_closed_manually(gen_decorator_sync):
     @registry.set_scope(SingletonScope)
+    @gen_decorator_sync
     def async_singleton_scope_dep():
         int_service = IntService.create()
         yield int_service
@@ -244,8 +294,9 @@ def test_singleton_scope_dep_can_be_closed_manually():
     assert result.closed is True
 
 
-async def test_singleton_scope_dep_can_be_closed_manually_async():
+async def test_singleton_scope_dep_can_be_closed_manually_async(gen_decorator_async):
     @registry.set_scope(SingletonScope)
+    @gen_decorator_async
     async def async_singleton_scope_dep():
         int_service = IntService.create()
         yield int_service
@@ -263,9 +314,11 @@ async def test_singleton_scope_dep_can_be_closed_manually_async():
     assert result.closed is True
 
 
-async def test_can_resolve_injected_generator():
+async def test_can_resolve_injected_generator(gen_decorator_sync):
+    @gen_decorator_sync
     @inject
-    def get_int_service():
+    def get_int_service(val: int = Provide(lambda: 42)):
+        assert val == 42
         int_service = IntService.create()
         yield int_service
         int_service.close()
@@ -280,15 +333,21 @@ async def test_can_resolve_injected_generator():
     assert result.closed is True
 
 
-async def test_can_resolve_injected_generator_async():
+async def test_can_resolve_injected_generator_async(
+    gen_decorator_async, get_int_service_async
+):
+    @gen_decorator_async
     @inject
-    async def get_int_service():
+    async def get_int_service(val: int = Provide(lambda: 42)):
+        assert val == 42
         int_service = IntService.create()
         yield int_service
         await int_service.aclose()
 
     @inject
-    async def get_int(service: IntService = Provide(get_int_service)) -> IntService:
+    async def get_int(
+        service: IntService = Provide(get_int_service_async),
+    ) -> IntService:
         return service
 
     result = await get_int()
@@ -297,7 +356,8 @@ async def test_can_resolve_injected_generator_async():
     assert result.closed is True
 
 
-async def test_can_resolve_sync_injected_generator_in_async_context():
+async def test_can_resolve_sync_injected_generator_in_async_context(gen_decorator_sync):
+    @gen_decorator_sync
     @inject
     def get_int_service():
         int_service = IntService.create()
@@ -314,71 +374,72 @@ async def test_can_resolve_sync_injected_generator_in_async_context():
     assert result.closed is True
 
 
-def test_can_init_injected_singleton_scope_dep():
+def test_can_init_injected_singleton_scope_dep(gen_decorator_sync):
     called = 0
 
     def get_42():
         return 42
 
     @registry.set_scope(SingletonScope)
+    @gen_decorator_sync
     @inject
     def my_singleton_scope_dep(number: int = Provide(get_42)):
         assert number == 42
         nonlocal called
         called += 1
-        return number
+        yield number
 
     registry.init([my_singleton_scope_dep])
 
     assert called == 1
 
 
-async def test_can_init_injected_singleton_scope_dep_async():
+async def test_can_init_injected_singleton_scope_dep_async(gen_decorator_async):
     called = 0
 
-    def get_42():
-        return 42
-
     @registry.set_scope(SingletonScope)
+    @gen_decorator_async
     @inject
-    async def my_async_singleton_scope_dep(number: int = Provide(get_42)):
+    async def my_async_singleton_scope_dep(number: int = Provide(lambda: 42)):
         assert number == 42
         nonlocal called
         called += 1
-        return number
+        yield number
 
     await registry.init([my_async_singleton_scope_dep])
 
     assert called == 1
 
 
-def test_can_init_injected_singleton_scope_dep_argument_passed_as_callable():
+def test_can_init_injected_singleton_scope_dep_argument_passed_as_callable(
+    gen_decorator_sync,
+):
     called = 0
 
-    def get_42():
-        return 42
-
     @registry.set_scope(SingletonScope)
+    @gen_decorator_sync
     @inject
-    def my_singleton_scope_dep(number: int = Provide(get_42)):
+    def my_singleton_scope_dep(number: int = Provide(lambda: 42)):
         assert number == 42
         nonlocal called
         called += 1
-        return number
+        yield number
 
     registry.init(lambda: [my_singleton_scope_dep])
 
     assert called == 1
 
 
-async def test_can_resolve_yield_in_yield_with_correct_scopes():
+async def test_can_resolve_yield_in_yield_with_correct_scopes(gen_decorator_sync):
     context_calls = []
 
+    @gen_decorator_sync
     def get_a_dep():
         context_calls.append("get_a_dep")
         yield "a"
         context_calls.append("close_a_dep")
 
+    @gen_decorator_sync
     @inject
     def get_b_dep(a: str = Provide(get_a_dep)):
         context_calls.append("get_b_dep")
@@ -395,14 +456,18 @@ async def test_can_resolve_yield_in_yield_with_correct_scopes():
     assert context_calls == ["get_a_dep", "get_b_dep", "close_b_dep", "close_a_dep"]
 
 
-async def test_can_resolve_yield_in_yield_with_correct_scopes_async():
+async def test_can_resolve_yield_in_yield_with_correct_scopes_async(
+    gen_decorator_async,
+):
     context_calls = []
 
+    @gen_decorator_async
     async def get_a_dep():
         context_calls.append("get_a_dep")
         yield "a"
         context_calls.append("close_a_dep")
 
+    @gen_decorator_async
     @inject
     async def get_b_dep(a: str = Provide(get_a_dep)):
         context_calls.append("get_b_dep")
@@ -419,9 +484,10 @@ async def test_can_resolve_yield_in_yield_with_correct_scopes_async():
     assert context_calls == ["get_a_dep", "get_b_dep", "close_b_dep", "close_a_dep"]
 
 
-async def test_resources_are_closed_even_if_exception_raised():
+async def test_resources_are_closed_even_if_exception_raised(gen_decorator_sync):
     int_service = IntService.create()
 
+    @gen_decorator_sync
     def get_int_service():
         try:
             yield int_service
@@ -439,9 +505,10 @@ async def test_resources_are_closed_even_if_exception_raised():
     assert int_service.closed is True
 
 
-async def test_resources_are_closed_even_if_exception_raised_async():
+async def test_resources_are_closed_even_if_exception_raised_async(gen_decorator_async):
     int_service = IntService.create()
 
+    @gen_decorator_async
     async def get_int_service():
         try:
             yield int_service
@@ -459,7 +526,8 @@ async def test_resources_are_closed_even_if_exception_raised_async():
     assert int_service.closed is True
 
 
-def test_resources_closed_after_generator_consumed(closeable):
+def test_resources_closed_after_generator_consumed(gen_decorator_sync, closeable):
+    @gen_decorator_sync
     def get_yield_dep():
         yield closeable
         closeable.close()
@@ -475,7 +543,10 @@ def test_resources_closed_after_generator_consumed(closeable):
     assert closeable.is_closed is True
 
 
-async def test_resources_closed_after_generator_consumed_async(closeable):
+async def test_resources_closed_after_generator_consumed_async(
+    gen_decorator_async, closeable
+):
+    @gen_decorator_async
     async def get_yield_dep():
         yield closeable
         closeable.close()
@@ -493,10 +564,13 @@ async def test_resources_closed_after_generator_consumed_async(closeable):
 
 
 @pytest.mark.parametrize("scope_class", [NullScope, SingletonScope])
-async def test_resources_not_closed_without_finally_block(scope_class):
+async def test_resources_not_closed_without_finally_block(
+    gen_decorator_sync, scope_class
+):
     int_service = IntService.create()
 
     @registry.set_scope(scope_class)
+    @gen_decorator_sync
     def get_int_service():
         yield int_service
 
@@ -512,10 +586,13 @@ async def test_resources_not_closed_without_finally_block(scope_class):
 
 
 @pytest.mark.parametrize("scope_class", [NullScope, SingletonScope])
-async def test_resources_not_closed_without_finally_block_async(scope_class):
+async def test_resources_not_closed_without_finally_block_async(
+    gen_decorator_async, scope_class
+):
     int_service = IntService.create()
 
     @registry.set_scope(scope_class)
+    @gen_decorator_async
     async def get_int_service():
         yield int_service
 

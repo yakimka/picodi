@@ -7,6 +7,7 @@ May be useful for writing your own scopes or other customizations.
 from __future__ import annotations
 
 import asyncio
+import inspect
 from contextlib import AsyncExitStack
 from contextlib import ExitStack as SyncExitStack
 from typing import TYPE_CHECKING, Any, AsyncContextManager, ContextManager
@@ -102,3 +103,18 @@ def is_async_environment() -> bool:
     except RuntimeError:
         return False
     return True
+
+
+def is_async_function(fn: Any) -> bool:
+    """
+    Check if the function is async.
+
+    :param fn: function to check.
+    :return: True if the function is async, False otherwise.
+    """
+    if asyncio.iscoroutinefunction(fn) or inspect.isasyncgenfunction(fn):
+        return True
+
+    if wrpd := getattr(fn, "__wrapped__", None):
+        return is_async_function(wrpd)
+    return False
