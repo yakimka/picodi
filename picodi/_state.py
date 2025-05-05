@@ -355,9 +355,9 @@ class Provider:
                     if isinstance(scope, AutoScope):
                         assert exit_stack is not None, "exit_stack is required"
                         return await scope.enter(
-                            exit_stack, value_or_gen_._recreate_cm()
+                            exit_stack, value_or_gen_._recreate_cm()  # noqa: SF01
                         )
-                    return await scope.enter(value_or_gen_._recreate_cm())
+                    return await scope.enter(value_or_gen_._recreate_cm())  # noqa: SF01
                 return value_or_gen_
 
             return resolve_value_inner()
@@ -371,8 +371,11 @@ class Provider:
         elif isinstance(value_or_gen, AbstractContextManager):
             if isinstance(scope, AutoScope):
                 assert exit_stack is not None, "exit_stack is required"
-                return scope.enter(exit_stack, value_or_gen._recreate_cm())
-            return scope.enter(value_or_gen._recreate_cm())
+                return scope.enter(
+                    exit_stack,
+                    value_or_gen._recreate_cm(),  # noqa: SF01
+                )
+            return scope.enter(value_or_gen._recreate_cm())  # noqa: SF01
         return value_or_gen
 
 
