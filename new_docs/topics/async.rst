@@ -100,9 +100,9 @@ An `async def` function can, however, inject regular **synchronous** dependencie
     ):
         print(f"Received sync: {sync_val}, async: {async_val}")
 
-********************************
-Lifespan Management (`init`/`shutdown`)
-********************************
+*******************************************
+Lifespan Management (``init``/``shutdown``)
+*******************************************
 
 When dealing with async dependencies that have :ref:`manual scopes <topics_scopes>` (`SingletonScope`, `ContextVarScope`) or are marked for eager initialization (`auto_init=True`), remember:
 

@@ -1,14 +1,14 @@
 .. _tutorial_conclusion:
 
-########################
+#########################
 Tutorial: 07 - Conclusion
-########################
+#########################
 
 Congratulations! You've completed the Picodi tutorial.
 
-*****************
+*******************
 What You've Learned
-*****************
+*******************
 
 Through these steps, you've gained a practical understanding of Picodi's core features:
 
@@ -26,16 +26,16 @@ Where to Go Next
 
 This tutorial covered the fundamentals. To deepen your understanding and explore more advanced features, check out the **User Guide**:
 
-*   :ref:`topics_dependencies`: More details on defining dependencies.
-*   :ref:`topics_injection`: In-depth look at the `@inject` decorator.
-*   :ref:`topics_scopes`: Explore all built-in scopes (`NullScope`, `SingletonScope`, `ContextVarScope`) and how to create custom ones.
-*   :ref:`topics_overriding`: Advanced override techniques.
-*   :ref:`topics_lifespan`: Using `registry.lifespan` and `registry.alifespan` for managing application lifecycle.
-*   :ref:`topics_async`: Specific considerations for async applications.
-*   :ref:`topics_testing`: Comprehensive guide to testing with Picodi.
-*   :ref:`topics_integrations`: How to use Picodi with frameworks like FastAPI and Starlette.
-*   :ref:`topics_best_practices`: Recommendations for using Picodi effectively.
+*   :doc:`/topics/dependencies`: More details on defining dependencies.
+*   :doc:`/topics/injection`: In-depth look at the `@inject` decorator.
+*   :doc:`/topics/scopes`: Explore all built-in scopes (`NullScope`, `SingletonScope`, `ContextVarScope`) and how to create custom ones.
+*   :doc:`/topics/overriding`: Advanced override techniques.
+*   :doc:`/topics/lifespan`: Using `registry.lifespan` and `registry.alifespan` for managing application lifecycle.
+*   :doc:`/topics/async`: Specific considerations for async applications.
+*   :doc:`/topics/testing`: Comprehensive guide to testing with Picodi.
+*   :doc:`/topics/integrations`: How to use Picodi with frameworks like FastAPI and Starlette.
+*   :doc:`/topics/best_practices`: Recommendations for using Picodi effectively.
 
-You can also consult the :ref:`api_reference` for detailed information on specific functions and classes.
+You can also consult the :doc:`/api/picodi` for detailed information on specific functions and classes.
 
 We hope this tutorial has provided a solid foundation for using Picodi in your projects. Happy coding!

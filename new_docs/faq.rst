@@ -6,10 +6,9 @@ Frequently Asked Questions
 
 Here are answers to some common questions about using Picodi.
 
-*******************************************************************************
-Q: I'm injecting an `async def` dependency into a `def` function, but I get a
-   coroutine object instead of the value. Why?
-*******************************************************************************
+*************************************************************************************************************************
+Q: I'm injecting an `async def` dependency into a `def` function, but I get a coroutine object instead of the value. Why?
+*************************************************************************************************************************
 
 **A:** Synchronous functions (`def`) cannot `await` asynchronous operations. When you try to `Provide` an `async def` dependency into a sync function, Picodi cannot await the dependency provider to get its result within the synchronous context. Therefore, it injects the awaitable coroutine object itself.
 
@@ -91,10 +90,9 @@ Q: My tests are failing because of state leaking between them. What's wrong?
 *   **Manual Cleanup (if not using the plugin):** Ensure your test teardown logic (e.g., in `pytest` fixtures or `tearDown` methods) explicitly calls `registry.shutdown()` and `registry.clear_overrides()`.
 *   **Prefer Context Managers for Overrides:** Use `with registry.override(...):` within tests, as it automatically clears the override upon exiting the block.
 
-*******************************************************************************
-Q: flake8-bugbear complains about `B008 Do not perform function calls in
-   argument defaults` when using `Provide`. How to fix it?
-*******************************************************************************
+********************************************************************************************************************************
+Q: flake8-bugbear complains about `B008 Do not perform function calls in argument defaults` when using `Provide`. How to fix it?
+********************************************************************************************************************************
 
 **A:** You need to tell `flake8-bugbear` that `picodi.Provide` is safe to use in defaults. Add or modify the `extend-immutable-calls` setting in your flake8 configuration file (e.g., `setup.cfg`, `tox.ini`, or `.flake8`):
 

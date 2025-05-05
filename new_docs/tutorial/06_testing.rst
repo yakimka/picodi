@@ -111,7 +111,7 @@ Let's rewrite the previous test using the marker:
 
     # Apply the override using the marker
     @pytest.mark.picodi_override(get_api_base_url, get_test_api_url)
-    def test_call_external_api_with_marker(pytester): # Add pytester fixture if needed
+    def test_call_external_api_with_marker(): # No pytester fixture needed here
         """Verify the service constructs the URL correctly using the marker."""
         endpoint = "test/endpoint"
         expected_url = f"http://test.server.com/{endpoint}"

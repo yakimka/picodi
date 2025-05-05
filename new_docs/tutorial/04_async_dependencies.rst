@@ -1,8 +1,8 @@
 .. _tutorial_async_dependencies:
 
-#####################################
+########################################
 Tutorial: 04 - Asynchronous Dependencies
-#####################################
+########################################
 
 Modern Python applications often rely on asynchronous operations for I/O-bound tasks like network requests or database interactions. Picodi fully supports asynchronous dependencies and injection.
 

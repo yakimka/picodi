@@ -43,9 +43,9 @@ If creating the dependency involves I/O operations, you can use an `async def` f
 
 These functions are ready to be used with :func:`~picodi.Provide` within an :func:`~picodi.inject`-decorated function.
 
-********************************
+****************************************
 Yield Dependencies (Resource Management)
-********************************
+****************************************
 
 Often, dependencies represent resources that need setup before use and cleanup afterward (e.g., database connections, file handles, network clients). Picodi handles this elegantly using generator functions with a single `yield`.
 
@@ -104,9 +104,9 @@ Picodi treats such generators like context managers:
 
 These yield dependencies ensure resources are managed correctly within the scope of their usage. The exact timing of the teardown depends on the :ref:`scope <topics_scopes>` assigned to the dependency.
 
-********************************
+*********************************
 Factory Functions as Dependencies
-********************************
+*********************************
 
 Since dependency providers are just functions, you can use closures or factory functions to create parameterized dependencies.
 
@@ -139,9 +139,9 @@ Since dependency providers are just functions, you can use closures or factory f
 
 This pattern is useful for creating multiple instances of similar dependencies with different configurations.
 
-********************************
+*************************************
 Dependencies Using Other Dependencies
-********************************
+*************************************
 
 Dependency provider functions can themselves use :func:`~picodi.inject` and :func:`~picodi.Provide` to depend on other dependencies. Picodi automatically resolves the entire dependency graph.
 

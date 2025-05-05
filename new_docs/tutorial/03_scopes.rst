@@ -30,9 +30,9 @@ By default, all dependencies use `picodi.NullScope`.
 
 This explains the output in the previous steps where we saw "Creating API base URL dependency" or the temp file setup/teardown messages multiple times. `NullScope` is suitable for dependencies that are very cheap to create or must be unique for each use.
 
-********************************
-Singleton Scope: `SingletonScope`
-********************************
+***********************************
+Singleton Scope: ``SingletonScope``
+***********************************
 
 A very common requirement is to have a single instance of a dependency shared across the entire application (or for its entire lifetime). This is known as the Singleton pattern. Picodi provides `picodi.SingletonScope` for this.
 

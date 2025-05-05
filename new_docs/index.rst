@@ -1,14 +1,14 @@
 .. _picodi_documentation:
 
-###################
+####################
 Picodi Documentation
-###################
+####################
 
 **Picodi** is a straightforward and powerful Dependency Injection (DI) library for Python, designed to simplify managing dependencies in both synchronous and asynchronous applications.
 
 `Dependency Injection <https://en.wikipedia.org/wiki/Dependency_injection>`_ is a design pattern where an object receives its dependencies from an external source rather than creating them itself. Picodi helps you implement this pattern effectively, making your code more modular, testable, and maintainable.
 
-Inspired by FastAPI's DI system but usable in any Python project, Picodi offers:
+Inspired by FastAPI's DI system but usable in any Python project (framework-agnostic), Picodi offers:
 
 *   **Simplicity:** Easy-to-understand API.
 *   **Flexibility:** Works seamlessly in sync and async code.
@@ -46,23 +46,16 @@ Documentation
 
 .. toctree::
    :maxdepth: 2
-   :caption: API Reference
-
-   api/picodi
-   api/helpers
-   api/integrations
-
-.. toctree::
-   :maxdepth: 2
    :caption: Help & Info
 
    faq
-   contributing
-   release_notes
 
-******************
-Indices and tables
-******************
+.. toctree::
+    :hidden:
+    :caption: Indices and tables
+
+    genindex
+    api/picodi
 
 * :ref:`genindex`
 * :ref:`modindex`

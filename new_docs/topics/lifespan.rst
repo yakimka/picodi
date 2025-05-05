@@ -13,9 +13,9 @@ This involves two main operations:
 
 Picodi offers methods on the `registry` object and convenient context managers to handle this.
 
-********************************
-Initialization: `registry.init()`
-********************************
+***********************************
+Initialization: ``registry.init()``
+***********************************
 
 The :meth:`picodi.Registry.init` method is used to initialize dependencies proactively. This is often done once at application startup.
 
@@ -23,7 +23,7 @@ The :meth:`picodi.Registry.init` method is used to initialize dependencies proac
 
 *   **Performance:** Avoid the cost of creating expensive dependencies (like database connection pools) on the first request.
 *   **Readiness:** Ensure essential services are ready before the application starts serving requests or processing tasks.
-*   **Async in Sync:** Pre-initialize async singletons so their values can be injected into sync functions later (see :ref:`topics_async_in_sync`).
+*   **Async in Sync:** Pre-initialize async singletons so their values can be injected into sync functions later (see the section on injecting async dependencies into sync functions in :doc:`/topics/async`).
 
 **How it Works:**
 
@@ -202,8 +202,8 @@ Use this for applications where the main lifecycle is synchronous.
     Sync Singleton Cleanup
     Exited lifespan.
 
-`registry.alifespan()` (Asynchronous)
-====================================
+``registry.alifespan()`` (Asynchronous)
+=======================================
 Use this for applications with an asynchronous main lifecycle. It handles `await registry.init()` and `await registry.shutdown()`.
 
 .. code-block:: python

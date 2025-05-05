@@ -14,9 +14,9 @@ Imagine a dependency that provides a temporary file for writing data. This file 
 
 A simple `return` statement isn't enough because we need to execute cleanup code *after* the dependency has been used by the function that injected it.
 
-**********************************
-Using `yield` for Lifecycle Management
-**********************************
+****************************************
+Using ``yield`` for Lifecycle Management
+****************************************
 
 Picodi leverages Python's generators for this. If a dependency function is a generator that yields exactly once, Picodi treats it like a context manager (similar to those created with `@contextlib.contextmanager`).
 

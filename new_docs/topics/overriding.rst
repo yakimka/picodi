@@ -17,9 +17,9 @@ Overriding is essential for several scenarios:
 *   **Feature Flags:** Swap dependency implementations based on runtime feature flags to enable or disable certain functionalities.
 *   **Abstract Dependencies:** Define an "abstract" dependency provider (perhaps raising `NotImplementedError`) and require specific implementations to be provided via overrides in different application contexts.
 
-********************************
-How to Override: `registry.override()`
-********************************
+****************************************
+How to Override: ``registry.override()``
+****************************************
 
 Picodi provides the :meth:`picodi.Registry.override` method on the `registry` object to manage overrides. It offers flexibility by working as both a context manager and a decorator.
 

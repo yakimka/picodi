@@ -170,7 +170,7 @@ You can use `@inject` on methods, including `__init__`, just like regular functi
 Sync vs. Async Injection
 ********************************
 
-*   A **synchronous** function (`def`) can only inject **synchronous** dependencies. Attempting to `Provide` an `async def` dependency in a synchronous function will result in the coroutine object being injected, not its result. (Exception: See :ref:`topics_async_in_sync` for manually initialized async dependencies).
+*   A **synchronous** function (`def`) can only inject **synchronous** dependencies. Attempting to `Provide` an `async def` dependency in a synchronous function will result in the coroutine object being injected, not its result. (Exception: See the section on injecting async dependencies into sync functions in :doc:`/topics/async` for manually initialized async dependencies).
 *   An **asynchronous** function (`async def`) can inject **both synchronous and asynchronous** dependencies. Picodi will correctly `await` async dependencies when resolving them within an async function.
 
 ****************

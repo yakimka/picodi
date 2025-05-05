@@ -6,9 +6,9 @@ Introduction
 
 Welcome to Picodi! This guide will introduce you to the core concepts of Dependency Injection (DI) and how Picodi helps you apply them in your Python projects.
 
-**************************
+*****************************
 What is Dependency Injection?
-**************************
+*****************************
 
 Dependency Injection is a design pattern used to achieve Inversion of Control (IoC) between classes and their dependencies. Instead of an object creating its own dependencies (the objects it needs to function), these dependencies are "injected" from an external source.
 

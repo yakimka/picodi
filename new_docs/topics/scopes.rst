@@ -98,9 +98,9 @@ Scopes in Picodi inherit from either `ManualScope` or `AutoScope`.
 *   **`ManualScope`** (like `SingletonScope`, `ContextVarScope`): Require explicit cleanup via :meth:`~picodi.Registry.shutdown`. Their instances persist until shutdown is called for their scope class (or all manual scopes if no class is specified).
 *   **`AutoScope`** (like `NullScope`): Cleanup happens automatically after the root injection point finishes. You don't need to call `shutdown` for these.
 
-********************************
-Automatic Initialization (`auto_init`)
-********************************
+****************************************
+Automatic Initialization (``auto_init``)
+****************************************
 
 When setting a scope, especially a manual one like `SingletonScope`, you might want the dependency to be created proactively when the application starts, rather than waiting for the first request. You can achieve this using the `auto_init=True` parameter in `@registry.set_scope`.
 
@@ -139,7 +139,7 @@ Dependencies marked with `auto_init=True` will be initialized when :meth:`picodi
 User-defined Scopes
 ********************************
 
-You can create custom scopes by subclassing :class:`picodi.ManualScope` or :class:`picodi.AutoScope` and implementing the required methods (`get`, `set`, `enter`, `shutdown`). This allows for fine-grained control over dependency lifecycles if the built-in scopes don't meet your specific needs. Consult the :ref:`API reference <api_picodi>` for details on the `Scope` base classes.
+You can create custom scopes by subclassing :class:`picodi.ManualScope` or :class:`picodi.AutoScope` and implementing the required methods (`get`, `set`, `enter`, `shutdown`). This allows for fine-grained control over dependency lifecycles if the built-in scopes don't meet your specific needs. Consult the API Reference (once available) for details on the `Scope` base classes.
 
 ****************
 Key Takeaways
