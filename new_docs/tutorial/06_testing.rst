@@ -19,14 +19,17 @@ Let's write a test for our ``call_external_api`` service. We want to ensure it c
     # test_services.py
     import pytest
     from picodi import registry
+
     # Assume services.py and dependencies.py are importable
     from services import call_external_api
     from dependencies import get_api_base_url
+
 
     def get_test_api_url() -> str:
         """A dependency providing a fixed URL for testing."""
         print("Test Override: Providing TEST URL")
         return "http://test.server.com"
+
 
     def test_call_external_api_constructs_correct_url():
         """Verify the service constructs the URL correctly using an override."""
@@ -43,6 +46,7 @@ Let's write a test for our ``call_external_api`` service. We want to ensure it c
             # (In a real test, you might check logs or mock calls)
             assert f"Response from {expected_url}" == response
         print("Test: Exited override context.")
+
 
     # To run this test: pytest test_services.py -s
     # The -s flag shows print statements
@@ -100,18 +104,20 @@ Let's rewrite the previous test using the marker:
 
     # test_services_pytest.py
     import pytest
-    from picodi import registry # No longer needed for override context
+    from picodi import registry  # No longer needed for override context
     from services import call_external_api
     from dependencies import get_api_base_url
+
 
     def get_test_api_url() -> str:
         """A dependency providing a fixed URL for testing."""
         print("Test Override: Providing TEST URL")
         return "http://test.server.com"
 
+
     # Apply the override using the marker
     @pytest.mark.picodi_override(get_api_base_url, get_test_api_url)
-    def test_call_external_api_with_marker(): # No pytester fixture needed here
+    def test_call_external_api_with_marker():  # No pytester fixture needed here
         """Verify the service constructs the URL correctly using the marker."""
         endpoint = "test/endpoint"
         expected_url = f"http://test.server.com/{endpoint}"
@@ -123,6 +129,7 @@ Let's rewrite the previous test using the marker:
         assert f"Response from {expected_url}" == response
         print("Test: Test function finished.")
         # Cleanup happens automatically after this test runs
+
 
     # To run: pytest test_services_pytest.py -s
 

@@ -19,17 +19,20 @@ Let's create an async dependency that simulates fetching user data from an exter
     # dependencies.py
     import asyncio
 
+
     async def fetch_user_data(user_id: int) -> dict:
         """Simulates fetching user data asynchronously."""
         print(f"Async Dep: Starting fetch for user {user_id}")
-        await asyncio.sleep(0.1) # Simulate network delay
+        await asyncio.sleep(0.1)  # Simulate network delay
         print(f"Async Dep: Finished fetch for user {user_id}")
         return {"id": user_id, "name": f"User {user_id}"}
+
 
     # This is a factory to create specific user fetchers
     def create_user_fetcher(user_id: int):
         async def fetcher():
             return await fetch_user_data(user_id)
+
         return fetcher
 
 ********************************
@@ -46,9 +49,10 @@ Let's create an async service function that uses our ``fetch_user_data`` depende
     from picodi import Provide, inject
     from dependencies import create_user_fetcher
 
+
     @inject
     async def process_user(
-        user_data: dict = Provide(create_user_fetcher(123)) # Provide the async dep
+        user_data: dict = Provide(create_user_fetcher(123)),  # Provide the async dep
     ) -> None:
         """Processes user data fetched asynchronously."""
         print(f"Async Service: Processing user ID {user_data.get('id')}")
@@ -88,7 +92,7 @@ Picodi correctly awaited the ``fetch_user_data`` coroutine before injecting the 
 Async Yield Dependencies
 ********************************
 
-Just like synchronous dependencies, async dependencies can use ``yield`` for setup and teardown, often involving async operations. This is similar to using ``@contextlib.asynccontextmanager``.
+Just like synchronous dependencies, async dependencies can use ``yield`` for setup and teardown, often involving async operations. This is similar to using :func:`python:contextlib.asynccontextmanager`.
 
 Let's define an async dependency managing a (simulated) async database connection:
 
@@ -97,13 +101,14 @@ Let's define an async dependency managing a (simulated) async database connectio
     # dependencies.py
     import asyncio
 
+
     # Assume this is an async context manager for a DB connection pool
     class AsyncDbConnection:
         async def __aenter__(self):
             print("Async Yield Dep: Connecting to DB...")
             await asyncio.sleep(0.05)
             print("Async Yield Dep: Connected.")
-            return self # Return the connection object
+            return self  # Return the connection object
 
         async def __aexit__(self, exc_type, exc, tb):
             print("Async Yield Dep: Disconnecting from DB...")
@@ -115,25 +120,29 @@ Let's define an async dependency managing a (simulated) async database connectio
             await asyncio.sleep(0.02)
             return "Query Result"
 
+
     async def get_db_connection():
         """Provides an async DB connection and ensures disconnection."""
         async with AsyncDbConnection() as connection:
-            yield connection # Yield the connection object
+            yield connection  # Yield the connection object
+
 
     # services.py
     from picodi import Provide, inject
-    from dependencies import get_db_connection, AsyncDbConnection # Import type hint too
+    from dependencies import get_db_connection, AsyncDbConnection  # Import type hint too
+
 
     @inject
     async def run_db_query(
         query: str,
-        db_conn: AsyncDbConnection = Provide(get_db_connection) # Inject async yield dep
+        db_conn: AsyncDbConnection = Provide(get_db_connection),  # Inject async yield dep
     ) -> str:
         """Runs a query using an injected async database connection."""
         print("Async Service: Running DB query.")
         result = await db_conn.execute(query)
         print("Async Service: Query finished.")
         return result
+
 
     # main.py
     import asyncio

@@ -22,6 +22,7 @@ The most basic form of a dependency provider is a function that directly returns
         """Returns the connection string for the database."""
         return "postgresql://user:password@host:port/dbname"
 
+
     def get_settings() -> dict:
         """Loads and returns application settings."""
         # In a real app, this might load from a file or environment variables
@@ -35,10 +36,11 @@ If creating the dependency involves I/O operations, you can use an ``async def``
 
     import asyncio
 
+
     async def get_external_api_key() -> str:
         """Fetches an API key from a secure vault (simulated)."""
         print("Fetching API key...")
-        await asyncio.sleep(0.1) # Simulate I/O
+        await asyncio.sleep(0.1)  # Simulate I/O
         return "secret-api-key-12345"
 
 These functions are ready to be used with :func:`~picodi.Provide` within an :func:`~picodi.inject`-decorated function.
@@ -62,14 +64,15 @@ Picodi treats such generators like context managers:
     from contextlib import contextmanager
     import sqlite3
 
-    @contextmanager # Good practice, though Picodi only needs the yield structure
+
+    @contextmanager  # Good practice, though Picodi only needs the yield structure
     def get_db_cursor():
         """Provides a database cursor and ensures the connection is closed."""
         connection = sqlite3.connect(":memory:")
         print("DB Connection Opened")
         cursor = connection.cursor()
         try:
-            yield cursor # Provide the cursor
+            yield cursor  # Provide the cursor
         finally:
             connection.close()
             print("DB Connection Closed")
@@ -81,18 +84,22 @@ Picodi treats such generators like context managers:
     import asyncio
     from contextlib import asynccontextmanager
 
-    class AsyncResource: # Example async resource
+
+    class AsyncResource:  # Example async resource
         async def setup(self):
             print("Async Resource Setup")
             await asyncio.sleep(0.05)
             return self
+
         async def close(self):
             print("Async Resource Closed")
             await asyncio.sleep(0.05)
+
         async def do_work(self):
             print("Async Resource Working")
 
-    @asynccontextmanager # Good practice
+
+    @asynccontextmanager  # Good practice
     async def get_async_resource():
         """Provides an async resource with setup and teardown."""
         resource = AsyncResource()
@@ -114,6 +121,7 @@ Since dependency providers are just functions, you can use closures or factory f
 
     from dataclasses import dataclass
 
+
     @dataclass
     class ApiClient:
         base_url: str
@@ -121,13 +129,17 @@ Since dependency providers are just functions, you can use closures or factory f
         def get(self, endpoint: str) -> str:
             return f"GET {self.base_url}/{endpoint}"
 
+
     # Factory function
     def create_api_client(base_url: str) -> callable:
         """Returns a dependency function that creates an ApiClient."""
+
         def get_client() -> ApiClient:
             print(f"Creating ApiClient for {base_url}")
             return ApiClient(base_url=base_url)
+
         return get_client
+
 
     # Usage with Provide:
     # @inject
@@ -149,14 +161,17 @@ Dependency provider functions can themselves use :func:`~picodi.inject` and :fun
 
     from picodi import Provide, inject
 
+
     def get_base_url() -> str:
         return "https://config-service.com"
 
-    @inject # get_api_config depends on get_base_url
+
+    @inject  # get_api_config depends on get_base_url
     def get_api_config(url: str = Provide(get_base_url)) -> dict:
         print(f"Fetching config from {url}")
         # Simulate fetching config based on the URL
         return {"key": "config-key", "timeout": 5}
+
 
     # Another function can now depend on get_api_config
     # @inject

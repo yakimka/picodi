@@ -16,10 +16,11 @@ To define a dependency provider that performs asynchronous operations, simply us
 
     import asyncio
 
+
     async def fetch_remote_config() -> dict:
         """Simulates fetching configuration over the network."""
         print("Async Dep: Fetching config...")
-        await asyncio.sleep(0.1) # Simulate network I/O
+        await asyncio.sleep(0.1)  # Simulate network I/O
         return {"feature_x_enabled": True}
 
 This function can now be used with :func:`~picodi.Provide`.
@@ -35,25 +36,29 @@ For asynchronous resources that require setup and teardown (like database connec
     import asyncio
     from contextlib import asynccontextmanager
 
+
     class AsyncDbClient:
         async def connect(self):
             print("Async Yield Dep: Connecting...")
             await asyncio.sleep(0.05)
             return self
+
         async def close(self):
             print("Async Yield Dep: Closing connection...")
             await asyncio.sleep(0.05)
+
         async def query(self, sql):
             print(f"Async Yield Dep: Running query: {sql}")
             await asyncio.sleep(0.1)
             return [{"id": 1}, {"id": 2}]
+
 
     @asynccontextmanager
     async def get_db_client():
         client = AsyncDbClient()
         await client.connect()
         try:
-            yield client # Yield the connected client
+            yield client  # Yield the connected client
         finally:
             await client.close()
 
@@ -70,17 +75,20 @@ This is because Picodi needs to ``await`` the asynchronous dependency provider d
 .. code-block:: python
 
     from picodi import Provide, inject
+
     # Assume async dependencies from above are defined
+
 
     @inject
     async def process_data(
         config: dict = Provide(fetch_remote_config),
-        db_client = Provide(get_db_client) # Injecting async yield dep
+        db_client=Provide(get_db_client),  # Injecting async yield dep
     ):
         print(f"Async Service: Got config: {config}")
         if config.get("feature_x_enabled"):
             results = await db_client.query("SELECT * FROM data")
             print(f"Async Service: Got DB results: {results}")
+
 
     # To run this:
     # import asyncio
@@ -93,10 +101,11 @@ An ``async def`` function can, however, inject regular **synchronous** dependenc
     def get_sync_setting() -> str:
         return "sync_value"
 
+
     @inject
     async def async_func_with_sync_dep(
         sync_val: str = Provide(get_sync_setting),
-        async_val: dict = Provide(fetch_remote_config)
+        async_val: dict = Provide(fetch_remote_config),
     ):
         print(f"Received sync: {sync_val}, async: {async_val}")
 
@@ -117,19 +126,23 @@ The :meth:`~picodi.Registry.alifespan` context manager handles these awaits auto
     import asyncio
     from picodi import registry, SingletonScope, Provide, inject
 
+
     @registry.set_scope(SingletonScope, auto_init=True)
     async def get_async_singleton_resource():
         print("Async Singleton: Init")
         yield "Async Resource Data"
         print("Async Singleton: Cleanup")
 
+
     @inject
-    async def main_logic(res = Provide(get_async_singleton_resource)):
+    async def main_logic(res=Provide(get_async_singleton_resource)):
         print(f"Main logic using: {res}")
 
+
     async def run():
-        async with registry.alifespan(): # Handles await init() and await shutdown()
-             await main_logic()
+        async with registry.alifespan():  # Handles await init() and await shutdown()
+            await main_logic()
+
 
     # asyncio.run(run())
 
@@ -152,29 +165,33 @@ Generally, you cannot directly inject the *result* of an async dependency into a
     import asyncio
     from picodi import registry, SingletonScope, Provide, inject
 
-    @registry.set_scope(SingletonScope, auto_init=True) # Manual scope, eager init
+
+    @registry.set_scope(SingletonScope, auto_init=True)  # Manual scope, eager init
     async def get_async_data_source():
         print("Async Source: Initializing...")
         await asyncio.sleep(0.1)
         return {"data": "pre-loaded async data"}
 
-    @inject # Synchronous function
+
+    @inject  # Synchronous function
     def process_synchronously(
-        source: dict = Provide(get_async_data_source) # Provide the async dep
+        source: dict = Provide(get_async_data_source),  # Provide the async dep
     ):
         # This works because the value was already created and cached by init()
         print(f"Sync function using cached async data: {source}")
 
+
     async def startup_and_run():
         print("App Startup: Initializing dependencies...")
-        await registry.init() # MUST await to initialize get_async_data_source
+        await registry.init()  # MUST await to initialize get_async_data_source
         print("App Startup: Dependencies initialized.")
 
         print("\nRunning synchronous function...")
         process_synchronously()
 
         print("\nApp Shutdown...")
-        await registry.shutdown() # Cleanup (if get_async_data_source yielded)
+        await registry.shutdown()  # Cleanup (if get_async_data_source yielded)
+
 
     # asyncio.run(startup_and_run())
 

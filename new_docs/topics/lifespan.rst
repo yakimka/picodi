@@ -35,6 +35,7 @@ The :meth:`picodi.Registry.init` method is used to initialize dependencies proac
 
         from picodi import registry, SingletonScope
 
+
         @registry.set_scope(SingletonScope, auto_init=True)
         def get_cache_client():
             print("Initializing Cache Client...")
@@ -47,14 +48,16 @@ The :meth:`picodi.Registry.init` method is used to initialize dependencies proac
 
         from picodi import registry, SingletonScope
 
-        @registry.set_scope(SingletonScope) # No auto_init here
+
+        @registry.set_scope(SingletonScope)  # No auto_init here
         def get_db_pool():
             print("Initializing DB Pool...")
             # ... create and return pool ...
             return "DbPool"
 
+
         # Explicitly add it to the init list
-        registry.add_for_init([get_db_pool]) # Can pass a list or callable returning a list
+        registry.add_for_init([get_db_pool])  # Can pass a list or callable returning a list
 
 **Calling ``init()``:**
 
@@ -80,17 +83,20 @@ If any dependencies marked for initialization (via ``auto_init`` or ``add_for_in
     import asyncio
     from picodi import registry, SingletonScope
 
+
     @registry.set_scope(SingletonScope, auto_init=True)
     async def get_async_service_client():
         print("Initializing Async Client...")
         await asyncio.sleep(0.1)
         return "AsyncServiceClient"
 
+
     async def startup():
         print("App Starting...")
         # Must await because get_async_service_client is async
         await registry.init()
         print("Async Dependencies Initialized.")
+
 
     # asyncio.run(startup())
 
@@ -116,6 +122,7 @@ The :meth:`picodi.Registry.shutdown` method is used to trigger the cleanup phase
 
     from picodi import registry, SingletonScope, Provide, inject
 
+
     @registry.set_scope(SingletonScope)
     def get_resource_with_cleanup():
         print("Resource Acquired")
@@ -124,12 +131,14 @@ The :meth:`picodi.Registry.shutdown` method is used to trigger the cleanup phase
         finally:
             print("Resource Cleaned Up")
 
+
     @inject
-    def use_resource(res = Provide(get_resource_with_cleanup)):
+    def use_resource(res=Provide(get_resource_with_cleanup)):
         print(f"Using {res}")
 
+
     # --- Usage ---
-    use_resource() # Acquires resource if not already done
+    use_resource()  # Acquires resource if not already done
 
     print("App Shutting Down...")
     shutdown_awaitable = registry.shutdown()
@@ -177,18 +186,21 @@ Use this for applications where the main lifecycle is synchronous.
 
     from picodi import registry, SingletonScope, Provide, inject
 
+
     @registry.set_scope(SingletonScope, auto_init=True)
     def get_sync_singleton():
         print("Sync Singleton Init")
         yield "Sync Data"
         print("Sync Singleton Cleanup")
 
+
     @inject
-    def main_sync_logic(data = Provide(get_sync_singleton)):
+    def main_sync_logic(data=Provide(get_sync_singleton)):
         print(f"Running sync logic with: {data}")
 
+
     print("Entering lifespan...")
-    with registry.lifespan(): # Handles init() and shutdown()
+    with registry.lifespan():  # Handles init() and shutdown()
         main_sync_logic()
     print("Exited lifespan.")
 
@@ -211,6 +223,7 @@ Use this for applications with an asynchronous main lifecycle. It handles ``awai
     import asyncio
     from picodi import registry, SingletonScope, Provide, inject
 
+
     @registry.set_scope(SingletonScope, auto_init=True)
     async def get_async_singleton():
         print("Async Singleton Init")
@@ -219,15 +232,18 @@ Use this for applications with an asynchronous main lifecycle. It handles ``awai
         print("Async Singleton Cleanup")
         await asyncio.sleep(0.05)
 
+
     @inject
-    async def main_async_logic(data = Provide(get_async_singleton)):
+    async def main_async_logic(data=Provide(get_async_singleton)):
         print(f"Running async logic with: {data}")
+
 
     async def run_app():
         print("Entering alifespan...")
-        async with registry.alifespan(): # Handles await init() and await shutdown()
+        async with registry.alifespan():  # Handles await init() and await shutdown()
             await main_async_logic()
         print("Exited alifespan.")
+
 
     # asyncio.run(run_app())
 

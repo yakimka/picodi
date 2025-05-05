@@ -32,47 +32,55 @@ This is the recommended approach for temporary overrides, especially within test
 
     from picodi import registry, Provide, inject
 
+
     # --- Original Dependencies ---
     def get_database_url() -> str:
         print("Original: Using Production DB URL")
         return "prod_db_url"
 
+
     def get_email_sender() -> callable:
         print("Original: Using Real Email Sender")
+
         def send(to, subject, body):
             print(f"RealEmail: Sending to {to} - {subject}")
+
         return send
+
 
     # --- Test/Alternative Dependencies ---
     def get_test_database_url() -> str:
         print("Override: Using Test DB URL")
         return "test_db_url"
 
+
     def get_mock_email_sender() -> callable:
         print("Override: Using Mock Email Sender")
         sent_emails = []
+
         def send(to, subject, body):
             print(f"MockEmail: Pretending to send to {to} - {subject}")
             sent_emails.append({"to": to, "subject": subject, "body": body})
+
         # Attach the log for inspection in tests
         send.sent_emails = sent_emails
         return send
+
 
     # --- Service Using Dependencies ---
     @inject
     def register_user(
         username: str,
         db_url: str = Provide(get_database_url),
-        send_email: callable = Provide(get_email_sender)
+        send_email: callable = Provide(get_email_sender),
     ):
         print(f"Service: Registering {username} using DB {db_url}")
         # ... database logic using db_url ...
         send_email(
-            to=f"{username}@example.com",
-            subject="Welcome!",
-            body="Thanks for registering."
+            to=f"{username}@example.com", subject="Welcome!", body="Thanks for registering."
         )
         print(f"Service: User {username} registered.")
+
 
     # --- Using Overrides in a Test-like Scenario ---
     print("--- Running with Production Defaults ---")
@@ -84,9 +92,10 @@ This is the recommended approach for temporary overrides, especially within test
         register_user("test_db_user")
 
     print("\n--- Running with Multiple Overrides ---")
-    mock_sender_provider = get_mock_email_sender() # Get the provider function
-    with registry.override(get_database_url, get_test_database_url), \
-         registry.override(get_email_sender, mock_sender_provider):
+    mock_sender_provider = get_mock_email_sender()  # Get the provider function
+    with registry.override(get_database_url, get_test_database_url), registry.override(
+        get_email_sender, mock_sender_provider
+    ):
         register_user("full_mock_user")
         # We can inspect the mock
         assert len(mock_sender_provider.sent_emails) == 1
@@ -137,17 +146,21 @@ You can also apply ``override`` as a decorator directly onto the overriding func
 
     from picodi import registry, Provide, inject
 
+
     def get_original_setting():
         return "Original Value"
 
+
     @inject
-    def use_setting(setting = Provide(get_original_setting)):
+    def use_setting(setting=Provide(get_original_setting)):
         print(f"Using setting: {setting}")
+
 
     # --- Apply override using decorator ---
     @registry.override(get_original_setting)
     def get_overridden_setting():
         return "Decorated Override Value"
+
 
     print("--- Calling with decorator override active ---")
     use_setting()
@@ -158,7 +171,7 @@ You can also apply ``override`` as a decorator directly onto the overriding func
 
     # --- Manually clear the override ---
     print("\n--- Clearing override ---")
-    registry.override(get_original_setting, None) # Pass None as the second arg
+    registry.override(get_original_setting, None)  # Pass None as the second arg
 
     print("\n--- Calling after clear ---")
     use_setting()

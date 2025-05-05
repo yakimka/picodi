@@ -4,19 +4,26 @@
 Introduction
 ############
 
-Welcome to Picodi! This guide will introduce you to the core concepts of Dependency Injection (DI) and how Picodi helps you apply them in your Python projects.
+Welcome to Picodi! This guide will introduce you to the core concepts of Dependency Injection (DI)
+and how Picodi helps you apply them in your Python projects.
 
 *****************************
 What is Dependency Injection?
 *****************************
 
-Dependency Injection is a design pattern used to achieve Inversion of Control (IoC) between classes and their dependencies. Instead of an object creating its own dependencies (the objects it needs to function), these dependencies are "injected" from an external source.
+Dependency Injection is a design pattern used to achieve Inversion of Control (IoC)
+between components and their dependencies.
+Instead of an object creating its own dependencies (the objects it needs to function),
+these dependencies are "injected" from an external source.
 
 **Why use DI?**
 
-*   **Decoupling:** Objects don't need to know how to create their dependencies. This reduces coupling between components, making the system more modular.
-*   **Testability:** Dependencies can be easily replaced with mock objects during testing, allowing for isolated unit tests.
-*   **Flexibility & Maintainability:** It's easier to change or configure dependencies without modifying the objects that use them. Code becomes cleaner and easier to manage.
+*   **Decoupling:** Objects don't need to know how to create their dependencies.
+    This reduces coupling between components, making the system more modular.
+*   **Testability:** Dependencies can be easily replaced with mock objects during testing,
+    allowing for isolated tests.
+*   **Flexibility & Maintainability:** It's easier to change or configure dependencies without
+    modifying the objects that use them. Code becomes cleaner and easier to manage.
 
 **Example without DI:**
 
@@ -24,11 +31,12 @@ Dependency Injection is a design pattern used to achieve Inversion of Control (I
 
     class DatabaseConnection:
         def __init__(self, connection_string: str):
-            self._connection = connect(connection_string) # Assume connect exists
+            self._connection = connect(connection_string)  # Assume connect exists
 
         def fetch_data(self, query: str):
             # ... fetch data using self._connection
             pass
+
 
     class UserService:
         def __init__(self):
@@ -39,7 +47,8 @@ Dependency Injection is a design pattern used to achieve Inversion of Control (I
             # ... uses self.db_connection
             pass
 
-In this example, ``UserService`` is tightly coupled to ``DatabaseConnection``. Testing ``UserService`` without a real database connection is difficult.
+In this example, ``UserService`` is tightly coupled to ``DatabaseConnection``.
+Testing ``UserService`` without a real database connection is difficult.
 
 **Example with DI:**
 
@@ -48,6 +57,7 @@ In this example, ``UserService`` is tightly coupled to ``DatabaseConnection``. T
     class DatabaseConnection:
         # ... (same as before)
         pass
+
 
     class UserService:
         def __init__(self, db_connection: DatabaseConnection):
@@ -58,25 +68,32 @@ In this example, ``UserService`` is tightly coupled to ``DatabaseConnection``. T
             # ... uses self.db_connection
             pass
 
+
     # Somewhere else in the application (e.g., the entry point)
     db_conn = DatabaseConnection("my_db_string")
-    user_service = UserService(db_conn) # Injection happens here
+    user_service = UserService(db_conn)  # Injection happens here
 
-Now, ``UserService`` receives its ``DatabaseConnection`` dependency. We can easily provide a different ``DatabaseConnection`` (e.g., a mock for testing) without changing ``UserService``.
+Now, ``UserService`` receives its ``DatabaseConnection`` dependency.
+We can easily provide a different ``DatabaseConnection`` (e.g., a mock for testing) without changing ``UserService``.
 
 ****************
 How Picodi Helps
 ****************
 
-Picodi provides a simple and elegant way to manage this injection process. It acts as a central **registry** where you define how to create your dependencies (using simple functions) and a mechanism (**injection**) to automatically provide these dependencies to the functions or classes that need them.
+Picodi provides a simple and elegant way to manage this injection process.
+It acts as a mechanism (**injection**) to automatically provide **dependencies** (using simple functions)
+to the functions or classes that need them.
 
 Key concepts in Picodi:
 
-*   **Dependency Function:** A regular Python function (sync or async) that knows how to create an instance of a dependency. It might return a value directly or yield it (for dependencies needing cleanup).
-*   **``@inject`` Decorator:** Marks a function or method as requiring dependency injection.
-*   **``Provide()`` Marker:** Used within the signature of an ``@inject``-ed function to specify which dependency function should provide the value for a parameter.
-*   **Registry (``picodi.registry``):** The central object managing dependencies, their scopes, and overrides.
+*   **Dependency Function:** A regular Python function (sync or async) that knows how to create an instance of a dependency.
+    It might return a value directly or yield it (for dependencies needing cleanup).
+*   **Decorator** :func:`picodi.inject` **:** Marks a function or method as requiring dependency injection.
+*   **Marker:** :func:`picodi.Provide` **:** Used within the signature of an ``@inject``-ed function to specify which
+    dependency function should provide the value for a parameter.
+*   **Registry** :attr:`picodi.registry` **:** The central object managing dependencies, their scopes, and overrides.
 
-Picodi handles resolving the dependency graph (dependencies that depend on other dependencies) and manages their lifecycle (creation and cleanup) based on defined **scopes**.
+Picodi handles resolving the dependency graph (dependencies that depend on other dependencies) and
+manages their lifecycle (creation and cleanup) based on defined :doc:`/topics/scopes`.
 
 Ready to see it in action? Head over to the :ref:`tutorial`!

@@ -4,9 +4,12 @@
 Picodi Documentation
 ####################
 
-**Picodi** is a straightforward and powerful Dependency Injection (DI) library for Python, designed to simplify managing dependencies in both synchronous and asynchronous applications.
+**Picodi** is a straightforward and powerful Dependency Injection (DI) library for Python,
+designed to simplify managing dependencies in both synchronous and asynchronous applications.
 
-`Dependency Injection <https://en.wikipedia.org/wiki/Dependency_injection>`_ is a design pattern where an object receives its dependencies from an external source rather than creating them itself. Picodi helps you implement this pattern effectively, making your code more modular, testable, and maintainable.
+`Dependency Injection <https://en.wikipedia.org/wiki/Dependency_injection>`_ is a
+design pattern where an object receives its dependencies from an external source rather than creating them itself.
+Picodi helps you implement this pattern effectively, making your code more modular, testable, and maintainable.
 
 Inspired by FastAPI's DI system but usable in any Python project (framework-agnostic), Picodi offers:
 
@@ -15,9 +18,9 @@ Inspired by FastAPI's DI system but usable in any Python project (framework-agno
 *   **Zero Dependencies:** Lightweight and requires only Python.
 *   **Lifecycle Management:** Control over dependency creation and cleanup using scopes and lifespans.
 *   **Testability:** Built-in support for overriding dependencies in tests.
-*   **Type Hint Friendly:** Integrates well with Python's type system.
 
-Whether you're building a web application with FastAPI, a CLI tool, or any other Python project, Picodi can help you manage your dependencies cleanly.
+Whether you're building a web application with FastAPI, a CLI tool, or any other Python project,
+Picodi can help you manage your dependencies cleanly.
 
 *************
 Documentation
@@ -61,9 +64,9 @@ Documentation
 * :ref:`modindex`
 * :ref:`search`
 
-****************
+*************
 Project Links
-****************
+*************
 
 *   `GitHub <https://github.com/yakimka/picodi>`_
 *   `PyPI <https://pypi.org/project/picodi>`_

@@ -50,12 +50,14 @@ Picodi provides helpers for Starlette applications, primarily for managing reque
     from picodi.integrations.starlette import RequestScope
     import uuid
 
+
     @registry.set_scope(RequestScope)
     def get_request_id():
         req_id = str(uuid.uuid4())
         print(f"REQUEST SCOPE: Generated request ID: {req_id}")
-        yield req_id # Use yield if cleanup needed, otherwise return
+        yield req_id  # Use yield if cleanup needed, otherwise return
         print(f"REQUEST SCOPE: Cleaning up request ID: {req_id}")
+
 
     # app.py
     from starlette.applications import Starlette
@@ -66,15 +68,18 @@ Picodi provides helpers for Starlette applications, primarily for managing reque
     from picodi.integrations.starlette import RequestScopeMiddleware
     from dependencies import get_request_id
 
+
     @inject
     async def homepage(request_id: str = Provide(get_request_id)):
         # The request_id will be unique per request
-        return JSONResponse({'request_id': request_id})
+        return JSONResponse({"request_id": request_id})
+
 
     @inject
     async def items(request_id: str = Provide(get_request_id)):
         # This will be the *same* request_id as in homepage for the same request
-        return JSONResponse({'item_id': 'item123', 'request_id': request_id})
+        return JSONResponse({"item_id": "item123", "request_id": request_id})
+
 
     routes = [
         Route("/", homepage),
@@ -120,20 +125,22 @@ You can use Picodi's standard ``@inject`` on your route function, but you still 
 
     from fastapi import FastAPI, Depends
     from picodi import inject
-    from picodi.integrations.fastapi import Provide # Use the fastapi version
+    from picodi.integrations.fastapi import Provide  # Use the fastapi version
 
     app = FastAPI()
+
 
     # Assume get_my_service is a Picodi dependency (sync or async)
     def get_my_service():
         print("Providing my_service")
         return "My Service Instance"
 
+
     @app.get("/inject-route")
-    @inject # Picodi's inject
+    @inject  # Picodi's inject
     async def route_with_inject(
         # Need Depends() around Picodi's Provide()
-        service_instance: str = Depends(Provide(get_my_service))
+        service_instance: str = Depends(Provide(get_my_service)),
     ):
         return {"service": service_instance}
 
@@ -144,14 +151,16 @@ To avoid the verbosity of ``Depends(Provide(...))`` and the need for ``@inject``
 .. code-block:: python
 
     from fastapi import FastAPI
-    from picodi.integrations.fastapi import Provide # Use the fastapi version
+    from picodi.integrations.fastapi import Provide  # Use the fastapi version
 
     app = FastAPI()
+
 
     # Assume get_my_service is defined as before
     def get_my_service():
         print("Providing my_service")
         return "My Service Instance"
+
 
     @app.get("/wrapped-route")
     async def route_without_inject(
@@ -171,24 +180,30 @@ You can easily combine FastAPI's dependencies (for things like path parameters, 
 
     from fastapi import FastAPI, Depends, Path, HTTPException
     from picodi.integrations.fastapi import Provide
-    from typing import Annotated # Needed for Depends with type hints
+    from typing import Annotated  # Needed for Depends with type hints
 
     app = FastAPI()
+
 
     # --- Picodi Dependency ---
     class DatabaseClient:
         def get_item(self, item_id: int):
             print(f"DB Client: Fetching item {item_id}")
-            if item_id == 42: return {"id": item_id, "name": "Widget"}
+            if item_id == 42:
+                return {"id": item_id, "name": "Widget"}
             return None
+
 
     def get_db_client():
         return DatabaseClient()
 
+
     # --- FastAPI Security Dependency ---
-    def get_current_user(token: str | None = None): # Example security dep
-        if token == "secret": return {"username": "alice"}
+    def get_current_user(token: str | None = None):  # Example security dep
+        if token == "secret":
+            return {"username": "alice"}
         raise HTTPException(status_code=401, detail="Invalid token")
+
 
     # --- Route Combining Both ---
     @app.get("/items/{item_id}")
@@ -198,7 +213,7 @@ You can easily combine FastAPI's dependencies (for things like path parameters, 
         # FastAPI security dependency
         current_user: Annotated[dict, Depends(get_current_user)],
         # Picodi dependency using ``wrap=True``
-        db: DatabaseClient = Provide(get_db_client, wrap=True)
+        db: DatabaseClient = Provide(get_db_client, wrap=True),
     ):
         print(f"User {current_user['username']} requesting item {item_id}")
         item = db.get_item(item_id)
@@ -213,10 +228,11 @@ You can use the same :class:`~picodi.integrations.starlette.RequestScopeMiddlewa
 .. code-block:: python
 
     from fastapi import FastAPI
-    from starlette.middleware import Middleware # Import from starlette
+    from starlette.middleware import Middleware  # Import from starlette
     from picodi import registry
     from picodi.integrations.fastapi import RequestScope, RequestScopeMiddleware, Provide
     import uuid
+
 
     # Define request-scoped dependency
     @registry.set_scope(RequestScope)
@@ -226,13 +242,13 @@ You can use the same :class:`~picodi.integrations.starlette.RequestScopeMiddlewa
         yield req_id
         print(f"FastAPI Request Scope: Cleaning up ID: {req_id}")
 
+
     # Add middleware to FastAPI app
     app = FastAPI(middleware=[Middleware(RequestScopeMiddleware)])
 
+
     @app.get("/request-id")
-    async def get_id(
-        correlation_id: str = Provide(get_request_correlation_id, wrap=True)
-    ):
+    async def get_id(correlation_id: str = Provide(get_request_correlation_id, wrap=True)):
         return {"correlation_id": correlation_id}
 
 FastAPI Example Project

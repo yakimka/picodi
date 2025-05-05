@@ -24,22 +24,26 @@ You can directly use ``registry.override`` as a context manager within your test
     import pytest
     from picodi import registry, Provide, inject
 
+
     # --- Production Code ---
     def get_live_api_client():
         print("PROD: Creating live API client")
         # ... returns a real client ...
         return "RealApiClient"
 
+
     @inject
-    def process_data_from_api(client = Provide(get_live_api_client)):
+    def process_data_from_api(client=Provide(get_live_api_client)):
         print(f"SERVICE: Processing using {client}")
         # ... uses client ...
         return f"Data processed by {client}"
+
 
     # --- Test Code ---
     def get_mock_api_client():
         print("TEST: Creating mock API client")
         return "MockApiClient"
+
 
     def test_process_data_with_mock():
         print("\nTEST: Starting test_process_data_with_mock")
@@ -49,6 +53,7 @@ You can directly use ``registry.override`` as a context manager within your test
             result = process_data_from_api()
             assert result == "Data processed by MockApiClient"
         print("TEST: Exited override context (override cleared)")
+
 
     # Run with: pytest test_example.py -s
 

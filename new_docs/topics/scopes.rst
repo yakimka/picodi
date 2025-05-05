@@ -18,21 +18,25 @@ You assign a scope to a dependency provider function using the :meth:`picodi.Reg
 
     from picodi import registry, SingletonScope, Provide, inject
 
-    @registry.set_scope(SingletonScope) # Assign SingletonScope here
+
+    @registry.set_scope(SingletonScope)  # Assign SingletonScope here
     def get_shared_resource():
         print("Creating shared resource...")
         # Imagine this is an expensive object like a DB connection pool
         resource = {"id": "singleton_resource"}
-        yield resource # Use yield for potential cleanup
+        yield resource  # Use yield for potential cleanup
         print("Cleaning up shared resource...")
 
-    @inject
-    def use_resource_1(res = Provide(get_shared_resource)):
-        print(f"User 1 using resource: {res['id']}")
 
     @inject
-    def use_resource_2(res = Provide(get_shared_resource)):
+    def use_resource_1(res=Provide(get_shared_resource)):
+        print(f"User 1 using resource: {res['id']}")
+
+
+    @inject
+    def use_resource_2(res=Provide(get_shared_resource)):
         print(f"User 2 using resource: {res['id']}")
+
 
     # --- Application Code ---
     print("First use:")
@@ -108,14 +112,16 @@ When setting a scope, especially a manual one like ``SingletonScope``, you might
 
     from picodi import registry, SingletonScope
 
-    @registry.set_scope(SingletonScope, auto_init=True) # Note auto_init
+
+    @registry.set_scope(SingletonScope, auto_init=True)  # Note auto_init
     def get_eager_singleton():
         print("Eager singleton created!")
         return "I was created early"
 
+
     # At application startup:
     print("Calling registry.init()...")
-    registry.init() # This will initialize all 'auto_init=True' dependencies
+    registry.init()  # This will initialize all 'auto_init=True' dependencies
     print("registry.init() finished.")
 
     # Later, when injected:

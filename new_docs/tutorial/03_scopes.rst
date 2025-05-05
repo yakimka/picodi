@@ -54,13 +54,14 @@ Let's apply ``SingletonScope`` to our ``get_temp_file_path`` dependency from the
     import tempfile
     import os
     from contextlib import contextmanager
-    from picodi import registry, SingletonScope # Import registry and SingletonScope
+    from picodi import registry, SingletonScope  # Import registry and SingletonScope
 
-    @registry.set_scope(SingletonScope) # Set the scope here!
+
+    @registry.set_scope(SingletonScope)  # Set the scope here!
     @contextmanager
     def get_temp_file_path():
         """Provides a path to a temporary file and cleans it up afterwards."""
-        tf = tempfile.NamedTemporaryFile(delete=False, mode='w+', suffix=".txt")
+        tf = tempfile.NamedTemporaryFile(delete=False, mode="w+", suffix=".txt")
         file_path = tf.name
         print(f"Setup: Created temp file: {file_path}")
         tf.close()
@@ -74,15 +75,16 @@ Let's apply ``SingletonScope`` to our ``get_temp_file_path`` dependency from the
             else:
                 print(f"Teardown: Temp file already removed: {file_path}")
 
+
     # services.py
     # (write_to_temp_file remains the same)
     from picodi import Provide, inject
     from dependencies import get_temp_file_path
 
+
     @inject
     def write_to_temp_file(
-        content: str,
-        temp_file: str = Provide(get_temp_file_path)
+        content: str, temp_file: str = Provide(get_temp_file_path)
     ) -> None:
         """Writes content to a temporary file provided by a dependency."""
         print(f"Service: Writing to {temp_file}")
@@ -90,9 +92,10 @@ Let's apply ``SingletonScope`` to our ``get_temp_file_path`` dependency from the
             f.write(content + "\n")
         print(f"Service: Finished writing to {temp_file}")
 
+
     # main.py
     from services import write_to_temp_file
-    from picodi import registry # Import registry for shutdown
+    from picodi import registry  # Import registry for shutdown
 
     print("Main: Calling service the first time.")
     write_to_temp_file("Singleton message 1!")

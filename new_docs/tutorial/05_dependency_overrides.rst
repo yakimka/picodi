@@ -36,27 +36,31 @@ Let's reuse our first example and override the `get_api_base_url` dependency to 
         print("Original Dep: Providing PRODUCTION URL")
         return "https://api.example.com"
 
+
     def get_staging_api_base_url() -> str:
         """Provides the base URL for the STAGING API."""
         print("Override Dep: Providing STAGING URL")
         return "https://api.staging.example.com"
 
+
     # services.py
     from picodi import Provide, inject
     from dependencies import get_api_base_url
 
+
     @inject
     def call_external_api(
         endpoint: str,
-        base_url: str = Provide(get_api_base_url) # Depends on get_api_base_url
+        base_url: str = Provide(get_api_base_url),  # Depends on get_api_base_url
     ) -> str:
         """Calls an endpoint on the external API."""
         full_url = f"{base_url}/{endpoint.lstrip('/')}"
         print(f"Service: Calling API at: {full_url}")
         return f"Response from {full_url}"
 
+
     # main.py
-    from picodi import registry # Need registry for override
+    from picodi import registry  # Need registry for override
     from services import call_external_api
     from dependencies import get_api_base_url, get_staging_api_base_url
 
@@ -114,24 +118,28 @@ You can also use ``@registry.override(original)`` to decorate the overriding fun
         print("Original Dep: Providing PRODUCTION URL")
         return "https://api.example.com"
 
+
     # services.py
     from picodi import Provide, inject
     from dependencies import get_api_base_url
 
+
     @inject
     def call_external_api(
         endpoint: str,
-        base_url: str = Provide(get_api_base_url) # Depends on get_api_base_url
+        base_url: str = Provide(get_api_base_url),  # Depends on get_api_base_url
     ) -> str:
         """Calls an endpoint on the external API."""
         full_url = f"{base_url}/{endpoint.lstrip('/')}"
         print(f"Service: Calling API at: {full_url}")
         return f"Response from {full_url}"
 
+
     # main_decorator.py
     from picodi import registry
     from services import call_external_api
     from dependencies import get_api_base_url
+
 
     # Use override as a decorator
     @registry.override(get_api_base_url)
@@ -139,6 +147,7 @@ You can also use ``@registry.override(original)`` to decorate the overriding fun
         """Provides the base URL for the STAGING API via decorator."""
         print("Decorated Override Dep: Providing STAGING URL")
         return "https://decorator.staging.example.com"
+
 
     print("--- Calling with decorator override active ---")
     response_staging = call_external_api("products")
@@ -151,7 +160,7 @@ You can also use ``@registry.override(original)`` to decorate the overriding fun
 
     # Clear the override manually
     print("--- Clearing the specific override ---")
-    registry.override(get_api_base_url, None) # Pass None to clear
+    registry.override(get_api_base_url, None)  # Pass None to clear
 
     print("--- Calling after clearing override ---")
     response_prod = call_external_api("users")
