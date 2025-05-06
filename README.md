@@ -22,9 +22,7 @@ and offers features like lifecycle management.
 - [Installation](#installation)
 - [Features](#features)
 - [Quick Start](#quick-start)
-- [FastAPI Integration](#fastapi-integration)
 - [FastAPI Example Project](#fastapi-example-project)
-- [Known Issues](#known-issues)
 - [License](#license)
 - [Contributing](#contributing)
 - [Credits](#credits)
@@ -160,20 +158,12 @@ asyncio.run(main())
 # Title: Galaxy NGC 474: Cosmic Blender
 ```
 
-## Integration with other libraries
-
-[Read on the documentation site](https://picodi.readthedocs.io/en/stable/integrations.html)
-
 ## FastAPI Example Project
 
 Here is an example of a FastAPI application
 that uses Picodi for dependency injection:
 
 [Picodi FastAPI Example](https://github.com/yakimka/picodi-fastapi-example)
-
-## Known Issues
-
-[Read on the documentation site](https://picodi.readthedocs.io/en/stable/knownissues.html)
 
 ## License
 
