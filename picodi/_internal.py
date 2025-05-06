@@ -38,10 +38,15 @@ def wrapper_helper(
     bound.apply_defaults()
     arguments: dict[str, Any] = bound.arguments
     scopes: list[ScopeType] = []
-    is_root = any(isinstance(value, Depends) for value in bound.arguments.values())
+    is_root = any(isinstance(value, Depends) for value in arguments.values())
 
     if is_root:
-        arguments, scopes = _resolve_dependencies(dependant, exit_stack, storage)
+        excluded_args = [
+            name for name, value in arguments.items() if not isinstance(value, Depends)
+        ]
+        arguments, scopes = _resolve_dependencies(
+            dependant, exit_stack, storage, exclude=excluded_args
+        )
 
     for scope in scopes:
         scope.enter_inject()
@@ -132,11 +137,16 @@ def _patch_dependant(dependant: DependNode, storage: Storage) -> None:
 
 
 def _resolve_dependencies(
-    dependant: DependNode, exit_stack: ExitStack, storage: Storage
+    dependant: DependNode,
+    exit_stack: ExitStack,
+    storage: Storage,
+    exclude: list[str] | None = None,
 ) -> tuple[dict[str, LazyResolver], list[ScopeType]]:
     scopes = set()
     resolved_dependencies = {}
     for dep in dependant.dependencies:
+        if exclude and dep.name in exclude:
+            continue
         values, dep_scopes = _resolve_dependencies(dep, exit_stack, storage)
         resolved_dependencies.update(values)
         scopes.update(dep_scopes)

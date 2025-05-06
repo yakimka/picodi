@@ -7,39 +7,6 @@ def get_abc_settings() -> dict:
     raise NotImplementedError
 
 
-def test_can_override_dependency_with_decorator():
-    @inject
-    def my_service(settings: dict = Provide(get_abc_settings)):
-        return settings
-
-    @registry.override(get_abc_settings)
-    def real_settings():
-        return {"real": "settings"}
-
-    result = my_service()
-
-    assert result == {"real": "settings"}
-
-
-def test_can_clear_overriding():
-    def get_settings() -> dict:
-        return {"default": "settings"}
-
-    @inject
-    def my_service(settings: dict = Provide(get_settings)):
-        return settings
-
-    @registry.override(get_settings)
-    def overridden_settings():
-        return {"overridden": "settings"}  # pragma: no cover
-
-    registry.override(get_settings, None)
-
-    result = my_service()
-
-    assert result == {"default": "settings"}
-
-
 def test_can_override_dependency_with_call():
     @inject
     def my_service(settings: dict = Provide(get_abc_settings)):
@@ -71,14 +38,34 @@ def test_can_override_with_context_manager():
     assert after_context_result == {"default": "settings"}
 
 
+def test_can_clear_overriding():
+    def get_settings() -> dict:
+        return {"default": "settings"}
+
+    @inject
+    def my_service(settings: dict = Provide(get_settings)):
+        return settings
+
+    def overridden_settings():
+        return {"overridden": "settings"}  # pragma: no cover
+
+    registry.override(get_settings, overridden_settings)
+    registry.override(get_settings, None)
+
+    result = my_service()
+
+    assert result == {"default": "settings"}
+
+
 def test_can_context_manager_return_state_to_previous_not_to_original():
     @inject
     def my_service(settings: dict = Provide(get_abc_settings)):
         return settings
 
-    @registry.override(get_abc_settings)
     def first_override():
         return {"first": "override"}
+
+    registry.override(get_abc_settings, first_override)
 
     with registry.override(get_abc_settings, lambda: {"second": "override"}):
         in_context_result = my_service()
@@ -174,11 +161,11 @@ async def test_can_use_async_dependency_in_override():
     async def my_service(settings: dict = Provide(get_abc_settings)):
         return settings
 
-    @registry.override(get_abc_settings)
     async def real_settings():
         return {"real": "settings"}
 
-    result = await my_service()
+    with registry.override(get_abc_settings, real_settings):
+        result = await my_service()
 
     assert result == {"real": "settings"}
 
@@ -188,10 +175,11 @@ async def test_can_use_async_dep_with_not_default_scope_in_override_in_sync_cont
     def my_service(settings: dict = Provide(get_abc_settings)):
         return settings
 
-    @registry.override(get_abc_settings)
     @registry.set_scope(SingletonScope)
     async def real_settings():
         return {"real": "settings"}
+
+    registry.override(get_abc_settings, real_settings)
 
     await registry.init([real_settings])
 
