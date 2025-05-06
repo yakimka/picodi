@@ -64,9 +64,9 @@ the function signature before other decorators potentially modify it.
     @other_decorator
     def my_func(val=Provide(...)): ...
 
-*********************************
-The :func:`picodi.Provide` Marker
-*********************************
+**********************************
+The :func:`~picodi.Provide` Marker
+**********************************
 
 :func:`~picodi.Provide` is used as a **default value** for a function parameter to signal
 to ``@inject`` that this parameter should be filled by a dependency.

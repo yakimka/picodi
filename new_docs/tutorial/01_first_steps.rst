@@ -31,7 +31,7 @@ Injecting the Dependency
 **************************
 
 Now, let's create a function that needs this API base URL to perform its task.
-We'll use Picodi's :func:`picodi.inject` decorator and :func:`picodi.Provide` marker
+We'll use Picodi's :func:`~picodi.inject` decorator and :func:`~picodi.Provide` marker
 to tell Picodi how to supply the dependency.
 
 .. testcode:: first_steps
@@ -91,7 +91,7 @@ Now you can call `call_external_api` like a regular function. Picodi handles the
     Response from https://api.example.com/products
 
 Notice that ``get_api_base_url`` was called each time ``call_external_api`` was invoked.
-This is the default behavior (using :class:`picodi.NullScope`).
+This is the default behavior (using :class:`~picodi.NullScope`).
 We'll explore how to change this later using :ref:`scopes <tutorial_scopes>`.
 
 *********************************

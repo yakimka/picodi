@@ -26,14 +26,14 @@ Picodi provides helpers for Starlette applications, primarily for managing reque
 
 ``RequestScope``
 ================
-*   **Class:** :class:`picodi.integrations.starlette.RequestScope`
-*   **Inherits from:** :class:`picodi.ContextVarScope`
+*   **Class:** :class:`~picodi.integrations.starlette.RequestScope`
+*   **Inherits from:** :class:`~picodi.ContextVarScope`
 *   **Behavior:** Creates and caches dependency instances within the context of a single HTTP request. Each request gets its own set of instances for dependencies using this scope.
 *   **Cleanup:** Requires manual shutdown, typically handled by the ``RequestScopeMiddleware``.
 
 ``RequestScopeMiddleware``
 ==========================
-*   **Class:** :class:`picodi.integrations.starlette.RequestScopeMiddleware`
+*   **Class:** :class:`~picodi.integrations.starlette.RequestScopeMiddleware`
 *   **Purpose:** An ASGI middleware that automatically handles the lifecycle of ``RequestScope`` dependencies.
     *   It can optionally initialize specified dependencies at the start of a request using ``registry.init()``.
     *   It automatically calls ``registry.shutdown(scope_class=RequestScope)`` at the end of the request to clean up any request-scoped yield dependencies.

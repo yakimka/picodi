@@ -23,9 +23,9 @@ A scope defines:
 2.  **Where** the created instance is stored (cached).
 3.  **How long** the instance lives before it's potentially discarded or cleaned up.
 
-****************************************
-Default Scope: :class:`picodi.NullScope`
-****************************************
+*****************************************
+Default Scope: :class:`~picodi.NullScope`
+*****************************************
 
 By default, all dependencies use ``picodi.NullScope``.
 
@@ -38,9 +38,9 @@ This explains the output in the previous steps where we saw "Creating API base U
 or the temp file setup/teardown messages multiple times.
 ``NullScope`` is suitable for dependencies that are very cheap to create or must be unique for each use.
 
-***********************************************
-Singleton Scope: :class:`picodi.SingletonScope`
-***********************************************
+************************************************
+Singleton Scope: :class:`~picodi.SingletonScope`
+************************************************
 
 A very common requirement is to have a single instance of a dependency shared
 across the entire application (or for its entire lifetime). This is known as the Singleton pattern.
@@ -158,7 +158,7 @@ This demonstrates how ``SingletonScope`` creates a single, long-lived instance a
 Other Built-in Scopes
 ********************************
 
-Picodi also provides :class:`picodi.ContextVarScope` which is useful in asynchronous contexts (like web frameworks)
+Picodi also provides :class:`~picodi.ContextVarScope` which is useful in asynchronous contexts (like web frameworks)
 to scope dependencies to a specific task or request. You can also create your own custom scopes.
 We'll touch on ``ContextVarScope`` briefly when discussing :ref:`integrations <topics_integrations>`.
 

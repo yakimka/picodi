@@ -14,13 +14,13 @@ Through these steps, you've gained a practical understanding of Picodi's core fe
 
 *   **Defining Dependencies:** How simple Python functions (sync and async) act as
     dependency providers. (:ref:`Step 1 <tutorial_first_steps>`)
-*   **Injection:** Using :func:`picodi.inject` and :func:`picodi.Provide`
+*   **Injection:** Using :func:`~picodi.inject` and :func:`~picodi.Provide`
     to automatically supply dependencies to functions. (:ref:`Step 1 <tutorial_first_steps>`)
 *   **Yield Dependencies:** Managing dependency setup and teardown using ``yield``
     for resources requiring cleanup.
     (:ref:`Step 2 <tutorial_yield_dependencies>`, :ref:`Step 4 <tutorial_async_dependencies>`)
 *   **Scopes:** Controlling dependency instance lifecycle and caching using
-    :class:`picodi.NullScope` and :class:`picodi.SingletonScope`. (:ref:`Step 3 <tutorial_scopes>`)
+    :class:`~picodi.NullScope` and :class:`~picodi.SingletonScope`. (:ref:`Step 3 <tutorial_scopes>`)
 *   **Async Support:** Defining and injecting asynchronous dependencies seamlessly.
     (:ref:`Step 4 <tutorial_async_dependencies>`)
 *   **Overrides:** Replacing dependency implementations at runtime using

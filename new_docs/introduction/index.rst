@@ -88,10 +88,10 @@ Key concepts in Picodi:
 
 *   **Dependency Function:** A regular Python function (sync or async) that knows how to create an instance of a dependency.
     It might return a value directly or yield it (for dependencies needing cleanup).
-*   **Decorator** :func:`picodi.inject` **:** Marks a function or method as requiring dependency injection.
-*   **Marker:** :func:`picodi.Provide` **:** Used within the signature of an ``@inject``-ed function to specify which
+*   **Decorator** :func:`~picodi.inject` **:** Marks a function or method as requiring dependency injection.
+*   **Marker:** :func:`~picodi.Provide` **:** Used within the signature of an ``@inject``-ed function to specify which
     dependency function should provide the value for a parameter.
-*   **Registry** :attr:`picodi.registry` **:** The central object managing dependencies, their scopes, and overrides.
+*   **Registry** :attr:`~picodi.registry` **:** The central object managing dependencies, their scopes, and overrides.
 
 Picodi handles resolving the dependency graph (dependencies that depend on other dependencies) and
 manages their lifecycle (creation and cleanup) based on defined :doc:`/topics/scopes`.

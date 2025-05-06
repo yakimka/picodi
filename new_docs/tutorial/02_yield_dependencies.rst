@@ -126,7 +126,7 @@ Let's modify our example to use a temporary file managed by a yield dependency.
 
 As you can see, the setup code runs before the service function, and the teardown code runs after it finishes,
 ensuring the resource is managed correctly.
-A new temporary file is created and destroyed for each call because we are still using the default :class:`picodi.NullScope`.
+A new temporary file is created and destroyed for each call because we are still using the default :class:`~picodi.NullScope`.
 
 ***********
 Next Steps

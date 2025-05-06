@@ -10,7 +10,7 @@ We'll build a simple application step-by-step, demonstrating the core features o
 By the end of this tutorial, you will understand:
 
 *   How to define basic dependencies.
-*   How to inject dependencies into your functions using :func:`picodi.inject` and :func:`picodi.Provide`.
+*   How to inject dependencies into your functions using :func:`~picodi.inject` and :func:`~picodi.Provide`.
 *   How to work with dependencies that require setup and teardown (yield dependencies).
 *   How to use different scopes to manage dependency lifecycles.
 *   How to handle asynchronous dependencies.

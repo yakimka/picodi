@@ -173,7 +173,7 @@ and the async teardown (``__aexit__``) after ``run_db_query`` completes.
 Scopes and Async Dependencies
 ********************************
 
-Scopes like :class:`picodi.SingletonScope` work exactly the same way for async dependencies as they
+Scopes like :class:`~picodi.SingletonScope` work exactly the same way for async dependencies as they
 do for sync ones. If we added ``@registry.set_scope(SingletonScope)`` to ``get_db_connection``,
 the connection would be established only once and reused,
 with disconnection happening only upon :func:`picodi.Registry.shutdown`.

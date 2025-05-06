@@ -4,13 +4,15 @@
 Dependencies Explained
 ######################
 
-In Picodi, the concept of a "dependency" is intentionally simple: **a dependency provider is typically a Python function (or any callable) that returns a value or yields it.** This function usually takes no required arguments, allowing Picodi to call it automatically when needed.
+In Picodi, the concept of a "dependency" is intentionally simple: **a dependency provider is typically
+a Python function (or any callable) that returns a value or yields it.**
+This function usually takes no required arguments, allowing Picodi to call it automatically when needed.
 
 This topic delves into the different ways you can define these dependency providers.
 
-********************************
+***************************
 Simple Dependency Functions
-********************************
+***************************
 
 The most basic form of a dependency provider is a function that directly returns a value.
 
@@ -30,7 +32,8 @@ The most basic form of a dependency provider is a function that directly returns
 
 **Asynchronous Example:**
 
-If creating the dependency involves I/O operations, you can use an ``async def`` function.
+Picodi also supports asynchronous dependency providers.
+These are defined using the ``async def`` syntax.
 
 .. code-block:: python
 
@@ -43,29 +46,31 @@ If creating the dependency involves I/O operations, you can use an ``async def``
         await asyncio.sleep(0.1)  # Simulate I/O
         return "secret-api-key-12345"
 
-These functions are ready to be used with :func:`~picodi.Provide` within an :func:`~picodi.inject`-decorated function.
+These functions are ready to be used with :func:`~picodi.Provide`
+within an :func:`~picodi.inject`-decorated function.
 
 ****************************************
 Yield Dependencies (Resource Management)
 ****************************************
 
-Often, dependencies represent resources that need setup before use and cleanup afterward (e.g., database connections, file handles, network clients). Picodi handles this elegantly using generator functions with a single ``yield``.
+Often, dependencies represent resources that need setup before use and cleanup afterward
+(e.g., database connections, file handles, network clients).
+Picodi handles this elegantly using generator functions with a single ``yield``.
 
 Picodi treats such generators like context managers:
 
 1.  **Setup:** Code before ``yield`` runs when the dependency is first requested.
 2.  **Value:** The value yielded is injected into the dependent function.
-3.  **Teardown:** Code after ``yield`` (ideally in a ``finally`` block) runs after the dependent function finishes execution (or when the dependency's scope dictates cleanup).
+3.  **Teardown:** Code after ``yield`` (ideally in a ``finally`` block) runs after the
+    dependent function finishes execution (or when the dependency's scope dictates cleanup).
 
 **Synchronous Example:**
 
 .. code-block:: python
 
-    from contextlib import contextmanager
     import sqlite3
 
 
-    @contextmanager  # Good practice, though Picodi only needs the yield structure
     def get_db_cursor():
         """Provides a database cursor and ensures the connection is closed."""
         connection = sqlite3.connect(":memory:")
@@ -82,7 +87,6 @@ Picodi treats such generators like context managers:
 .. code-block:: python
 
     import asyncio
-    from contextlib import asynccontextmanager
 
 
     class AsyncResource:  # Example async resource
@@ -99,7 +103,6 @@ Picodi treats such generators like context managers:
             print("Async Resource Working")
 
 
-    @asynccontextmanager  # Good practice
     async def get_async_resource():
         """Provides an async resource with setup and teardown."""
         resource = AsyncResource()
@@ -109,53 +112,15 @@ Picodi treats such generators like context managers:
         finally:
             await resource.close()
 
-These yield dependencies ensure resources are managed correctly within the scope of their usage. The exact timing of the teardown depends on the :ref:`scope <topics_scopes>` assigned to the dependency.
-
-*********************************
-Factory Functions as Dependencies
-*********************************
-
-Since dependency providers are just functions, you can use closures or factory functions to create parameterized dependencies.
-
-.. code-block:: python
-
-    from dataclasses import dataclass
-
-
-    @dataclass
-    class ApiClient:
-        base_url: str
-
-        def get(self, endpoint: str) -> str:
-            return f"GET {self.base_url}/{endpoint}"
-
-
-    # Factory function
-    def create_api_client(base_url: str) -> callable:
-        """Returns a dependency function that creates an ApiClient."""
-
-        def get_client() -> ApiClient:
-            print(f"Creating ApiClient for {base_url}")
-            return ApiClient(base_url=base_url)
-
-        return get_client
-
-
-    # Usage with Provide:
-    # @inject
-    # def my_service(
-    #     client: ApiClient = Provide(create_api_client("https://api.service1.com"))
-    # ):
-    #     # ... use client ...
-    #     pass
-
-This pattern is useful for creating multiple instances of similar dependencies with different configurations.
+These yield dependencies ensure resources are managed correctly within the scope of their usage.
+The exact timing of the teardown depends on the :ref:`scope <topics_scopes>` assigned to the dependency.
 
 *************************************
 Dependencies Using Other Dependencies
 *************************************
 
-Dependency provider functions can themselves use :func:`~picodi.inject` and :func:`~picodi.Provide` to depend on other dependencies. Picodi automatically resolves the entire dependency graph.
+Dependency provider functions can themselves use :func:`~picodi.inject` and :func:`~picodi.Provide`
+to depend on other dependencies. Picodi automatically resolves the entire dependency graph.
 
 .. code-block:: python
 
@@ -179,16 +144,16 @@ Dependency provider functions can themselves use :func:`~picodi.inject` and :fun
     #     api_key = config["key"]
     #     # ...
 
-Picodi ensures `get_base_url` is resolved first, its result is passed to `get_api_config`, and then the result of `get_api_config` is available for injection elsewhere.
+Picodi ensures ``get_base_url`` is resolved first, its result is passed to ``get_api_config``,
+and then the result of ``get_api_config`` is available for injection elsewhere.
 
-****************
+*************
 Key Takeaways
-****************
+*************
 
 *   A Picodi dependency provider is typically a zero-argument callable (often a function).
 *   Use regular functions for simple value dependencies (sync or async).
 *   Use generator functions with a single ``yield`` for dependencies requiring setup/teardown (sync or async).
-*   Factories can be used to create parameterized dependency providers.
 *   Dependencies can depend on other dependencies using ``@inject`` and ``Provide``.
 
 Next, let's look at how these dependencies are actually provided to your code using :ref:`Injection <topics_injection>`.

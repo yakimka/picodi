@@ -74,21 +74,21 @@ Picodi comes with several built-in scopes:
 
 ``NullScope`` (Default)
 =======================
-*   **Class:** :class:`picodi.NullScope`
+*   **Class:** :class:`~picodi.NullScope`
 *   **Behavior:** Creates a new instance every time the dependency is injected. No caching occurs.
 *   **Cleanup (Yield Dependencies):** Runs immediately after the injecting function finishes.
 *   **Use Case:** Suitable for very cheap-to-create dependencies or those that *must* be unique per injection. This is the default scope if none is specified via ``@registry.set_scope``.
 
 ``SingletonScope``
 ==================
-*   **Class:** :class:`picodi.SingletonScope`
+*   **Class:** :class:`~picodi.SingletonScope`
 *   **Behavior:** Creates a single instance the first time the dependency is requested. This instance is cached globally and reused for all subsequent requests for that dependency across the application.
 *   **Cleanup (Yield Dependencies):** Runs only when :meth:`picodi.Registry.shutdown` is called (typically at application exit).
 *   **Use Case:** Ideal for expensive-to-create objects that should be shared globally, like configuration objects, database connection pools, or HTTP clients.
 
 ``ContextVarScope``
 ===================
-*   **Class:** :class:`picodi.ContextVarScope`
+*   **Class:** :class:`~picodi.ContextVarScope`
 *   **Behavior:** Caches instances within a :class:`python:contextvars.ContextVar`. This means the instance's lifetime is tied to the current context, making it suitable for scenarios like web requests in async frameworks or thread-local storage. A different context (e.g., a different web request or thread) will get its own instance.
 *   **Cleanup (Yield Dependencies):** Runs only when :meth:`picodi.Registry.shutdown` is called *specifically for this scope* (i.e., ``registry.shutdown(scope_class=ContextVarScope)``). This is often done at the end of a request or task.
 *   **Use Case:** Request-scoped dependencies in web applications (see :ref:`topics_integrations`), thread-local dependencies.
@@ -145,7 +145,7 @@ Dependencies marked with ``auto_init=True`` will be initialized when :meth:`pico
 User-defined Scopes
 ********************************
 
-You can create custom scopes by subclassing :class:`picodi.ManualScope` or :class:`picodi.AutoScope` and implementing the required methods (``get``, ``set``, ``enter``, ``shutdown``). This allows for fine-grained control over dependency lifecycles if the built-in scopes don't meet your specific needs. Consult the API Reference (once available) for details on the ``Scope`` base classes.
+You can create custom scopes by subclassing :class:`~picodi.ManualScope` or :class:`~picodi.AutoScope` and implementing the required methods (``get``, ``set``, ``enter``, ``shutdown``). This allows for fine-grained control over dependency lifecycles if the built-in scopes don't meet your specific needs. Consult the API Reference (once available) for details on the ``Scope`` base classes.
 
 ****************
 Key Takeaways
