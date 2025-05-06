@@ -1,26 +1,29 @@
 .. _topics_integrations:
 
-#######################
+######################
 Framework Integrations
-#######################
+######################
 
-While Picodi is a general-purpose dependency injection library usable in any Python application (scripts, workers, etc.), it also provides specific integrations to work smoothly with popular web frameworks like Starlette and FastAPI.
+While Picodi is a general-purpose dependency injection library usable in any Python application,
+it also provides specific integrations to work smoothly with popular web frameworks like Starlette and FastAPI.
 
 ****************
 General Approach
 ****************
 
-The core principles of Picodi (``@inject``, ``Provide``, scopes, overrides) work the same regardless of the framework. You typically inject dependencies into your framework's entry points, such as:
+The core principles of Picodi (``@inject``, ``Provide``, scopes, overrides) work the same regardless of the framework.
+You typically inject dependencies into your framework's entry points, such as:
 
 *   Route handlers (views) in web frameworks.
 *   Command handlers in CLI applications.
 *   Task functions in background workers.
 
-Picodi's specific integrations often provide helpers like custom scopes (e.g., request scope) or middleware to manage dependency lifecycles within the framework's context.
+Picodi's specific integrations often provide helpers like custom scopes (e.g., request scope) or
+middleware to manage dependency lifecycles within the framework's context.
 
-********************************
+*********************
 Starlette Integration
-********************************
+*********************
 
 Picodi provides helpers for Starlette applications, primarily for managing request-scoped dependencies.
 
@@ -28,15 +31,19 @@ Picodi provides helpers for Starlette applications, primarily for managing reque
 ================
 *   **Class:** :class:`~picodi.integrations.starlette.RequestScope`
 *   **Inherits from:** :class:`~picodi.ContextVarScope`
-*   **Behavior:** Creates and caches dependency instances within the context of a single HTTP request. Each request gets its own set of instances for dependencies using this scope.
-*   **Cleanup:** Requires manual shutdown, typically handled by the ``RequestScopeMiddleware``.
+*   **Behavior:** Creates and caches dependency instances within the context of a single HTTP request.
+    Each request gets its own set of instances for dependencies using this scope.
+*   **Cleanup:** Requires manual shutdown, typically handled by the
+    :class:`~picodi.integrations.starlette.RequestScopeMiddleware`.
 
 ``RequestScopeMiddleware``
 ==========================
 *   **Class:** :class:`~picodi.integrations.starlette.RequestScopeMiddleware`
 *   **Purpose:** An ASGI middleware that automatically handles the lifecycle of ``RequestScope`` dependencies.
+
     *   It can optionally initialize specified dependencies at the start of a request using ``registry.init()``.
-    *   It automatically calls ``registry.shutdown(scope_class=RequestScope)`` at the end of the request to clean up any request-scoped yield dependencies.
+    *   It automatically calls ``registry.shutdown(scope_class=RequestScope)`` at the end of the
+        request to clean up any request-scoped yield dependencies.
 
 **Usage:**
 
@@ -60,30 +67,36 @@ Picodi provides helpers for Starlette applications, primarily for managing reque
 
 
     # app.py
-    from starlette.applications import Starlette
-    from starlette.responses import JSONResponse
-    from starlette.routing import Route
-    from starlette.middleware import Middleware
     from picodi import Provide, inject
     from picodi.integrations.starlette import RequestScopeMiddleware
+    from starlette.applications import Starlette
+    from starlette.middleware import Middleware
+    from starlette.requests import Request
+    from starlette.responses import JSONResponse
+    from starlette.routing import Route
+
     from dependencies import get_request_id
 
 
     @inject
-    async def homepage(request_id: str = Provide(get_request_id)):
-        # The request_id will be unique per request
-        return JSONResponse({"request_id": request_id})
+    def service(request_id: str = Provide(get_request_id)):
+        return request_id
 
 
     @inject
-    async def items(request_id: str = Provide(get_request_id)):
-        # This will be the *same* request_id as in homepage for the same request
-        return JSONResponse({"item_id": "item123", "request_id": request_id})
+    async def homepage(_: Request, request_id: str = Provide(get_request_id)):
+        # The request_id will be unique per request
+        request_id_from_service = service()
+        return JSONResponse(
+            {
+                "request_id": request_id,
+                "request_id_from_service": request_id_from_service,
+            }
+        )
 
 
     routes = [
         Route("/", homepage),
-        Route("/items", items),
     ]
 
     # Add the middleware
@@ -96,19 +109,22 @@ Picodi provides helpers for Starlette applications, primarily for managing reque
     app = Starlette(routes=routes, middleware=middleware)
 
     # Run with: uvicorn app:app
-    # Accessing '/' and '/items' will show the same request_id per browser refresh,
-    # but different IDs across refreshes or different requests.
-    # The cleanup message will appear in the logs after each request finishes.
+    # Accessing '/' will show the same request_id from the service and the view
+    # this is because `get_request_id` has `RequestScope` scope
 
 ********************************
 FastAPI Integration
 ********************************
 
-FastAPI has its own powerful dependency injection system, primarily focused on route parameters, validation, and request data parsing. Picodi can complement FastAPI's system, especially for managing application-level services, shared resources, and complex dependency lifecycles that extend beyond a single request or need to be used outside of route handlers.
+FastAPI has its own powerful dependency injection system, primarily focused on route parameters, validation,
+and request data parsing. Picodi can complement FastAPI's system, especially for managing application-level services,
+shared resources, and complex dependency lifecycles that extend beyond a single request or need to be used outside of route handlers.
 
 Why Use Picodi with FastAPI?
 ============================
-*   **Scopes:** Manage dependency lifecycles beyond FastAPI's default (which is similar to Picodi's ``NullScope``). Use ``SingletonScope`` for shared clients, ``ContextVarScope``/``RequestScope`` for request-level caching.
+*   **Scopes:** Manage dependency lifecycles beyond FastAPI's default (which is similar to Picodi's :class:`~picodi.NullScope`).
+    Use :class:`~picodi.SingletonScope` for shared clients,
+    :class:`~picodi.ContextVarScope`/:class:`~picodi.integrations.fastapi.RequestScope` for request-level caching.
 *   **Consistency:** Use the same DI mechanism for dependencies shared between FastAPI routes, background tasks, CLI commands, etc.
 *   **Testability:** Leverage Picodi's overriding capabilities for application-level services.
 
@@ -117,9 +133,10 @@ Using Picodi Dependencies in FastAPI Routes
 
 Picodi provides a special :func:`~picodi.integrations.fastapi.Provide` marker designed for FastAPI.
 
-**Method 1: Using ``@inject`` (Less Common in Routes)**
+**Method 1: Using @inject (Less Common in Routes)**
 
-You can use Picodi's standard ``@inject`` on your route function, but you still need to wrap the ``Provide`` marker with FastAPI's ``Depends``.
+You can use Picodi's standard ``@inject`` on your route function, but you still need to wrap the
+``Provide`` marker with FastAPI's ``Depends``.
 
 .. code-block:: python
 
@@ -144,9 +161,11 @@ You can use Picodi's standard ``@inject`` on your route function, but you still 
     ):
         return {"service": service_instance}
 
-**Method 2: Using ``Provide(..., wrap=True)`` (Recommended for Routes)**
+**Method 2: Using Provide(..., wrap=True) (Recommended for Routes)**
 
-To avoid the verbosity of ``Depends(Provide(...))`` and the need for ``@inject`` on the route itself, use the ``wrap=True`` argument with ``picodi.integrations.fastapi.Provide``. This tells Picodi to wrap the dependency in a way that FastAPI's own DI system understands directly.
+To avoid the verbosity of ``Depends(Provide(...))`` and the need for ``@inject`` on the route itself,
+use the ``wrap=True`` argument with ``picodi.integrations.fastapi.Provide``.
+This tells Picodi to wrap the dependency in a way that FastAPI's own DI system understands directly.
 
 .. code-block:: python
 
@@ -170,17 +189,19 @@ To avoid the verbosity of ``Depends(Provide(...))`` and the need for ``@inject``
     ):
         return {"service": service_instance}
 
-This is the **preferred** way to inject Picodi-managed dependencies into FastAPI route functions, as it leverages FastAPI's DI for the route parameters while using Picodi for managing the dependency itself.
+This is the **preferred** way to inject Picodi-managed dependencies into FastAPI route functions,
+as it leverages FastAPI's DI for the route parameters while using Picodi for managing the dependency itself.
 
 Combining FastAPI ``Depends`` and Picodi ``Provide``
 ====================================================
-You can easily combine FastAPI's dependencies (for things like path parameters, query parameters, security) with Picodi dependencies within the same function signature.
+You can easily combine FastAPI's dependencies (for things like path parameters, query parameters, security)
+with Picodi dependencies within the same function signature.
 
 .. code-block:: python
 
     from fastapi import FastAPI, Depends, Path, HTTPException
     from picodi.integrations.fastapi import Provide
-    from typing import Annotated  # Needed for Depends with type hints
+    from typing import Annotated
 
     app = FastAPI()
 
@@ -223,15 +244,18 @@ You can easily combine FastAPI's dependencies (for things like path parameters, 
 
 Request-Scoped Dependencies in FastAPI
 ======================================
-You can use the same :class:`~picodi.integrations.starlette.RequestScopeMiddleware` and :class:`~picodi.integrations.starlette.RequestScope` (re-exported as :class:`~picodi.integrations.fastapi.RequestScope`) in FastAPI as you would in Starlette to manage request-scoped dependencies.
+You can use the same :class:`~picodi.integrations.fastapi.RequestScopeMiddleware` and
+:class:`~picodi.integrations.fastapi.RequestScope`
+in FastAPI as you would in Starlette to manage request-scoped dependencies.
 
 .. code-block:: python
 
-    from fastapi import FastAPI
-    from starlette.middleware import Middleware
-    from picodi import registry
-    from picodi.integrations.fastapi import RequestScope, RequestScopeMiddleware, Provide
     import uuid
+
+    from fastapi import FastAPI
+    from picodi import registry
+    from picodi.integrations.fastapi import Provide, RequestScope, RequestScopeMiddleware
+    from starlette.middleware import Middleware
 
 
     # Define request-scoped dependency
@@ -253,7 +277,8 @@ You can use the same :class:`~picodi.integrations.starlette.RequestScopeMiddlewa
 
 FastAPI Example Project
 =======================
-For a more comprehensive example of using Picodi with FastAPI, including different scopes and testing setups, see the example project:
+For a more comprehensive example of using Picodi with FastAPI, including different scopes and testing setups,
+see the example project:
 
 `Picodi FastAPI Example <https://github.com/yakimka/picodi-fastapi-example>`_
 
