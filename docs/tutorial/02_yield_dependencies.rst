@@ -44,7 +44,7 @@ Let's modify our example to use a temporary file managed by a yield dependency.
         """Provides a path to a temporary file and cleans it up afterwards."""
         tf = tempfile.NamedTemporaryFile(delete=False, mode="w+", suffix=".txt")
         file_path = tf.name
-        print(f"Setup: Created temp file: {file_path}")
+        print("Setup: Created temp file")
         tf.close()  # Close the file handle, but the file remains
 
         try:
@@ -53,16 +53,18 @@ Let's modify our example to use a temporary file managed by a yield dependency.
             # Teardown: This code runs after the injecting function finishes
             if os.path.exists(file_path):
                 os.remove(file_path)
-                print(f"Teardown: Removed temp file: {file_path}")
+                print("Teardown: Removed temp file")
             else:
                 print(
-                    f"Teardown: Temp file already removed: {file_path}"
+                    "Teardown: Temp file already removed"
                 )  # Should not happen in normal flow
 
 
     # services.py
     from picodi import Provide, inject
-    from dependencies import get_temp_file_path
+
+
+    # from dependencies import get_temp_file_path
 
 
     @inject
@@ -71,14 +73,14 @@ Let's modify our example to use a temporary file managed by a yield dependency.
         temp_file: str = Provide(get_temp_file_path),  # Inject the yielded path
     ) -> None:
         """Writes content to a temporary file provided by a dependency."""
-        print(f"Service: Writing to {temp_file}")
+        print("Service: Writing to temp_file")
         with open(temp_file, "a") as f:
             f.write(content + "\n")
-        print(f"Service: Finished writing to {temp_file}")
+        print("Service: Finished writing to temp_file")
 
 
     # main.py
-    from services import write_to_temp_file
+    # from services import write_to_temp_file
 
     print("Main: Calling service the first time.")
     write_to_temp_file("Hello from Picodi!")
@@ -109,20 +111,18 @@ Let's modify our example to use a temporary file managed by a yield dependency.
 .. testoutput:: yield_deps
 
     Main: Calling service the first time.
-    Setup: Created temp file: .../tmp.../tmpwt0haf9v.txt
-    Service: Writing to .../tmp.../tmpwt0haf9v.txt
-    Service: Finished writing to .../tmp.../tmpwt0haf9v.txt
-    Teardown: Removed temp file: .../tmp.../tmpwt0haf9v.txt
+    Setup: Created temp file
+    Service: Writing to temp_file
+    Service: Finished writing to temp_file
+    Teardown: Removed temp file
     Main: Service call finished.
 
     Main: Calling service the second time.
-    Setup: Created temp file: .../tmp.../tmpeiljxw8u.txt
-    Service: Writing to .../tmp.../tmpeiljxw8u.txt
-    Service: Finished writing to .../tmp.../tmpeiljxw8u.txt
-    Teardown: Removed temp file: .../tmp.../tmpeiljxw8u.txt
+    Setup: Created temp file
+    Service: Writing to temp_file
+    Service: Finished writing to temp_file
+    Teardown: Removed temp file
     Main: Service call finished.
-
-*(Note: The exact temporary file paths will vary)*
 
 As you can see, the setup code runs before the service function, and the teardown code runs after it finishes,
 ensuring the resource is managed correctly.

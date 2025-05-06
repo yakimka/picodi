@@ -72,7 +72,7 @@ Let's apply ``SingletonScope`` to our ``get_temp_file_path`` dependency from the
         """Provides a path to a temporary file and cleans it up afterwards."""
         tf = tempfile.NamedTemporaryFile(delete=False, mode="w+", suffix=".txt")
         file_path = tf.name
-        print(f"Setup: Created temp file: {file_path}")
+        print("Setup: Created temp file")
         tf.close()
 
         try:
@@ -80,15 +80,17 @@ Let's apply ``SingletonScope`` to our ``get_temp_file_path`` dependency from the
         finally:
             if os.path.exists(file_path):
                 os.remove(file_path)
-                print(f"Teardown: Removed temp file: {file_path}")
+                print("Teardown: Removed temp file")
             else:
-                print(f"Teardown: Temp file already removed: {file_path}")
+                print("Teardown: Temp file already removed")
 
 
     # services.py
     # (write_to_temp_file remains the same)
     from picodi import Provide, inject
-    from dependencies import get_temp_file_path
+
+
+    # from dependencies import get_temp_file_path
 
 
     @inject
@@ -96,14 +98,14 @@ Let's apply ``SingletonScope`` to our ``get_temp_file_path`` dependency from the
         content: str, temp_file: str = Provide(get_temp_file_path)
     ) -> None:
         """Writes content to a temporary file provided by a dependency."""
-        print(f"Service: Writing to {temp_file}")
+        print("Service: Writing to temp_file")
         with open(temp_file, "a") as f:
             f.write(content + "\n")
-        print(f"Service: Finished writing to {temp_file}")
+        print("Service: Finished writing to temp_file")
 
 
     # main.py
-    from services import write_to_temp_file
+    # from services import write_to_temp_file
     from picodi import registry
 
     print("Main: Calling service the first time.")
@@ -132,18 +134,18 @@ Let's apply ``SingletonScope`` to our ``get_temp_file_path`` dependency from the
 .. testoutput:: scopes
 
     Main: Calling service the first time.
-    Setup: Created temp file: .../tmp.../tmp6hcsmtxe.txt
-    Service: Writing to .../tmp.../tmp6hcsmtxe.txt
-    Service: Finished writing to .../tmp.../tmp6hcsmtxe.txt
+    Setup: Created temp file
+    Service: Writing to temp_file
+    Service: Finished writing to temp_file
     Main: Service call finished.
 
     Main: Calling service the second time.
-    Service: Writing to .../tmp.../tmp6hcsmtxe.txt
-    Service: Finished writing to .../tmp.../tmp6hcsmtxe.txt
+    Service: Writing to temp_file
+    Service: Finished writing to temp_file
     Main: Service call finished.
 
     Main: Manually shutting down SingletonScope dependencies.
-    Teardown: Removed temp file: .../tmp.../tmp6hcsmtxe.txt
+    Teardown: Removed temp file
     Main: Shutdown complete.
 
 Look closely at the output:

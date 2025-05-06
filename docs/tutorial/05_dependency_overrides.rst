@@ -51,7 +51,8 @@ point to a staging server instead of the production one.
 
     # services.py
     from picodi import Provide, inject
-    from dependencies import get_api_base_url
+
+    # from dependencies import get_api_base_url
 
 
     @inject
@@ -67,8 +68,9 @@ point to a staging server instead of the production one.
 
     # main.py
     from picodi import registry  # Need registry for override
-    from services import call_external_api
-    from dependencies import get_api_base_url, get_staging_api_base_url
+
+    # from services import call_external_api
+    # from dependencies import get_api_base_url, get_staging_api_base_url
 
     print("--- Calling without override ---")
     response_prod = call_external_api("users")

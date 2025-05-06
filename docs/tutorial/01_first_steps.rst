@@ -40,7 +40,7 @@ to tell Picodi how to supply the dependency.
     from picodi import Provide, inject
 
     # Assume dependencies.py is in the same directory or Python path
-    from dependencies import get_api_base_url
+    # from dependencies import get_api_base_url
 
 
     @inject
@@ -71,7 +71,7 @@ Now you can call `call_external_api` like a regular function. Picodi handles the
 .. testcode:: first_steps
 
     # main.py
-    from services import call_external_api
+    # from services import call_external_api
 
     response = call_external_api("users")
     print(response)
@@ -123,7 +123,7 @@ Let's define a configuration dependency and have our URL dependency use it:
 
     # services.py
     # (call_external_api remains the same, using get_api_base_url)
-    from dependencies import get_api_base_url
+    # from dependencies import get_api_base_url
     from picodi import Provide, inject
 
 
@@ -136,7 +136,7 @@ Let's define a configuration dependency and have our URL dependency use it:
 
 
     # main.py
-    from services import call_external_api
+    # from services import call_external_api
 
     response = call_external_api("orders")
     print(response)

@@ -41,7 +41,8 @@ Let's create an async service function that uses our ``fetch_data`` dependency:
 
     # services.py
     from picodi import Provide, inject
-    from dependencies import fetch_data
+
+    # from dependencies import fetch_data
 
 
     @inject
@@ -63,7 +64,8 @@ To run our async service, we need an event loop, typically using ``asyncio.run()
 
     # main.py
     import asyncio
-    from services import process_user
+
+    # from services import process_user
 
     print("Main: Running async service.")
     asyncio.run(process_user())
@@ -126,7 +128,8 @@ Let's define an async dependency managing a (simulated) async database connectio
 
     # services.py
     from picodi import Provide, inject
-    from dependencies import get_db_connection, AsyncDbConnection
+
+    # from dependencies import get_db_connection, AsyncDbConnection
 
 
     @inject
@@ -143,7 +146,8 @@ Let's define an async dependency managing a (simulated) async database connectio
 
     # main.py
     import asyncio
-    from services import run_db_query
+
+    # from services import run_db_query
 
     print("Main: Running async DB service.")
     result = asyncio.run(run_db_query("SELECT * FROM users"))
