@@ -25,7 +25,7 @@ for a specific function or method.
         return "some_value"
 
 
-    @inject  # Apply the decorator here
+    @inject  # Enable dependency injection for this function
     def my_function(param=Provide(get_dependency)):
         # ... function body ...
         print(f"Injected value: {param}")
@@ -65,7 +65,7 @@ the function signature before other decorators potentially modify it.
     def my_func(val=Provide(...)): ...
 
 **********************************
-The :func:`~picodi.Provide` Marker
+The ``Provide`` Marker
 **********************************
 
 :func:`~picodi.Provide` is used as a **default value** for a function parameter to signal
@@ -111,8 +111,8 @@ to ``@inject`` that this parameter should be filled by a dependency.
         # Output: Processing user Alice (ID: 999)
 
 *   Type hints (``user_id: int``, ``name: str``) are strongly recommended for clarity
-    and static analysis but are not strictly required by Picodi for injection itself.
-    Picodi relies on the ``Provide()`` marker.
+    and static analysis but are not required by Picodi for injection itself.
+    Picodi relies on the ``Provide()`` marker, not type hints.
 
 ***************************
 Dependency Resolution Graph
@@ -159,7 +159,7 @@ It builds a dependency graph and resolves it in the correct order.
     Resolving: get_user_repo
     Running main_service with UserRepo(Connection(sqlite:///:memory:))
 
-Picodi resolved the chain: `get_config` -> `get_db_connection` -> `get_user_repo` -> `main_service`.
+Picodi resolved the chain: ``get_config`` -> ``get_db_connection`` -> ``get_user_repo`` -> ``main_service``.
 
 **********************
 Injecting into Methods
