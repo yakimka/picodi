@@ -1,5 +1,19 @@
 .. _topics_lifespan:
 
+.. testcleanup:: *
+
+    import asyncio
+    from picodi import registry
+
+
+    async def teardown():
+        await registry.shutdown()
+        registry._clear()
+
+
+    asyncio.run(teardown())
+
+
 ###################
 Lifespan Management
 ###################
@@ -36,7 +50,7 @@ This is often done once at application startup.
 
 1.  Using ``auto_init=True`` in :meth:`~picodi.Registry.set_scope`:
 
-    .. code-block:: python
+    .. testcode:: registry_init
 
         from picodi import registry, SingletonScope
 
@@ -49,7 +63,7 @@ This is often done once at application startup.
 
 2.  Using :meth:`~picodi.Registry.add_for_init`:
 
-    .. code-block:: python
+    .. testcode:: registry_init
 
         from picodi import registry, SingletonScope
 
@@ -68,7 +82,7 @@ This is often done once at application startup.
 
 You typically call ``registry.init()`` once during application startup.
 
-.. code-block:: python
+.. testcode:: registry_init
 
     # At application startup
     print("App Starting...")
@@ -79,6 +93,15 @@ You typically call ``registry.init()`` once during application startup.
 
     # Application runs...
 
+**Output:**
+
+.. testoutput:: registry_init
+
+    App Starting...
+    Initializing Cache Client...
+    Initializing DB Pool...
+    Dependencies Initialized.
+
 **Async Initialization:**
 
 If any dependencies marked for initialization (via ``auto_init`` or ``add_for_init``) are ``async def`` or async generators,
@@ -86,7 +109,7 @@ If any dependencies marked for initialization (via ``auto_init`` or ``add_for_in
 those dependencies are properly initialized. If all initializable dependencies are synchronous,
 the awaitable does nothing when awaited.
 
-.. code-block:: python
+.. testcode:: async_registry_init
 
     import asyncio
     from picodi import registry, SingletonScope
@@ -107,6 +130,14 @@ the awaitable does nothing when awaited.
 
 
     asyncio.run(startup())
+
+**Output:**
+
+.. testoutput:: async_registry_init
+
+    App Starting...
+    Initializing Async Client...
+    Async Dependencies Initialized.
 
 **Explicit Dependencies:**
 
@@ -132,7 +163,7 @@ This is typically called once when the application is stopping.
 and calls their respective ``shutdown`` methods. For yield dependencies within these scopes,
 this triggers the execution of the code after the ``yield`` statement (usually in the ``finally`` block).
 
-.. code-block:: python
+.. testcode:: registry_shutdown
 
     from picodi import registry, SingletonScope, Provide, inject
 
@@ -162,7 +193,7 @@ this triggers the execution of the code after the ``yield`` statement (usually i
 
 **Output:**
 
-.. code-block:: text
+.. testoutput:: registry_shutdown
 
     Resource Acquired
     Using ResourceData
@@ -201,7 +232,7 @@ or simple applications.
 =====================================
 Use this for applications where the main lifecycle is synchronous.
 
-.. code-block:: python
+.. testcode:: registry_lifespan
 
     from picodi import registry, SingletonScope, Provide, inject
 
@@ -225,7 +256,7 @@ Use this for applications where the main lifecycle is synchronous.
 
 **Output:**
 
-.. code-block:: text
+.. testoutput:: registry_lifespan
 
     Entering lifespan...
     Sync Singleton Init
@@ -238,7 +269,7 @@ Use this for applications where the main lifecycle is synchronous.
 Use this for applications with an asynchronous main lifecycle.
 It handles ``await registry.init()`` and ``await registry.shutdown()``.
 
-.. code-block:: python
+.. testcode:: registry_alifespan
 
     import asyncio
     from picodi import registry, SingletonScope, Provide, inject
@@ -269,7 +300,7 @@ It handles ``await registry.init()`` and ``await registry.shutdown()``.
 
 **Output:**
 
-.. code-block:: text
+.. testoutput:: registry_alifespan
 
     Entering alifespan...
     Async Singleton Init

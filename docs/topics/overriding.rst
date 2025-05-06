@@ -32,7 +32,7 @@ Using ``override`` as a Context Manager
 This is the recommended approach for temporary overrides, especially within tests or specific code blocks.
 The override is active only within the ``with`` block and is automatically removed upon exiting.
 
-.. code-block:: python
+.. testcode:: override_context_manager
 
     from typing import Callable
 
@@ -113,7 +113,7 @@ The override is active only within the ``with`` block and is automatically remov
 
 **Output:**
 
-.. code-block:: text
+.. testoutput:: override_context_manager
 
     --- Running with Production Defaults ---
     Original: Using Production DB URL

@@ -23,7 +23,7 @@ Manual Overrides in Tests
 You can directly use ``registry.override`` as a context manager within your test functions.
 This is useful for simple cases or when not using a testing framework with specific Picodi integration.
 
-.. code-block:: python
+.. testcode:: tests_manual_override
 
     # test_example.py
     from picodi import registry, Provide, inject
@@ -105,7 +105,7 @@ The ``picodi_override`` Marker
 Instead of using ``with registry.override(...):`` inside your test functions, the `pytest` plugin provides a more convenient
 ``@pytest.mark.picodi_override`` marker.
 
-.. code-block:: python
+.. testcode:: tests_pytest_integration
 
     # test_pytest_integration.py
     import pytest
@@ -150,7 +150,10 @@ Overriding Multiple Dependencies
 ================================
 You can override multiple dependencies by providing a list of tuples to the marker:
 
-.. code-block:: python
+.. testcode:: tests_multiple_overrides
+
+    import pytest
+
 
     def get_original_dep_1(): ...
     def get_mock_dep_1(): ...
@@ -175,7 +178,7 @@ section. This ensures that Picodi's overrides and cleanup integrate correctly wi
 
 The usage of ``@pytest.mark.picodi_override`` remains the same for async test functions.
 
-.. code-block:: python
+.. testcode:: pytest_async_integration
 
     import pytest
     from picodi import Provide, inject

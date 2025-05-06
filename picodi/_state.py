@@ -282,7 +282,7 @@ class Registry:
         """
         self._storage.touched_dependencies.clear()
 
-    def clear(self) -> None:
+    def _clear(self) -> None:
         """
         Clear the registry. It will remove all dependencies, overrides
         and touched dependencies.
@@ -294,6 +294,7 @@ class Registry:
         self._storage.deps.clear()
         self._storage.overrides.clear()
         self._storage.touched_dependencies.clear()
+        self._for_init.clear()
 
 
 @dataclass(frozen=True)

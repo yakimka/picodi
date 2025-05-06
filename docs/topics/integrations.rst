@@ -50,7 +50,7 @@ Picodi provides helpers for Starlette applications, primarily for managing reque
 1.  **Define** your request-scoped dependency using ``@registry.set_scope(RequestScope)``.
 2.  **Add** the ``RequestScopeMiddleware`` to your Starlette application.
 
-.. code-block:: python
+.. testcode:: starlette_integration
 
     # dependencies.py
     from picodi import registry
@@ -75,7 +75,7 @@ Picodi provides helpers for Starlette applications, primarily for managing reque
     from starlette.responses import JSONResponse
     from starlette.routing import Route
 
-    from dependencies import get_request_id
+    # from dependencies import get_request_id
 
 
     @inject
@@ -138,7 +138,7 @@ Picodi provides a special :func:`~picodi.integrations.fastapi.Provide` marker de
 You can use Picodi's standard ``@inject`` on your route function, but you still need to wrap the
 ``Provide`` marker with FastAPI's ``Depends``.
 
-.. code-block:: python
+.. testcode:: fastapi_routes
 
     from fastapi import FastAPI, Depends
     from picodi import inject
@@ -167,7 +167,7 @@ To avoid the verbosity of ``Depends(Provide(...))`` and the need for ``@inject``
 use the ``wrap=True`` argument with ``picodi.integrations.fastapi.Provide``.
 This tells Picodi to wrap the dependency in a way that FastAPI's own DI system understands directly.
 
-.. code-block:: python
+.. testcode:: fastapi_wrap_provide
 
     from fastapi import FastAPI
     from picodi.integrations.fastapi import Provide  # Use the fastapi version
@@ -197,7 +197,7 @@ Combining FastAPI ``Depends`` and Picodi ``Provide``
 You can easily combine FastAPI's dependencies (for things like path parameters, query parameters, security)
 with Picodi dependencies within the same function signature.
 
-.. code-block:: python
+.. testcode:: fastapi_combined
 
     from fastapi import FastAPI, Depends, Path, HTTPException
     from picodi.integrations.fastapi import Provide
@@ -248,7 +248,7 @@ You can use the same :class:`~picodi.integrations.fastapi.RequestScopeMiddleware
 :class:`~picodi.integrations.fastapi.RequestScope`
 in FastAPI as you would in Starlette to manage request-scoped dependencies.
 
-.. code-block:: python
+.. testcode:: fastapi_request_scope
 
     import uuid
 

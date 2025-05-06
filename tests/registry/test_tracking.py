@@ -179,7 +179,7 @@ def test_clearing_registry_also_cleared_touched_cache():
     service()
 
     # Act
-    registry.clear()
+    registry._clear()  # noqa: SF01
 
     # Assert
     assert not registry.touched

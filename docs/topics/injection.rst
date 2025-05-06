@@ -136,7 +136,7 @@ Dependency Resolution Graph
 Picodi automatically handles cases where dependencies depend on other dependencies.
 It builds a dependency graph and resolves it in the correct order.
 
-.. code-block:: python
+.. testcode:: dependency_graph
 
     from picodi import Provide, inject
 
@@ -182,7 +182,7 @@ Injecting into Methods
 
 You can use ``@inject`` on methods, including ``__init__``, just like regular functions.
 
-.. code-block:: python
+.. testcode:: injecting_methods
 
     from picodi import Provide, inject
 
@@ -207,7 +207,7 @@ You can use ``@inject`` on methods, including ``__init__``, just like regular fu
 
 **Output:**
 
-.. code-block:: text
+.. testoutput:: injecting_methods
 
     Creating logger
     MyService.__init__ called

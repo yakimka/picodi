@@ -17,7 +17,7 @@ Assigning Scopes to Dependencies
 You assign a scope to a dependency provider function using the
 :meth:`~picodi.Registry.set_scope` decorator provided by the :attr:`~picodi.registry` object.
 
-.. code-block:: python
+.. testcode:: use_scopes
 
     from picodi import registry, SingletonScope, Provide, inject
 
@@ -55,7 +55,7 @@ You assign a scope to a dependency provider function using the
 
 **Output:**
 
-.. code-block:: text
+.. testoutput:: use_scopes
 
     First use:
     Creating shared resource...
@@ -129,9 +129,9 @@ When setting a scope, especially a manual one like ``SingletonScope``, you might
 proactively when the application starts, rather than waiting for the first request.
 You can achieve this using the ``auto_init=True`` parameter in ``@registry.set_scope``.
 
-.. code-block:: python
+.. testcode:: auto_init
 
-    from picodi import registry, SingletonScope
+    from picodi import inject, registry, Provide, SingletonScope
 
 
     @registry.set_scope(SingletonScope, auto_init=True)  # Note auto_init
@@ -145,20 +145,23 @@ You can achieve this using the ``auto_init=True`` parameter in ``@registry.set_s
     registry.init()  # This will initialize all 'auto_init=True' dependencies
     print("registry.init() finished.")
 
+
     # Later, when injected:
-    # @inject
-    # def use_eager(dep=Provide(get_eager_singleton)):
-    #     print(f"Using dependency: {dep}")
-    #
-    # use_eager() # Will not print "Eager singleton created!" again
+    @inject
+    def use_eager(dep=Provide(get_eager_singleton)):
+        print(f"Using dependency: {dep}")
+
+
+    use_eager()  # Will not print "Eager singleton created!" again
 
 **Output:**
 
-.. code-block:: text
+.. testoutput:: auto_init
 
     Calling registry.init()...
     Eager singleton created!
     registry.init() finished.
+    Using dependency: I was created early
 
 Dependencies marked with ``auto_init=True`` will be initialized when :meth:`picodi.Registry.init` is called.
 You can also explicitly add dependencies to be initialized using :meth:`picodi.Registry.add_for_init`.
