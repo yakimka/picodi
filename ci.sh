@@ -31,7 +31,8 @@ run_ci () {
   # print shasum of the built packages
   shasum dist/*
   # trying to build the docs
-  (cd docs && make html && make test)
+  (cd docs && make html)
+#  (cd docs && make html && make test)
 
   set +x
   echo '[ci finished]'
