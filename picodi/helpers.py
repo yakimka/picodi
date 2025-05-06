@@ -124,10 +124,7 @@ class resolve(Generic[T]):  # noqa: N801
         self,
         dependency: Callable[
             [],
-            Coroutine[T, None, None]
-            | Generator[T, None, None]
-            | AsyncGenerator[T, None]
-            | T,
+            Coroutine[T, None, None] | Generator[T] | AsyncGenerator[T] | T,
         ],
     ) -> None:
         self.dependency = dependency
@@ -137,7 +134,7 @@ class resolve(Generic[T]):  # noqa: N801
     def _create_sync_cm(self) -> ContextManager[T]:
         @contextlib.contextmanager
         @inject
-        def sync_enter(dep: Any = Provide(self.dependency)) -> Generator[T, None, None]:
+        def sync_enter(dep: Any = Provide(self.dependency)) -> Generator[T]:
             yield dep
 
         return sync_enter()
@@ -147,7 +144,7 @@ class resolve(Generic[T]):  # noqa: N801
         @inject
         async def async_enter(
             dep: Any = Provide(self.dependency),
-        ) -> AsyncGenerator[T, None]:
+        ) -> AsyncGenerator[T]:
             yield dep
 
         return async_enter()

@@ -29,7 +29,7 @@ def wrapper_helper(
     storage: Storage,
     args: tuple[Any, ...],
     kwargs: dict[str, Any],
-) -> Generator[Any, None, None]:
+) -> Generator[Any]:
     exit_stack = ExitStack()
     if _need_patch(dependant, storage):
         dependant = copy.deepcopy(dependant)
@@ -67,7 +67,7 @@ def wrapper_helper(
     if inspect.isgenerator(result):
 
         @functools.wraps(result)  # type: ignore[arg-type]
-        def gen() -> Generator[Any, None, None]:
+        def gen() -> Generator[Any]:
             exception = None
             try:
                 yield from result
@@ -85,7 +85,7 @@ def wrapper_helper(
     elif inspect.isasyncgen(result):
 
         @functools.wraps(result)  # type: ignore[arg-type]
-        async def gen() -> AsyncGenerator[Any, None]:
+        async def gen() -> AsyncGenerator[Any]:
             exception = None
             try:
                 async for item in result:

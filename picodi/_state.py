@@ -188,7 +188,7 @@ class Registry:
         return asyncio.gather(*tasks)
 
     @contextmanager
-    def lifespan(self) -> Generator[None, None, None]:
+    def lifespan(self) -> Generator[None]:
         """
         Context manager to manage the lifespan of the application.
         It will automatically call init and shutdown methods.
@@ -200,7 +200,7 @@ class Registry:
             self.shutdown()
 
     @asynccontextmanager
-    async def alifespan(self) -> AsyncGenerator[None, None]:
+    async def alifespan(self) -> AsyncGenerator[None]:
         """
         Async context manager to manage the lifespan of the application.
         It will automatically call init and shutdown methods.
@@ -261,7 +261,7 @@ class Registry:
                 self._storage.overrides.pop(dependency, None)
 
         @contextmanager
-        def manage_context() -> Generator[None, None, None]:
+        def manage_context() -> Generator[None]:
             try:
                 yield
             finally:
