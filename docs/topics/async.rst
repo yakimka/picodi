@@ -14,7 +14,7 @@ Defining Async Dependencies
 
 To define a dependency provider that performs asynchronous operations, simply use ``async def``:
 
-.. code-block:: python
+.. testcode:: async_dependencies
 
     import asyncio
 
@@ -35,7 +35,7 @@ For asynchronous resources that require setup and teardown (like database connec
 use an ``async def`` function with a single ``yield``.
 This works like :func:`python:contextlib.asynccontextmanager`.
 
-.. code-block:: python
+.. testcode:: async_dependencies
 
     import asyncio
 
@@ -75,7 +75,7 @@ the function itself must be** ``async def`` **.**
 
 This is because Picodi needs to ``await`` the asynchronous dependency provider during the injection process.
 
-.. code-block:: python
+.. testcode:: async_dependencies
 
     import asyncio
     from picodi import Provide, inject
@@ -96,10 +96,21 @@ This is because Picodi needs to ``await`` the asynchronous dependency provider d
 
     asyncio.run(process_data())
 
+**Output:**
+
+.. testoutput:: async_dependencies
+
+    Async Dep: Fetching config...
+    Async Yield Dep: Connecting...
+    Async Service: Got config: {'feature_x_enabled': True}
+    Async Yield Dep: Running query: SELECT * FROM data
+    Async Service: Got DB results: [{'id': 1}, {'id': 2}]
+    Async Yield Dep: Closing connection...
+
 An ``async def`` function can, however, inject regular **synchronous** dependencies without any issues.
 Picodi handles mixing them correctly.
 
-.. code-block:: python
+.. testcode:: async_dependencies
 
     def get_sync_setting() -> str:
         return "sync_value"
@@ -127,7 +138,7 @@ When dealing with async dependencies that have manual :ref:`scopes <topics_scope
 The :meth:`~picodi.Registry.alifespan` context manager handles these awaits automatically
 for applications with an async lifecycle.
 
-.. code-block:: python
+.. testcode:: lifespan_management
 
     import asyncio
     from picodi import registry, SingletonScope, Provide, inject
@@ -152,6 +163,14 @@ for applications with an async lifecycle.
 
     asyncio.run(run())
 
+**Output:**
+
+.. testoutput:: lifespan_management
+
+    Async Singleton: Init
+    Main logic using: Async Resource Data
+    Async Singleton: Cleanup
+
 ************************************************
 Injecting Async Dependencies into Sync Functions
 ************************************************
@@ -172,7 +191,7 @@ Trying to do so will inject the coroutine object itself.
     Picodi will retrieve the already-computed value from the scope cache without needing
     to ``await`` the provider function again.
 
-.. code-block:: python
+.. testcode:: async_in_sync
 
     import asyncio
     from picodi import registry, SingletonScope, Provide, inject
@@ -209,7 +228,7 @@ Trying to do so will inject the coroutine object itself.
 
 **Output:**
 
-.. code-block:: text
+.. testoutput:: async_in_sync
 
     App Startup: Initializing dependencies...
     Async Source: Initializing...

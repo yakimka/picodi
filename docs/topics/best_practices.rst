@@ -33,7 +33,7 @@ application – the points where your framework or entry script invokes your cod
 
 **Example (FastAPI):**
 
-.. code-block:: python
+.. testcode:: application_edges
 
     # --- Dependencies ---
     class Database: ...

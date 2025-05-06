@@ -27,7 +27,7 @@ these dependencies are "injected" from an external source.
 
 **Example without DI:**
 
-.. code-block:: python
+.. testcode:: no_di
 
     class DatabaseConnection:
         def __init__(self, connection_string: str):
@@ -52,11 +52,11 @@ Testing ``UserService`` without a real database connection is difficult.
 
 **Example with DI:**
 
-.. code-block:: python
+.. testcode:: with_di
 
     class DatabaseConnection:
         # ... (same as before)
-        pass
+        def __init__(self, connection_string: str): ...  # (same as before)
 
 
     class UserService:
