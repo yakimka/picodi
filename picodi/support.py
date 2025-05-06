@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 class NullAwaitable:
     """Dummy awaitable that does nothing."""
 
-    def __await__(self) -> Generator[None, None, None]:
+    def __await__(self) -> Generator[None]:
         yield
         return None
 

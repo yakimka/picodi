@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 @pytest_asyncio.fixture()
-async def _picodi_shutdown() -> AsyncGenerator[None, None]:
+async def _picodi_shutdown() -> AsyncGenerator[None]:
     """
     Shutdown dependencies after the test (async version).
     Need for tests consistency.

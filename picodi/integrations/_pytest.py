@@ -45,7 +45,7 @@ def registries(
 
 
 @pytest.fixture()
-def _picodi_shutdown(registries: list[Registry]) -> Generator[None, None, None]:
+def _picodi_shutdown(registries: list[Registry]) -> Generator[None]:
     """
     Shutdown dependencies after the test.
     Need for tests consistency.
@@ -56,7 +56,7 @@ def _picodi_shutdown(registries: list[Registry]) -> Generator[None, None, None]:
 
 
 @pytest.fixture()
-def _picodi_clear_touched(registries: list[Registry]) -> Generator[None, None, None]:
+def _picodi_clear_touched(registries: list[Registry]) -> Generator[None]:
     """
     Clear touched dependencies after the test.
     Need for tests consistency.
@@ -107,7 +107,7 @@ def _picodi_override_setup(
     picodi_overrides: list[tuple[Callable, Callable]],
     picodi_overrides_from_marks: list[tuple[Callable, Callable]],
     registries: list[Registry],
-) -> Generator[None, None, None]:
+) -> Generator[None]:
     overrides = []
     for item in picodi_overrides_from_marks + picodi_overrides:
         if item not in overrides:

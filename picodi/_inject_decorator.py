@@ -129,7 +129,7 @@ def inject(
                 @functools.wraps(fn)
                 async def gen_wrapper(
                     *args: P.args, **kwargs: P.kwargs
-                ) -> AsyncGenerator[T, None]:
+                ) -> AsyncGenerator[T]:
                     result = await fun_wrapper(*args, **kwargs)
                     async for value in result:  # type: ignore[attr-defined]
                         try:
@@ -170,9 +170,7 @@ def inject(
             if inspect.isgeneratorfunction(fn):
 
                 @functools.wraps(fn)
-                def gen_wrapper(
-                    *args: P.args, **kwargs: P.kwargs
-                ) -> Generator[T, None, None]:
+                def gen_wrapper(*args: P.args, **kwargs: P.kwargs) -> Generator[T]:
                     yield from fun_wrapper(*args, **kwargs)  # type: ignore[misc]
 
                 wrapper = gen_wrapper  # type: ignore[assignment]
