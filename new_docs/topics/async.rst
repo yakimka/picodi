@@ -1,14 +1,16 @@
 .. _topics_async:
 
-##################
+#################
 Asynchronous Code
-##################
+#################
 
-Picodi provides first-class support for Python's ``asyncio`` and asynchronous programming patterns. You can define, inject, and manage the lifecycle of asynchronous dependencies just as easily as synchronous ones.
+Picodi provides first-class support for Python's ``asyncio`` and asynchronous programming patterns.
+You can define, inject, and manage the lifecycle of asynchronous dependencies
+just as easily as synchronous ones.
 
-********************************
+***************************
 Defining Async Dependencies
-********************************
+***************************
 
 To define a dependency provider that performs asynchronous operations, simply use ``async def``:
 
@@ -25,16 +27,17 @@ To define a dependency provider that performs asynchronous operations, simply us
 
 This function can now be used with :func:`~picodi.Provide`.
 
-********************************
+************************
 Async Yield Dependencies
-********************************
+************************
 
-For asynchronous resources that require setup and teardown (like database connections or client sessions), use an ``async def`` function with a single ``yield``. This works like :func:`python:contextlib.asynccontextmanager`.
+For asynchronous resources that require setup and teardown (like database connections or client sessions),
+use an ``async def`` function with a single ``yield``.
+This works like :func:`python:contextlib.asynccontextmanager`.
 
 .. code-block:: python
 
     import asyncio
-    from contextlib import asynccontextmanager
 
 
     class AsyncDbClient:
@@ -53,7 +56,6 @@ For asynchronous resources that require setup and teardown (like database connec
             return [{"id": 1}, {"id": 2}]
 
 
-    @asynccontextmanager
     async def get_db_client():
         client = AsyncDbClient()
         await client.connect()
@@ -64,16 +66,18 @@ For asynchronous resources that require setup and teardown (like database connec
 
 Picodi will handle awaiting the setup phase (before ``yield``) and the teardown phase (after ``yield``).
 
-********************************
+****************************
 Injecting Async Dependencies
-********************************
+****************************
 
-Rule of Thumb: **If a function needs to inject an asynchronous dependency, the function itself must be ``async def``.**
+Rule of Thumb: **If a function needs to inject an asynchronous dependency,
+the function itself must be** ``async def`` **.**
 
 This is because Picodi needs to ``await`` the asynchronous dependency provider during the injection process.
 
 .. code-block:: python
 
+    import asyncio
     from picodi import Provide, inject
 
     # Assume async dependencies from above are defined
@@ -90,11 +94,10 @@ This is because Picodi needs to ``await`` the asynchronous dependency provider d
             print(f"Async Service: Got DB results: {results}")
 
 
-    # To run this:
-    # import asyncio
-    # asyncio.run(process_data())
+    asyncio.run(process_data())
 
-An ``async def`` function can, however, inject regular **synchronous** dependencies without any issues. Picodi handles mixing them correctly.
+An ``async def`` function can, however, inject regular **synchronous** dependencies without any issues.
+Picodi handles mixing them correctly.
 
 .. code-block:: python
 
@@ -113,15 +116,18 @@ An ``async def`` function can, however, inject regular **synchronous** dependenc
 Lifespan Management (``init``/``shutdown``)
 *******************************************
 
-When dealing with async dependencies that have :ref:`manual scopes <topics_scopes>` (``SingletonScope``, ``ContextVarScope``) or are marked for eager initialization (``auto_init=True``), remember:
+When dealing with async dependencies that have manual :ref:`scopes <topics_scopes>`
+(:class:`~picodi.SingletonScope`, :class:`~picodi.ContextVarScope`) or are marked for eager initialization (``auto_init=True``), remember:
 
-*   :meth:`picodi.Registry.init` returns an **awaitable**. If any async dependencies are being initialized, you **must** ``await registry.init()``.
-*   :meth:`picodi.Registry.shutdown` returns an **awaitable**. If any async dependencies require cleanup (e.g., async yield dependencies in manual scopes), you **must** ``await registry.shutdown()``.
+*   :meth:`picodi.Registry.init` returns an **awaitable**. If any async dependencies are being initialized,
+    you **must** ``await registry.init()``.
+*   :meth:`picodi.Registry.shutdown` returns an **awaitable**. If any async dependencies require cleanup
+    (e.g., async yield dependencies in manual scopes), you **must** ``await registry.shutdown()``.
 
-The :meth:`~picodi.Registry.alifespan` context manager handles these awaits automatically for applications with an async lifecycle.
+The :meth:`~picodi.Registry.alifespan` context manager handles these awaits automatically
+for applications with an async lifecycle.
 
 .. code-block:: python
-    :emphasize-lines: 10, 16
 
     import asyncio
     from picodi import registry, SingletonScope, Provide, inject
@@ -144,21 +150,27 @@ The :meth:`~picodi.Registry.alifespan` context manager handles these awaits auto
             await main_logic()
 
 
-    # asyncio.run(run())
+    asyncio.run(run())
 
-*************************************************
+************************************************
 Injecting Async Dependencies into Sync Functions
-*************************************************
+************************************************
 .. _topics_async_in_sync:
 
-Generally, you cannot directly inject the *result* of an async dependency into a synchronous function, because the sync function cannot ``await`` the dependency resolution. Trying to do so will inject the coroutine object itself.
+Generally, you cannot directly inject the *result* of an async dependency into a synchronous function,
+because the sync function cannot ``await`` the dependency resolution.
+Trying to do so will inject the coroutine object itself.
 
-**However, there's a common pattern for async dependencies with manual scopes (like ``SingletonScope``):**
+**However, there's a workaround for async dependencies with manual scopes (like SingletonScope):**
 
 1.  Define the async dependency with a manual scope (e.g., ``SingletonScope``).
-2.  Ensure the dependency is initialized **before** the synchronous function needs it. This is typically done by calling ``await registry.init()`` at application startup (using ``auto_init=True`` or ``add_for_init``).
+2.  Ensure the dependency is initialized **before** the synchronous function needs it.
+    This is typically done by calling ``await registry.init()`` at application startup
+    (using ``auto_init=True`` or :meth:`~picodi.Registry.add_for_init`).
 3.  Once initialized, the *cached value* of the async dependency exists in the scope.
-4.  A synchronous function can now inject this dependency. Picodi will retrieve the already-computed value from the scope cache without needing to ``await`` the provider function again.
+4.  A synchronous function can now inject this dependency.
+    Picodi will retrieve the already-computed value from the scope cache without needing
+    to ``await`` the provider function again.
 
 .. code-block:: python
 
@@ -193,9 +205,9 @@ Generally, you cannot directly inject the *result* of an async dependency into a
         await registry.shutdown()  # Cleanup (if get_async_data_source yielded)
 
 
-    # asyncio.run(startup_and_run())
+    asyncio.run(startup_and_run())
 
-**Output (if run):**
+**Output:**
 
 .. code-block:: text
 
@@ -207,19 +219,19 @@ Generally, you cannot directly inject the *result* of an async dependency into a
     Sync function using cached async data: {'data': 'pre-loaded async data'}
 
     App Shutdown...
-    App Shutdown Complete.
 
-This pattern is very useful for sharing resources like database connection pools or HTTP clients (initialized asynchronously) with both async and sync parts of your application.
+This workaround allows you to inject async dependencies into sync functions,
+but it should be used with caution.
 
-****************
+*************
 Key Takeaways
-****************
+*************
 
 *   Use ``async def`` for asynchronous dependency providers.
 *   Use ``async def`` with ``yield`` for async dependencies requiring setup/teardown.
 *   Functions injecting async dependencies must be ``async def``.
 *   Async functions can inject sync dependencies.
-*   ``await registry.init()`` and ``await registry.shutdown()`` if dealing with async dependencies in manual scopes or marked for ``auto_init``.
-*   Pre-initialize async dependencies with manual scopes using ``await registry.init()`` to allow injection into synchronous functions.
+*   ``await registry.init()`` and ``await registry.shutdown()`` if dealing with async
+    dependencies in manual scopes or marked for ``auto_init``.
 
 Next, let's focus on how Picodi helps with :ref:`Testing <topics_testing>`.
