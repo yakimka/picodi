@@ -17,7 +17,7 @@ This is arguably the most important principle.
 Dependencies should primarily be injected at the **outermost layers** of your
 application – the points where your framework or entry script invokes your code.
 
-*   **Web Applications (FastAPI/Starlette):** Inject dependencies mainly in route handler functions.
+*   **Web Applications:** Inject dependencies mainly in route handler functions.
     Avoid injecting them deep inside internal service functions called by the routes.
 *   **CLI Applications:** Inject dependencies in the main command handler functions.
 *   **Background Tasks:** Inject dependencies in the entry point function for the task.
@@ -28,7 +28,7 @@ application – the points where your framework or entry script invokes your cod
     explicit and easy to understand.
 *   **Simplified Testing:** Mocking or overriding dependencies becomes much easier
     because you only need to do it at the entry points, not deep within nested function calls.
-*   **Reduced Complexity:** Prevents the DI container from becoming deeply entangled
+*   **Reduced Complexity:** Prevents the DI library from becoming deeply entangled
     with your core business logic.
 
 **Example (FastAPI):**
@@ -97,8 +97,8 @@ application – the points where your framework or entry script invokes your cod
         profile = user_service.get_user_profile(user_id)
         return profile
 
-By injecting `UserService` (or rather, its provider `get_user_service`) only at the route level,
-the internal `UserService` class remains decoupled from Picodi itself.
+By injecting ``UserService`` (or rather, its provider ``get_user_service``) only at the route level,
+the internal ``UserService`` class remains decoupled from Picodi itself.
 
 *****************
 Use Scopes Wisely
@@ -107,12 +107,12 @@ Use Scopes Wisely
 Scopes are powerful but add complexity if misused.
 Carefully consider the required lifecycle of each dependency:
 
-*   **``NullScope`` (Default):** Use for cheap, stateless dependencies or when a
+*   **NullScope (Default):** Use for cheap, stateless dependencies or when a
     unique instance is strictly required per use.
-*   **``SingletonScope``:** Use for expensive, shared resources like connection pools,
+*   **SingletonScope:** Use for expensive, shared resources like connection pools,
     HTTP clients, or configuration objects that should live for the entire application lifetime.
     Remember they require manual shutdown.
-*   **``ContextVarScope`` / ``RequestScope``:** Use for resources that need to be isolated
+*   **ContextVarScope / RequestScope:** Use for resources that need to be isolated
     per request (in web apps) or per task/thread context.
     Remember they require manual shutdown, often tied to the request/task end.
 
@@ -170,7 +170,7 @@ injected parameters is strongly recommended:
 Don't Try to Resolve Everything with Dependency Injection
 *********************************************************
 
-DI is a tool, not a silver bullet. Not every object needs to be managed by the DI container.
+DI is a tool, not a silver bullet. Not every object needs to be managed by the DI library.
 Ask yourself:
 
 *   Is this object a **shared dependency** needed by multiple, unrelated parts of the application?

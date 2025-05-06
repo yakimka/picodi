@@ -67,6 +67,7 @@ although using the context manager handles clearing the override itself.
 ******************
 Pytest Integration
 ******************
+.. _topics_pytest_integration:
 
 Picodi provides a dedicated ``pytest`` plugin that significantly simplifies testing workflows
 by automating setup and cleanup.
