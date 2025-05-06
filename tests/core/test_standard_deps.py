@@ -99,10 +99,30 @@ async def test_resolve_async_dependency_from_sync_function_return_coroutine():
     assert isinstance(await result, int)
 
 
-def test_can_pass_dependency(get_redis_string_dep):
+def test_can_pass_dependency_as_arg(get_redis_string_dep):
+    result = get_redis_string_dep(100_000_000)
+
+    assert result == "http://redis:100000000"
+
+
+def test_can_pass_dependency_as_kwarg(get_redis_string_dep):
     result = get_redis_string_dep(port=100_000_000)
 
     assert result == "http://redis:100000000"
+
+
+def test_can_pass_one_of_the_dependencies():
+    @inject
+    def process_user(
+        user_id: int = Provide(lambda: 123),
+        name: str = Provide(lambda: "Alice"),
+    ):
+        return user_id, name
+
+    res_id, res_name = process_user(222)
+
+    assert res_id == 222
+    assert res_name == "Alice"
 
 
 async def test_can_pass_dependency_async(get_redis_string_async_dep):

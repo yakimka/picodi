@@ -18,7 +18,7 @@ The most basic form of a dependency provider is a function that directly returns
 
 **Synchronous Example:**
 
-.. code-block:: python
+.. testcode:: simple_dependency
 
     def get_database_url() -> str:
         """Returns the connection string for the database."""
@@ -35,7 +35,7 @@ The most basic form of a dependency provider is a function that directly returns
 Picodi also supports asynchronous dependency providers.
 These are defined using the ``async def`` syntax.
 
-.. code-block:: python
+.. testcode:: simple_async_dependency
 
     import asyncio
 
@@ -66,7 +66,7 @@ Picodi treats such generators like context managers:
 
 **Synchronous Example:**
 
-.. code-block:: python
+.. testcode:: yield_dependency
 
     import sqlite3
 
@@ -84,7 +84,7 @@ Picodi treats such generators like context managers:
 
 **Asynchronous Example:**
 
-.. code-block:: python
+.. testcode:: async_yield_dependency
 
     import asyncio
 
@@ -122,7 +122,7 @@ Dependencies Using Other Dependencies
 Dependency provider functions can themselves use :func:`~picodi.inject` and :func:`~picodi.Provide`
 to depend on other dependencies. Picodi automatically resolves the entire dependency graph.
 
-.. code-block:: python
+.. testcode:: nested_dependencies
 
     from picodi import Provide, inject
 
@@ -139,10 +139,21 @@ to depend on other dependencies. Picodi automatically resolves the entire depend
 
 
     # Another function can now depend on get_api_config
-    # @inject
-    # def use_config(config: dict = Provide(get_api_config)):
-    #     api_key = config["key"]
-    #     # ...
+    @inject
+    def use_config(config: dict = Provide(get_api_config)):
+        api_key = config["key"]
+        print(f"Using API key: {api_key}")
+        return api_key
+
+
+    use_config()
+
+**Output:**
+
+.. testoutput:: nested_dependencies
+
+    Fetching config from https://config-service.com
+    Using API key: config-key
 
 Picodi ensures ``get_base_url`` is resolved first, its result is passed to ``get_api_config``,
 and then the result of ``get_api_config`` is available for injection elsewhere.

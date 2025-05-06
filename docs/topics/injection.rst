@@ -16,7 +16,7 @@ The ``@inject`` Decorator
 The ``@inject`` decorator is the core mechanism that enables dependency injection
 for a specific function or method.
 
-.. code-block:: python
+.. testcode:: inject_decorator
 
     from picodi import inject, Provide
 
@@ -32,7 +32,12 @@ for a specific function or method.
 
 
     my_function()
-    # Output: Injected value: some_value
+
+**Output:**
+
+.. testoutput:: inject_decorator
+
+    Injected value: some_value
 
 **How it works:**
 
@@ -71,7 +76,7 @@ The ``Provide`` Marker
 :func:`~picodi.Provide` is used as a **default value** for a function parameter to signal
 to ``@inject`` that this parameter should be filled by a dependency.
 
-.. code-block:: python
+.. testcode:: provide_marker
 
     from picodi import Provide, inject
 
@@ -93,7 +98,12 @@ to ``@inject`` that this parameter should be filled by a dependency.
 
 
     process_user()
-    # Output: Processing user Alice (ID: 123)
+
+**Output:**
+
+.. testoutput:: provide_marker
+
+    Processing user Alice (ID: 123)
 
 **Key Points:**
 
@@ -104,11 +114,16 @@ to ``@inject`` that this parameter should be filled by a dependency.
     parameter marked with ``Provide`` when calling the function, your explicitly passed
     value will be used instead of the injected dependency.
 
-    .. code-block:: python
+    .. testcode:: provide_marker
 
         # Explicitly passing user_id overrides injection for that parameter
         process_user(user_id=999)
-        # Output: Processing user Alice (ID: 999)
+
+    **Output:**
+
+    .. testoutput:: provide_marker
+
+        Processing user Alice (ID: 999)
 
 *   Type hints (``user_id: int``, ``name: str``) are strongly recommended for clarity
     and static analysis but are not required by Picodi for injection itself.
@@ -152,7 +167,7 @@ It builds a dependency graph and resolves it in the correct order.
 
 **Output:**
 
-.. code-block:: text
+.. testoutput:: dependency_graph
 
     Resolving: get_config
     Resolving: get_db_connection

@@ -148,7 +148,7 @@ injected parameters is strongly recommended:
 *   **Static Analysis:** Allows tools like MyPy to catch type errors early.
 *   **Maintainability:** Makes the code easier to understand and refactor.
 
-.. code-block:: python
+.. testcode:: type_hints
 
     from picodi import Provide, inject
 
