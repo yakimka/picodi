@@ -333,9 +333,7 @@ async def test_can_resolve_injected_generator(gen_decorator_sync):
     assert result.closed is True
 
 
-async def test_can_resolve_injected_generator_async(
-    gen_decorator_async, get_int_service_async
-):
+async def test_can_resolve_injected_generator_async(gen_decorator_async):
     @gen_decorator_async
     @inject
     async def get_int_service(val: int = Provide(lambda: 42)):
@@ -346,7 +344,7 @@ async def test_can_resolve_injected_generator_async(
 
     @inject
     async def get_int(
-        service: IntService = Provide(get_int_service_async),
+        service: IntService = Provide(get_int_service),
     ) -> IntService:
         return service
 
