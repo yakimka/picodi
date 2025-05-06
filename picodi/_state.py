@@ -4,14 +4,9 @@ import asyncio
 import inspect
 import threading
 from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
-from contextlib import (
-    AbstractAsyncContextManager,
-    AbstractContextManager,
-    asynccontextmanager,
-    contextmanager,
-)
+from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, ContextManager, TypeVar, overload
+from typing import TYPE_CHECKING, Any, AsyncContextManager, ContextManager, TypeVar
 
 from picodi._internal import LazyResolver
 from picodi._scopes import AutoScope, ManualScope, NullScope, ScopeType
@@ -228,23 +223,11 @@ class Registry:
         """
         return frozenset(self._storage.touched_dependencies)
 
-    @overload
-    def override(
-        self, dependency: DependencyCallable, new_dependency: None = None
-    ) -> Callable[[DependencyCallable], DependencyCallable]:
-        pass
-
-    @overload
-    def override(
-        self, dependency: DependencyCallable, new_dependency: DependencyCallable
-    ) -> ContextManager[None]:
-        pass
-
     def override(
         self,
         dependency: DependencyCallable,
         new_dependency: DependencyCallable | None,
-    ) -> Callable[[DependencyCallable], DependencyCallable] | ContextManager[None]:
+    ) -> ContextManager[None]:
         """
         Override a dependency with a new one. It can be used as a context manager
         or as a regular method call. New dependency will be
@@ -337,7 +320,7 @@ class Provider:
     def resolve_value(self, exit_stack: ExitStack | None, **kwargs: Any) -> Any:
         scope = self.get_scope()
         value_or_gen = self.dependency(**kwargs)
-        if self.is_async or isinstance(value_or_gen, AbstractAsyncContextManager):
+        if self.is_async:
 
             async def resolve_value_inner() -> Any:
                 value_or_gen_ = value_or_gen
@@ -351,13 +334,13 @@ class Provider:
                         assert exit_stack is not None, "exit_stack is required"
                         return await scope.enter(exit_stack, context_manager())
                     return await scope.enter(context_manager())
-                elif isinstance(value_or_gen_, AbstractAsyncContextManager):
+                elif isinstance(value_or_gen_, AsyncContextManager):
                     if isinstance(scope, AutoScope):
                         assert exit_stack is not None, "exit_stack is required"
                         return await scope.enter(
-                            exit_stack, value_or_gen_._recreate_cm()  # noqa: SF01
+                            exit_stack, _recreate_cm(value_or_gen_)
                         )
-                    return await scope.enter(value_or_gen_._recreate_cm())  # noqa: SF01
+                    return await scope.enter(_recreate_cm(value_or_gen_))
                 return value_or_gen_
 
             return resolve_value_inner()
@@ -368,15 +351,18 @@ class Provider:
                 assert exit_stack is not None, "exit_stack is required"
                 return scope.enter(exit_stack, context_manager())
             return scope.enter(context_manager())
-        elif isinstance(value_or_gen, AbstractContextManager):
+        elif isinstance(value_or_gen, ContextManager):
             if isinstance(scope, AutoScope):
                 assert exit_stack is not None, "exit_stack is required"
-                return scope.enter(
-                    exit_stack,
-                    value_or_gen._recreate_cm(),  # noqa: SF01
-                )
-            return scope.enter(value_or_gen._recreate_cm())  # noqa: SF01
+                return scope.enter(exit_stack, _recreate_cm(value_or_gen))
+            return scope.enter(_recreate_cm(value_or_gen))
         return value_or_gen
+
+
+def _recreate_cm(
+    gen: AsyncContextManager | ContextManager,
+) -> AsyncContextManager | ContextManager:
+    return gen._recreate_cm()  # type: ignore[union-attr]  # noqa: SF01
 
 
 lock = threading.RLock()
