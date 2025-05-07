@@ -6,6 +6,7 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version 0.32.0
 
+- Fix incorrect line number in traceback for decorated function
 - Picodi now can use `contextlib` dependencies like yield functions
 - Changed state management of registry
 - Breaking changes:
