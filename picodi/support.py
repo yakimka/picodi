@@ -80,7 +80,7 @@ class ExitStack:
         :param exc: exception to be passed to the ``__[a]exit__`` method.
         """
         exc_type = type(exc) if exc is not None else None
-        self.__exit__(exc_type, exc, None)
+        self.__exit__(exc_type, exc, exc.__traceback__ if exc else None)
         if (
             is_async_environment()
             # This is a workaround for the issue for RuntimeWarning
