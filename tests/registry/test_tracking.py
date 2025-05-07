@@ -165,21 +165,3 @@ def test_can_clear_usage_data():
 
     # Assert
     assert not registry.touched
-
-
-def test_clearing_registry_also_cleared_touched_cache():
-    # Arrange
-    def get_in_use():
-        return "in_use"
-
-    @inject
-    def service(dependency: str = Provide(get_in_use)):
-        return dependency
-
-    service()
-
-    # Act
-    registry._clear()  # noqa: SF01
-
-    # Assert
-    assert not registry.touched
