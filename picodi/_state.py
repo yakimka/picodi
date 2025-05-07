@@ -282,20 +282,6 @@ class Registry:
         """
         self._storage.touched_dependencies.clear()
 
-    def _clear(self) -> None:
-        """
-        Clear the registry. It will remove all dependencies, overrides
-        and touched dependencies.
-        This method will not close any dependencies. So you need to manually call
-        :func:`shutdown` before this method.
-        It is useful for testing purposes, when you want to clear the registry
-        and start from scratch.
-        """
-        self._storage.deps.clear()
-        self._storage.overrides.clear()
-        self._storage.touched_dependencies.clear()
-        self._for_init.clear()
-
 
 @dataclass(frozen=True)
 class Provider:

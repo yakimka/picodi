@@ -8,7 +8,7 @@
 
     async def teardown():
         await registry.shutdown()
-        registry._clear()
+        registry._for_init.clear()
 
 
     asyncio.run(teardown())
