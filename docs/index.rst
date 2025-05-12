@@ -64,10 +64,10 @@ Documentation
 * :ref:`modindex`
 * :ref:`search`
 
-*************
-Project Links
-*************
+.. toctree::
+    :hidden:
+    :caption: Project links
 
-*   `GitHub <https://github.com/yakimka/picodi>`_
-*   `PyPI <https://pypi.org/project/picodi>`_
-*   `FastAPI Example Project <https://github.com/yakimka/picodi-fastapi-example>`_
+    GitHub <https://github.com/yakimka/picodi>
+    PyPI <https://pypi.org/project/picodi>
+    FastAPI example project <https://github.com/yakimka/picodi-fastapi-example>

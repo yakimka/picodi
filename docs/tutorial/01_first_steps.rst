@@ -6,6 +6,12 @@ Tutorial: 01 - First Steps
 
 Let's start with the basics: defining a dependency and injecting it into a function that needs it.
 
+But first, let's install Picodi if you haven't done so already.
+
+.. code-block:: shell
+
+    pip install picodi  # or with your favorite package manager
+
 *********************
 Defining a Dependency
 *********************

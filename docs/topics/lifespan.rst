@@ -1,5 +1,3 @@
-.. _topics_lifespan:
-
 .. testcleanup:: *
 
     import asyncio
@@ -13,6 +11,7 @@
 
     asyncio.run(teardown())
 
+.. _topics_lifespan:
 
 ###################
 Lifespan Management
