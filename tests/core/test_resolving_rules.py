@@ -78,3 +78,29 @@ def test_order_of_resolving_must_be_from_bottom_to_up_closing_from_up_to_bottom(
         "get_a_dep(x1) close_dep 2",
         "get_b_dep(x) close_dep 1",
     ]
+
+
+async def test_can_resolve_async_dep_though_sync_dep_if_top_call_is_async():
+    async def async_dep():
+        return 41
+
+    def sync_dep(dep: int = Provide(async_dep)):
+        return dep + 1
+
+    @inject
+    async def service(dep: int = Provide(sync_dep)):
+        return dep
+
+    result = await service()
+
+    assert result == 42
+
+
+def test_empty_inject_dont_affect_function_behavior():
+    @inject
+    def service():
+        return 42
+
+    result = service()
+
+    assert result == 42
