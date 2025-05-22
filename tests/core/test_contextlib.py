@@ -216,7 +216,7 @@ async def test_can_use_custom_async_context_manager_as_return_value_of_dependenc
             self.value = value
 
         async def __aenter__(self):
-            return self.value
+            pass
 
         async def __aexit__(self, exc_type, exc_val, exc_tb):
             pass
