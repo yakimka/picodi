@@ -4,6 +4,10 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
+## Version 0.32.1
+
+- Fix error when returning custom context manager from dependency cause error
+
 ## Version 0.32.0
 
 - Fix incorrect line number in traceback for decorated function

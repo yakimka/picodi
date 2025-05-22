@@ -4,7 +4,12 @@ import asyncio
 import inspect
 import threading
 from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
-from contextlib import asynccontextmanager, contextmanager
+from contextlib import (
+    _AsyncGeneratorContextManager,
+    _GeneratorContextManager,
+    asynccontextmanager,
+    contextmanager,
+)
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, AsyncContextManager, ContextManager, TypeVar
 
@@ -335,7 +340,7 @@ class Provider:
                         assert exit_stack is not None, "exit_stack is required"
                         return await scope.enter(exit_stack, context_manager())
                     return await scope.enter(context_manager())
-                elif isinstance(value_or_gen_, AsyncContextManager):
+                elif isinstance(value_or_gen_, _AsyncGeneratorContextManager):
                     if isinstance(scope, AutoScope):
                         assert exit_stack is not None, "exit_stack is required"
                         return await scope.enter(
@@ -352,7 +357,7 @@ class Provider:
                 assert exit_stack is not None, "exit_stack is required"
                 return scope.enter(exit_stack, context_manager())
             return scope.enter(context_manager())
-        elif isinstance(value_or_gen, ContextManager):
+        elif isinstance(value_or_gen, _GeneratorContextManager):
             if isinstance(scope, AutoScope):
                 assert exit_stack is not None, "exit_stack is required"
                 return scope.enter(exit_stack, _recreate_cm(value_or_gen))

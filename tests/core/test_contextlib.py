@@ -208,3 +208,26 @@ async def test_can_use_async_context_manager_as_dependency():
     result = await service()
 
     assert result == 42
+
+
+async def test_can_use_custom_async_context_manager_as_return_value_of_dependency():
+    class CustomAsyncContextManager:
+        def __init__(self, value):
+            self.value = value
+
+        async def __aenter__(self):
+            return self.value
+
+        async def __aexit__(self, exc_type, exc_val, exc_tb):
+            pass
+
+    async def get_my_cm():
+        return CustomAsyncContextManager(42)
+
+    @inject
+    async def service(dep=Provide(get_my_cm)):
+        return dep
+
+    result = await service()
+
+    assert result.value == 42
