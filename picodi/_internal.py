@@ -155,33 +155,6 @@ def _patch_dependant(dependant: DependNode, storage: Storage) -> None:
         dependant.dependencies = override_tree.dependencies
 
 
-def _resolve_dependencies(
-    dependant: DependNode,
-    exit_stack: ExitStack,
-    storage: Storage,
-    exclude: list[str] | None = None,
-) -> tuple[dict[str, LazyResolver], list[ScopeType]]:
-    scopes = set()
-    resolved_dependencies = {}
-    for dep in dependant.dependencies:
-        if exclude and dep.name in exclude:
-            continue
-        values, dep_scopes = _resolve_dependencies(dep, exit_stack, storage)
-        resolved_dependencies.update(values)
-        scopes.update(dep_scopes)
-
-    if dependant.name is None:
-        return resolved_dependencies, list(scopes)
-
-    provider = storage.get(dependant.value)
-    value = LazyResolver(
-        provider=provider,
-        kwargs=resolved_dependencies,
-        exit_stack=exit_stack,
-    )
-    return {dependant.name: value}, [provider.get_scope()]
-
-
 def build_depend_tree(
     dependency: DependencyCallable, *, name: str | None = None, storage: Storage
 ) -> DependNode:
