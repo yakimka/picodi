@@ -428,7 +428,7 @@ def test_can_init_injected_singleton_scope_dep_argument_passed_as_callable(
     assert called == 1
 
 
-async def test_can_resolve_yield_in_yield_with_correct_scopes(gen_decorator_sync):
+def test_can_resolve_yield_in_yield_with_correct_scopes(gen_decorator_sync):
     context_calls = []
 
     @gen_decorator_sync
