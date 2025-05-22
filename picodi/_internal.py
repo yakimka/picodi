@@ -4,6 +4,7 @@ import copy
 import functools
 import inspect
 import threading
+from collections.abc import Iterator
 from typing import TYPE_CHECKING, Annotated, Any, get_origin
 
 from picodi._scopes import AutoScope, ScopeType
@@ -22,6 +23,9 @@ except ImportError:  # pragma: no cover
     fastapi = None  # type: ignore[assignment] # pragma: no cover
 
 
+StackItem = tuple[DependNode, Iterator[DependNode], dict[str, Any]]
+
+
 def wrapper_helper(
     dependant: DependNode,
     signature: inspect.Signature,
@@ -36,24 +40,39 @@ def wrapper_helper(
         _patch_dependant(dependant, storage)
     bound = signature.bind(*args, **kwargs)
     bound.apply_defaults()
-    arguments: dict[str, Any] = bound.arguments
-    scopes: list[ScopeType] = []
-    is_root = any(isinstance(value, Depends) for value in arguments.values())
+    scopes: set[ScopeType] = set()
+    is_root = any(isinstance(value, Depends) for value in bound.arguments.values())
 
     if is_root:
-        excluded_args = [
-            name for name, value in arguments.items() if not isinstance(value, Depends)
-        ]
-        arguments, scopes = _resolve_dependencies(
-            dependant, exit_stack, storage, exclude=excluded_args
-        )
+        stack: list[StackItem] = [(dependant, iter(dependant.dependencies), {})]
+        while stack:
+            node, deps_iter, dep_kwargs = stack[-1]
+            try:
+                dep = next(deps_iter)
+                stack.append((dep, iter(dep.dependencies), {}))
+            except StopIteration:
+                if node.name is None:
+                    for dep in node.dependencies:
+                        assert dep.name is not None
+                        if isinstance(bound.arguments.get(dep.name), Depends):
+                            bound.arguments[dep.name] = dep_kwargs[dep.name]
+                    stack.pop()
+                    break
+
+                provider = storage.get(node.value)
+                scopes.add(provider.get_scope())
+                lazy_call = LazyResolver(
+                    provider=provider,
+                    kwargs=dep_kwargs,
+                    exit_stack=exit_stack,
+                )
+                res = yield lazy_call(is_async=is_async), "dependency"
+                stack.pop()
+                _, _, parent_kwargs = stack[-1]
+                parent_kwargs[node.name] = res
 
     for scope in scopes:
         scope.enter_inject()
-    for name, call in arguments.items():
-        if isinstance(call, LazyResolver):
-            value = yield call(is_async=is_async), "dependency"
-            bound.arguments[name] = value
 
     try:
         result = dependant.value(*bound.args, **bound.kwargs)

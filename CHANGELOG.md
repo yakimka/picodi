@@ -4,6 +4,9 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
+- You don’t have to use the @inject decorator for nested dependencies;
+  it’s only required for top-level calls. Applying @inject to nested dependencies is entirely optional.
+
 ## Version 0.32.2
 
 - Shield resource cleanup

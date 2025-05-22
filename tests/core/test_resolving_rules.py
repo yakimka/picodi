@@ -53,13 +53,13 @@ def test_order_of_resolving_must_be_from_bottom_to_up_closing_from_up_to_bottom(
         context_calls.append("close_a_dep")
 
     @inject
-    def get_b_dep(x=Provide(get_dep("get_b_dep(x)")), a=Provide(get_a_dep)):
+    def get_b_dep(x3=Provide(get_dep("get_b_dep(x)")), a=Provide(get_a_dep)):
         context_calls.append("get_b_dep")
         yield
         context_calls.append("close_b_dep")
 
     @inject
-    def service(b=Provide(get_b_dep), x=Provide(get_dep("service(x)"))):
+    def service(b=Provide(get_b_dep), x4=Provide(get_dep("service(x)"))):
         return None
 
     service()
