@@ -107,3 +107,25 @@ async def test_closing_dependencies_in_one_task_dont_affect_another(make_closeab
 
     assert closeable_task1.close_call_count == 1
     assert closeable_task2.close_call_count == 1
+
+
+def test_contextvar_does_not_automatically_close():
+    closed = False
+
+    @registry.set_scope(ContextVarScope)
+    def get_dep():
+        nonlocal closed
+        try:
+            yield
+        finally:
+            closed = True
+
+    @inject
+    def service(dep: str = Provide(get_dep)):  # noqa: U100
+        return None
+
+    service()
+
+    assert closed is False
+    registry.shutdown()
+    assert closed is True
