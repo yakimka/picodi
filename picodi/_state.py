@@ -190,7 +190,7 @@ class Registry:
         ]
         if all(isinstance(task, NullAwaitable) for task in tasks):
             return NullAwaitable()
-        return asyncio.gather(*tasks)
+        return asyncio.shield(asyncio.gather(*tasks))
 
     @contextmanager
     def lifespan(self) -> Generator[None]:
