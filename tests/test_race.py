@@ -79,6 +79,7 @@ def test_contextvar_enter_is_thread_safe():
     for thread in threads:
         thread.join()
 
+    assert len(state) == 16, state
     assert state == [
         "open 0",
         "close 0",
