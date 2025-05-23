@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import inspect
 import threading
 from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
@@ -190,7 +189,12 @@ class Registry:
         ]
         if all(isinstance(task, NullAwaitable) for task in tasks):
             return NullAwaitable()
-        return asyncio.shield(asyncio.gather(*tasks))
+
+        async def shutdown_all() -> None:
+            for dep in tasks:
+                await dep
+
+        return shutdown_all()
 
     @contextmanager
     def lifespan(self) -> Generator[None]:
