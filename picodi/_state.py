@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import inspect
-import logging
 import threading
 from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
 from contextlib import (
@@ -22,8 +21,6 @@ if TYPE_CHECKING:
 
 
 TC = TypeVar("TC", bound=Callable)
-
-logger = logging.getLogger("picodi")
 
 
 class Storage:
@@ -190,17 +187,11 @@ class Registry:
             for klass, instance in self._storage.scopes.items()
             if issubclass(klass, scope_class)
         ]
-        logger.info("Shutting down %s dependencies of %s", len(tasks), str(scope_class))
         if all(isinstance(task, NullAwaitable) for task in tasks):
-            logger.info(
-                "No asynbc dependencies to shutdown for %s scope class",
-                str(scope_class),
-            )
             return NullAwaitable()
 
         async def shutdown_all() -> None:
             for dep in tasks:
-                logger.info("Shutting down %s", dep)
                 await dep
 
         return shutdown_all()
