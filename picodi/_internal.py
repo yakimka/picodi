@@ -80,7 +80,7 @@ def wrapper_helper(
         for scope in scopes:
             scope.exit_inject(e)
             if isinstance(scope, AutoScope):
-                yield scope.shutdown(exit_stack, e), "close_scope"
+                yield exit_stack.close(e), "close_scope"
         raise
 
     if inspect.isgenerator(result):
@@ -97,7 +97,7 @@ def wrapper_helper(
                 for scope in scopes:
                     scope.exit_inject(exception)
                     if isinstance(scope, AutoScope):
-                        scope.shutdown(exit_stack, exception)
+                        exit_stack.close(exception)
 
         yield gen(), "result"
         return
@@ -119,7 +119,7 @@ def wrapper_helper(
                 for scope in scopes:
                     scope.exit_inject(exception)
                     if isinstance(scope, AutoScope):
-                        await scope.shutdown(exit_stack, exception)
+                        await exit_stack.close(exception)
 
         yield gen(), "result"
         return
@@ -128,7 +128,7 @@ def wrapper_helper(
     for scope in scopes:
         scope.exit_inject()
         if isinstance(scope, AutoScope):
-            yield scope.shutdown(exit_stack), "close_scope"
+            yield exit_stack.close(), "close_scope"
 
 
 def _need_patch(dependant: DependNode, storage: Storage) -> bool:

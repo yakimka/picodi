@@ -61,37 +61,7 @@ class AutoScope(Scope):
     after exiting the context.
 
     Don't use this class directly.
-    Usually, you don't want to inherit this class, but you can.
     """
-
-    def enter(
-        self,
-        exit_stack: ExitStack,
-        context_manager: AsyncContextManager | ContextManager,
-    ) -> Awaitable:
-        """
-        Hook for entering yielded dependencies context. Will be called automatically
-        by picodi.
-        Usually you don't need to override this method.
-
-        :param exit_stack: :class:`support.ExitStack` instance. Instance of ExitStack
-            will be created automatically in :func:`inject` decorator.
-        :param context_manager: context manager created from yield dependency.
-        """
-        return exit_stack.enter_context(context_manager)
-
-    def shutdown(
-        self, exit_stack: ExitStack, exc: BaseException | None = None
-    ) -> Awaitable:
-        """
-        Hook for closing dependencies. Will be called automatically by picodi.
-        Usually you don't need to override this method.
-
-        :param exit_stack: :class:`support.ExitStack` instance. Instance of ExitStack
-            will be created automatically in :func:`inject` decorator.
-        :param exc: exception that was raised in the context.
-        """
-        return exit_stack.close(exc)
 
 
 class ManualScope(Scope):

@@ -183,7 +183,7 @@ class Registry:
             only dependencies of this scope class and its subclasses will be shutdown.
         """
         tasks = [
-            instance.shutdown()  # type: ignore[call-arg]
+            instance.shutdown()  # type: ignore[union-attr]
             for klass, instance in self._storage.scopes.items()
             if issubclass(klass, scope_class)
         ]
@@ -342,13 +342,13 @@ class Provider:
                     )
                     if isinstance(scope, AutoScope):
                         assert exit_stack is not None, "exit_stack is required"
-                        return await scope.enter(exit_stack, context_manager())
+                        return await exit_stack.enter_context(context_manager())
                     return await scope.enter(context_manager())
                 elif isinstance(value_or_gen_, _AsyncGeneratorContextManager):
                     if isinstance(scope, AutoScope):
                         assert exit_stack is not None, "exit_stack is required"
-                        return await scope.enter(
-                            exit_stack, _recreate_cm(value_or_gen_)
+                        return await exit_stack.enter_context(
+                            _recreate_cm(value_or_gen_)
                         )
                     return await scope.enter(_recreate_cm(value_or_gen_))
                 return value_or_gen_
@@ -359,12 +359,12 @@ class Provider:
             context_manager = contextmanager(lambda *args, **kwargs: value_or_gen)
             if isinstance(scope, AutoScope):
                 assert exit_stack is not None, "exit_stack is required"
-                return scope.enter(exit_stack, context_manager())
+                return exit_stack.enter_context(context_manager())
             return scope.enter(context_manager())
         elif isinstance(value_or_gen, _GeneratorContextManager):
             if isinstance(scope, AutoScope):
                 assert exit_stack is not None, "exit_stack is required"
-                return scope.enter(exit_stack, _recreate_cm(value_or_gen))
+                return exit_stack.enter_context(_recreate_cm(value_or_gen))
             return scope.enter(_recreate_cm(value_or_gen))
         return value_or_gen
 
