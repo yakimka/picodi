@@ -14,6 +14,7 @@ from picodi.support import ExitStack
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator
 
+    from picodi._scopes import Dependant
     from picodi._state import Provider, Storage
 
 
@@ -65,6 +66,7 @@ def wrapper_helper(
                     provider=provider,
                     kwargs=dep_kwargs,
                     exit_stack=exit_stack,
+                    dependant=dependant.value,
                 )
                 res = yield lazy_call(is_async=is_async), "dependency"
                 stack.pop()
@@ -72,13 +74,13 @@ def wrapper_helper(
                 parent_kwargs[node.name] = res
 
     for scope in scopes:
-        scope.enter_inject()
+        scope.enter_inject(dependant=dependant.value)
 
     try:
         result = dependant.value(*bound.args, **bound.kwargs)
     except Exception as e:
         for scope in scopes:
-            scope.exit_inject(e)
+            scope.exit_inject(e, dependant=dependant.value)
             if isinstance(scope, AutoScope):
                 yield exit_stack.close(e), "close_scope"
         raise
@@ -95,7 +97,7 @@ def wrapper_helper(
                 raise
             finally:
                 for scope in scopes:
-                    scope.exit_inject(exception)
+                    scope.exit_inject(exception, dependant=dependant.value)
                     if isinstance(scope, AutoScope):
                         exit_stack.close(exception)
 
@@ -117,7 +119,7 @@ def wrapper_helper(
             #   https://docs.python.org/3/library/asyncio-task.html#task-cancellation
             finally:
                 for scope in scopes:
-                    scope.exit_inject(exception)
+                    scope.exit_inject(exception, dependant=dependant.value)
                     if isinstance(scope, AutoScope):
                         await exit_stack.close(exception)
 
@@ -126,7 +128,7 @@ def wrapper_helper(
 
     yield result, "result"
     for scope in scopes:
-        scope.exit_inject()
+        scope.exit_inject(dependant=dependant.value)
         if isinstance(scope, AutoScope):
             yield exit_stack.close(), "close_scope"
 
@@ -201,10 +203,13 @@ class LazyResolver:
         provider: Provider,
         kwargs: dict[str, Any] | None = None,
         exit_stack: ExitStack | None = None,
+        *,
+        dependant: Dependant,
     ) -> None:
         self.provider = provider
         self.kwargs = kwargs or {}
         self.exit_stack = exit_stack
+        self.dependant = dependant
 
     def __call__(self, is_async: bool) -> Any:
         call = self._resolve_async if is_async else self._resolve
@@ -213,34 +218,42 @@ class LazyResolver:
     def _resolve(self) -> Any:
         scope = self.provider.get_scope()
         try:
-            value = scope.get(self.provider.dependency)
+            value = scope.get(self.provider.dependency, dependant=self.dependant)
         except KeyError:
             if self.provider.is_async:
                 value = self.provider.dependency()
             else:
                 with lock:
                     try:
-                        value = scope.get(self.provider.dependency)
+                        value = scope.get(
+                            self.provider.dependency, dependant=self.dependant
+                        )
                     except KeyError:
                         value = self.provider.resolve_value(
-                            self.exit_stack, **self.kwargs
+                            self.exit_stack, dependant=self.dependant, **self.kwargs
                         )
-                        scope.set(self.provider.dependency, value)
+                        scope.set(
+                            self.provider.dependency, value, dependant=self.dependant
+                        )
         return value
 
     async def _resolve_async(self) -> Any:
         scope = self.provider.get_scope()
         try:
-            value = scope.get(self.provider.dependency)
+            value = scope.get(self.provider.dependency, dependant=self.dependant)
         except KeyError:
             with lock:
                 try:
-                    value = scope.get(self.provider.dependency)
+                    value = scope.get(
+                        self.provider.dependency, dependant=self.dependant
+                    )
                 except KeyError:
-                    value = self.provider.resolve_value(self.exit_stack, **self.kwargs)
+                    value = self.provider.resolve_value(
+                        self.exit_stack, dependant=self.dependant, **self.kwargs
+                    )
                     if self.provider.is_async:
                         value = await value
-                    scope.set(self.provider.dependency, value)
+                    scope.set(self.provider.dependency, value, dependant=self.dependant)
         return value
 
 
