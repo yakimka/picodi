@@ -11,25 +11,25 @@ def sut():
 
 
 def test_can_store_and_then_get_value(sut):
-    sut.set("key", "value", dependant=test_can_store_and_then_get_value)
+    sut.set("key", "value", global_key=test_can_store_and_then_get_value)
 
-    assert sut.get("key", dependant=test_can_store_and_then_get_value) == "value"
+    assert sut.get("key", global_key=test_can_store_and_then_get_value) == "value"
 
 
 def test_store_cleared_after_shutdown(sut):
-    sut.set("key", "value", dependant=test_store_cleared_after_shutdown)
-    sut.shutdown(dependant=test_store_cleared_after_shutdown)
+    sut.set("key", "value", global_key=test_store_cleared_after_shutdown)
+    sut.shutdown(global_key=test_store_cleared_after_shutdown)
 
     with pytest.raises(KeyError):
-        sut.get("key", dependant=test_store_cleared_after_shutdown)
+        sut.get("key", global_key=test_store_cleared_after_shutdown)
 
 
 def test_can_use_store_again_after_shutdown(sut):
-    sut.set("key", "value", dependant=test_can_use_store_again_after_shutdown)
-    sut.shutdown(dependant=test_can_use_store_again_after_shutdown)
+    sut.set("key", "value", global_key=test_can_use_store_again_after_shutdown)
+    sut.shutdown(global_key=test_can_use_store_again_after_shutdown)
 
-    sut.set("key", "value", dependant=test_can_use_store_again_after_shutdown)
-    assert sut.get("key", dependant=test_can_use_store_again_after_shutdown) == "value"
+    sut.set("key", "value", global_key=test_can_use_store_again_after_shutdown)
+    assert sut.get("key", global_key=test_can_use_store_again_after_shutdown) == "value"
 
 
 async def test_values_cant_be_retrieved_from_separate_task(sut):
@@ -37,14 +37,14 @@ async def test_values_cant_be_retrieved_from_separate_task(sut):
 
     async def task1():
         sut.set(
-            "key", "value1", dependant=test_values_cant_be_retrieved_from_separate_task
+            "key", "value1", global_key=test_values_cant_be_retrieved_from_separate_task
         )
         value_set.set()
 
     async def task2():
         await value_set.wait()
         with pytest.raises(KeyError):
-            sut.get("key", dependant=test_values_cant_be_retrieved_from_separate_task)
+            sut.get("key", global_key=test_values_cant_be_retrieved_from_separate_task)
 
     await asyncio.gather(task1(), task2())
 
@@ -57,20 +57,20 @@ async def test_shutdown_from_one_task_dont_affect_another_task(sut):
         sut.set(
             "key",
             "value1",
-            dependant=test_shutdown_from_one_task_dont_affect_another_task,
+            global_key=test_shutdown_from_one_task_dont_affect_another_task,
         )
         value_set.set()
         await scope_shutdown.wait()
         assert (
             sut.get(
-                "key", dependant=test_shutdown_from_one_task_dont_affect_another_task
+                "key", global_key=test_shutdown_from_one_task_dont_affect_another_task
             )
             == "value1"
         )
 
     async def task2():
         await value_set.wait()
-        sut.shutdown(dependant=test_shutdown_from_one_task_dont_affect_another_task)
+        sut.shutdown(global_key=test_shutdown_from_one_task_dont_affect_another_task)
         scope_shutdown.set()
 
     await asyncio.gather(task1(), task2())

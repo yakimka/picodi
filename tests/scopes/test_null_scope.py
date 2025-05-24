@@ -11,10 +11,10 @@ def sut():
 
 
 def test_scope_not_store_anything(sut):
-    sut.set("key", "value", dependant=test_scope_not_store_anything)
+    sut.set("key", "value", global_key=test_scope_not_store_anything)
 
     with pytest.raises(KeyError):
-        sut.get("key", dependant=test_scope_not_store_anything)
+        sut.get("key", global_key=test_scope_not_store_anything)
 
 
 async def test_closing_one_dependency_dont_affect_another(make_closeable):

@@ -17,7 +17,6 @@ from picodi._scopes import AutoScope, ManualScope, NullScope, ScopeType
 from picodi.support import ExitStack, NullAwaitable, is_async_function
 
 if TYPE_CHECKING:
-    from picodi._scopes import Dependant
     from picodi._types import DependencyCallable, InitDependencies, LifespanScopeClass
 
 
@@ -184,7 +183,7 @@ class Registry:
             only dependencies of this scope class and its subclasses will be shutdown.
         """
         tasks = [
-            instance.shutdown(dependant=self.shutdown)  # type: ignore[union-attr]
+            instance.shutdown(global_key=self.shutdown)  # type: ignore[union-attr]
             for klass, instance in self._storage.scopes.items()
             if issubclass(klass, scope_class)
         ]
@@ -329,7 +328,7 @@ class Provider:
         return self.scope
 
     def resolve_value(
-        self, exit_stack: ExitStack | None, dependant: Dependant, **kwargs: Any
+        self, exit_stack: ExitStack | None, dependant: Callable, **kwargs: Any
     ) -> Any:
         scope = self.get_scope()
         value_or_gen = self.dependency(**kwargs)
@@ -346,7 +345,7 @@ class Provider:
                     if isinstance(scope, AutoScope):
                         assert exit_stack is not None, "exit_stack is required"
                         return await exit_stack.enter_context(context_manager())
-                    return await scope.enter(context_manager(), dependant=dependant)
+                    return await scope.enter(context_manager(), global_key=dependant)
                 elif isinstance(value_or_gen_, _AsyncGeneratorContextManager):
                     if isinstance(scope, AutoScope):
                         assert exit_stack is not None, "exit_stack is required"
@@ -354,7 +353,7 @@ class Provider:
                             _recreate_cm(value_or_gen_)
                         )
                     return await scope.enter(
-                        _recreate_cm(value_or_gen_), dependant=dependant
+                        _recreate_cm(value_or_gen_), global_key=dependant
                     )
                 return value_or_gen_
 
@@ -365,12 +364,12 @@ class Provider:
             if isinstance(scope, AutoScope):
                 assert exit_stack is not None, "exit_stack is required"
                 return exit_stack.enter_context(context_manager())
-            return scope.enter(context_manager(), dependant=dependant)
+            return scope.enter(context_manager(), global_key=dependant)
         elif isinstance(value_or_gen, _GeneratorContextManager):
             if isinstance(scope, AutoScope):
                 assert exit_stack is not None, "exit_stack is required"
                 return exit_stack.enter_context(_recreate_cm(value_or_gen))
-            return scope.enter(_recreate_cm(value_or_gen), dependant=dependant)
+            return scope.enter(_recreate_cm(value_or_gen), global_key=dependant)
         return value_or_gen
 
 

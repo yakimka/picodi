@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Callable
 from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any, AsyncContextManager, ContextManager, TypeAlias
 
@@ -11,7 +10,6 @@ if TYPE_CHECKING:
 
 
 unset = object()
-Dependant = Callable[..., Any]
 
 
 class Scope:
@@ -22,37 +20,37 @@ class Scope:
     Inherit from :class:`AutoScope` or :class:`ManualScope`.
     """
 
-    def get(self, key: Hashable, *, dependant: Dependant) -> Any:
+    def get(self, key: Hashable, *, global_key: Hashable) -> Any:
         """
         Get a value by key.
         If value is not exists must raise KeyError.
 
         :param key: key to get value, typically a dependency function.
-        :param dependant: dependency function that is requesting the dependency.
+        :param global_key: typically a function that requesting dependencies
         :raises KeyError: if value not exists.
         """
         raise NotImplementedError
 
-    def set(self, key: Hashable, value: Any, *, dependant: Dependant) -> None:
+    def set(self, key: Hashable, value: Any, *, global_key: Hashable) -> None:
         """
         Set a value by key.
 
         :param key: key to set value, typically a dependency function.
         :param value: value to set, typically a dependency instance.
-        :param dependant: dependency function that is requesting the dependency.
+        :param global_key: typically a function that requesting dependencies
         """
         raise NotImplementedError
 
-    def enter_inject(self, dependant: Dependant) -> None:  # noqa: U100
+    def enter_inject(self, global_key: Hashable) -> None:  # noqa: U100
         """
         Called when entering an :func:`inject` decorator.
 
-        :param dependant: dependency function that is requesting the dependency.
+        :param global_key: typically a function that requesting dependencies
         """
         return None
 
     def exit_inject(
-        self, exc: BaseException | None = None, *, dependant: Dependant  # noqa: U100
+        self, exc: BaseException | None = None, *, global_key: Hashable  # noqa: U100
     ) -> None:
         """
         Called before exiting a :func:`inject` decorator.
@@ -61,7 +59,7 @@ class Scope:
             ``exit_inject`` -> ``shutdown`` -> ``inject`` wrapper returns.
 
         :param exc: exception that was raised in the context.
-        :param dependant: dependency function that is requesting the dependency.
+        :param global_key: typically a function that requesting dependencies
         """
         return None
 
@@ -91,26 +89,26 @@ class ManualScope(Scope):
         self,
         context_manager: AsyncContextManager | ContextManager,  # noqa: U100
         *,
-        dependant: Dependant,  # noqa: U100
+        global_key: Hashable,  # noqa: U100
     ) -> Awaitable:
         """
         Hook for entering yielded dependencies context. Will be called automatically
         by picodi or when you call :func:`init_dependencies`.
 
         :param context_manager: context manager created from yield dependency.
-        :param dependant: dependency function that is requesting the dependency.
+        :param global_key: typically a function that requesting dependencies
         """
         return NullAwaitable()
 
     def shutdown(
-        self, exc: BaseException | None = None, *, dependant: Dependant  # noqa: U100
+        self, exc: BaseException | None = None, *, global_key: Hashable  # noqa: U100
     ) -> Awaitable:
         """
         Hook for shutdown dependencies.
         Will be called when you call :func:`shutdown_dependencies`
 
         :param exc: exception that was raised in the context.
-        :param dependant: dependency function that is requesting the dependency.
+        :param global_key: typically a function that requesting dependencies
         """
         return NullAwaitable()
 
@@ -125,11 +123,11 @@ class NullScope(AutoScope):
     This is the default scope.
     """
 
-    def get(self, key: Hashable, *, dependant: Dependant) -> Any:  # noqa: U100
+    def get(self, key: Hashable, *, global_key: Hashable) -> Any:  # noqa: U100
         raise KeyError(key)
 
     def set(
-        self, key: Hashable, value: Any, *, dependant: Dependant  # noqa: U100
+        self, key: Hashable, value: Any, *, global_key: Hashable  # noqa: U100
     ) -> None:
         return None
 
@@ -144,7 +142,7 @@ class SingletonScope(ManualScope):
         self._exit_stack = ExitStack()
         self._store: dict[Hashable, Any] = {}
 
-    def get(self, key: Hashable, *, dependant: Dependant) -> Any:  # noqa: U100
+    def get(self, key: Hashable, *, global_key: Hashable) -> Any:  # noqa: U100
         return self._store[key]
 
     def set(
@@ -152,7 +150,7 @@ class SingletonScope(ManualScope):
         key: Hashable,
         value: Any,
         *,
-        dependant: Dependant,  # noqa: U100
+        global_key: Hashable,  # noqa: U100
     ) -> None:
         self._store[key] = value
 
@@ -160,12 +158,12 @@ class SingletonScope(ManualScope):
         self,
         context_manager: AsyncContextManager | ContextManager,
         *,
-        dependant: Dependant,  # noqa: U100
+        global_key: Hashable,  # noqa: U100
     ) -> Awaitable:
         return self._exit_stack.enter_context(context_manager)
 
     def shutdown(
-        self, exc: BaseException | None = None, *, dependant: Dependant  # noqa: U100
+        self, exc: BaseException | None = None, *, global_key: Hashable  # noqa: U100
     ) -> Awaitable:
         self._store.clear()
         return self._exit_stack.close(exc)
@@ -183,7 +181,7 @@ class ContextVarScope(ManualScope):
         )
         self._store: dict[Any, ContextVar[Any]] = {}
 
-    def get(self, key: Hashable, *, dependant: Dependant) -> Any:  # noqa: U100
+    def get(self, key: Hashable, *, global_key: Hashable) -> Any:  # noqa: U100
         try:
             value = self._store[key].get()
         except LookupError:
@@ -197,7 +195,7 @@ class ContextVarScope(ManualScope):
         key: Hashable,
         value: Any,
         *,
-        dependant: Dependant,  # noqa: U100
+        global_key: Hashable,  # noqa: U100
     ) -> None:
         try:
             var = self._store[key]
@@ -209,13 +207,13 @@ class ContextVarScope(ManualScope):
         self,
         context_manager: AsyncContextManager | ContextManager,
         *,
-        dependant: Dependant,  # noqa: U100
+        global_key: Hashable,  # noqa: U100
     ) -> Awaitable:
         exit_stack = self._get_exit_stack()
         return exit_stack.enter_context(context_manager)
 
     def shutdown(
-        self, exc: BaseException | None = None, *, dependant: Dependant  # noqa: U100
+        self, exc: BaseException | None = None, *, global_key: Hashable  # noqa: U100
     ) -> Any:
         for var in self._store.values():
             var.set(unset)
