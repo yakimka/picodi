@@ -53,13 +53,13 @@ def test_order_of_resolving_must_be_from_bottom_to_up_closing_from_up_to_bottom(
         context_calls.append("close_a_dep")
 
     @inject
-    def get_b_dep(x=Provide(get_dep("get_b_dep(x)")), a=Provide(get_a_dep)):
+    def get_b_dep(x3=Provide(get_dep("get_b_dep(x)")), a=Provide(get_a_dep)):
         context_calls.append("get_b_dep")
         yield
         context_calls.append("close_b_dep")
 
     @inject
-    def service(b=Provide(get_b_dep), x=Provide(get_dep("service(x)"))):
+    def service(b=Provide(get_b_dep), x4=Provide(get_dep("service(x)"))):
         return None
 
     service()
@@ -78,3 +78,29 @@ def test_order_of_resolving_must_be_from_bottom_to_up_closing_from_up_to_bottom(
         "get_a_dep(x1) close_dep 2",
         "get_b_dep(x) close_dep 1",
     ]
+
+
+async def test_can_resolve_async_dep_though_sync_dep_if_top_call_is_async():
+    async def async_dep():
+        return 41
+
+    def sync_dep(dep: int = Provide(async_dep)):
+        return dep + 1
+
+    @inject
+    async def service(dep: int = Provide(sync_dep)):
+        return dep
+
+    result = await service()
+
+    assert result == 42
+
+
+def test_empty_inject_dont_affect_function_behavior():
+    @inject
+    def service():
+        return 42
+
+    result = service()
+
+    assert result == 42

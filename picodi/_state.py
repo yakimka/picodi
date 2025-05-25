@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import inspect
-import logging
 import threading
 from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
 from contextlib import (
@@ -22,8 +21,6 @@ if TYPE_CHECKING:
 
 
 TC = TypeVar("TC", bound=Callable)
-
-logger = logging.getLogger("picodi")
 
 
 class Storage:
@@ -142,7 +139,7 @@ class Registry:
         async_deps: list[Awaitable] = []
         for dep in dependencies:
             provider = self._storage.get(dep)
-            resolver = LazyResolver(provider)
+            resolver = LazyResolver(provider, dependant=self.init)
             value = resolver(provider.is_async)
             if provider.is_async:
                 async_deps.append(value)
@@ -186,21 +183,15 @@ class Registry:
             only dependencies of this scope class and its subclasses will be shutdown.
         """
         tasks = [
-            instance.shutdown()  # type: ignore[call-arg]
+            instance.shutdown(global_key=self.shutdown)  # type: ignore[union-attr]
             for klass, instance in self._storage.scopes.items()
             if issubclass(klass, scope_class)
         ]
-        logger.info("Shutting down %s dependencies of %s", len(tasks), str(scope_class))
         if all(isinstance(task, NullAwaitable) for task in tasks):
-            logger.info(
-                "No asynbc dependencies to shutdown for %s scope class",
-                str(scope_class),
-            )
             return NullAwaitable()
 
         async def shutdown_all() -> None:
             for dep in tasks:
-                logger.info("Shutting down %s", dep)
                 await dep
 
         return shutdown_all()
@@ -336,7 +327,9 @@ class Provider:
     def get_scope(self) -> ScopeType:
         return self.scope
 
-    def resolve_value(self, exit_stack: ExitStack | None, **kwargs: Any) -> Any:
+    def resolve_value(
+        self, exit_stack: ExitStack | None, dependant: Callable, **kwargs: Any
+    ) -> Any:
         scope = self.get_scope()
         value_or_gen = self.dependency(**kwargs)
         if self.is_async:
@@ -351,15 +344,17 @@ class Provider:
                     )
                     if isinstance(scope, AutoScope):
                         assert exit_stack is not None, "exit_stack is required"
-                        return await scope.enter(exit_stack, context_manager())
-                    return await scope.enter(context_manager())
+                        return await exit_stack.enter_context(context_manager())
+                    return await scope.enter(context_manager(), global_key=dependant)
                 elif isinstance(value_or_gen_, _AsyncGeneratorContextManager):
                     if isinstance(scope, AutoScope):
                         assert exit_stack is not None, "exit_stack is required"
-                        return await scope.enter(
-                            exit_stack, _recreate_cm(value_or_gen_)
+                        return await exit_stack.enter_context(
+                            _recreate_cm(value_or_gen_)
                         )
-                    return await scope.enter(_recreate_cm(value_or_gen_))
+                    return await scope.enter(
+                        _recreate_cm(value_or_gen_), global_key=dependant
+                    )
                 return value_or_gen_
 
             return resolve_value_inner()
@@ -368,13 +363,13 @@ class Provider:
             context_manager = contextmanager(lambda *args, **kwargs: value_or_gen)
             if isinstance(scope, AutoScope):
                 assert exit_stack is not None, "exit_stack is required"
-                return scope.enter(exit_stack, context_manager())
-            return scope.enter(context_manager())
+                return exit_stack.enter_context(context_manager())
+            return scope.enter(context_manager(), global_key=dependant)
         elif isinstance(value_or_gen, _GeneratorContextManager):
             if isinstance(scope, AutoScope):
                 assert exit_stack is not None, "exit_stack is required"
-                return scope.enter(exit_stack, _recreate_cm(value_or_gen))
-            return scope.enter(_recreate_cm(value_or_gen))
+                return exit_stack.enter_context(_recreate_cm(value_or_gen))
+            return scope.enter(_recreate_cm(value_or_gen), global_key=dependant)
         return value_or_gen
 
 

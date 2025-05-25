@@ -24,17 +24,30 @@ class IntMultiplierScope(AutoScope):
         super().__init__()
         self._store: dict[Hashable, Any] = {}
 
-    def get(self, key: Hashable) -> Any:
+    def get(self, key: Hashable, *, global_key: Hashable) -> Any:  # noqa: U100
         result = self._store[key]
         return result * 2
 
-    def set(self, key: Hashable, value: Any) -> None:
+    def set(
+        self,
+        key: Hashable,
+        value: Any,
+        *,
+        global_key: Hashable,  # noqa: U100
+    ) -> None:
         self._store[key] = value * 2
 
 
 async def test_manual_scope_enter_shutdown(manual_scope):
-    assert await manual_scope.enter(nullcontext()) is None
-    assert await manual_scope.shutdown() is None
+    assert (
+        await manual_scope.enter(
+            nullcontext(), global_key=test_manual_scope_enter_shutdown
+        )
+        is None
+    )
+    assert (
+        await manual_scope.shutdown(global_key=test_manual_scope_enter_shutdown) is None
+    )
 
 
 def test_can_add_user_defined_scope():

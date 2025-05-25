@@ -120,6 +120,7 @@ def inject(
                 if exceptions:
                     # TODO use `ExceptionGroup` after dropping 3.10 support
                     raise exceptions[0]
+                gen.close()
                 return cast("T", result)
 
             wrapper = fun_wrapper
@@ -163,6 +164,7 @@ def inject(
                         value, action = gen.send(value)
                     except StopIteration:
                         break
+                gen.close()
                 return cast("T", result)
 
             wrapper = fun_wrapper
