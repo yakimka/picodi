@@ -375,3 +375,73 @@ async def test_can_use_request_scope_dependency_sync(make_app, make_asgi_client)
     assert resp.json() == {"dep": 42}
     assert init_counter == 5
     assert closing_counter == 5
+
+
+async def test_can_use_request_scope_dependency_async_and_inject_decorator(
+    make_app, make_asgi_client
+):
+    init_counter = 0
+    closing_counter = 0
+
+    @registry.set_scope(RequestScope)
+    async def get_42():
+        nonlocal init_counter
+        init_counter += 1
+        yield 42
+        nonlocal closing_counter
+        closing_counter += 1
+
+    app = make_app()
+
+    @app.get("/")
+    @inject
+    async def root(dep: int = Depends(Provide(get_42))):
+        return {"dep": dep}
+
+    async with make_asgi_client(app) as asgi_client:
+        await asyncio.gather(
+            asgi_client.get("/"),
+            asgi_client.get("/"),
+            asgi_client.get("/"),
+            asgi_client.get("/"),
+        )
+        resp = await asgi_client.get("/")
+
+    assert resp.json() == {"dep": 42}
+    assert init_counter == 5
+    assert closing_counter == 5
+
+
+async def test_can_use_request_scope_dependency_sync_and_inject_decorator(
+    make_app, make_asgi_client
+):
+    init_counter = 0
+    closing_counter = 0
+
+    @registry.set_scope(RequestScope)
+    def get_42():
+        nonlocal init_counter
+        init_counter += 1
+        yield 42
+        nonlocal closing_counter
+        closing_counter += 1
+
+    app = make_app()
+
+    @app.get("/")
+    @inject
+    def root(dep: int = Depends(Provide(get_42))):
+        return {"dep": dep}
+
+    async with make_asgi_client(app) as asgi_client:
+        await asyncio.gather(
+            asgi_client.get("/"),
+            asgi_client.get("/"),
+            asgi_client.get("/"),
+            asgi_client.get("/"),
+        )
+        resp = await asgi_client.get("/")
+
+    assert resp.json() == {"dep": 42}
+    assert init_counter == 5
+    assert closing_counter == 5
