@@ -6,6 +6,7 @@ We follow [Semantic Versions](https://semver.org/).
 
 - You don’t have to use the @inject decorator for nested dependencies;
   it’s only required for top-level calls. Applying @inject to nested dependencies is entirely optional.
+- rewrite RequestScope for starlette and fastapi
 - Breaking changes:
   - removed `enter` and `shutdown` methods from `AutoScope` class
 
