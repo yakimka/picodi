@@ -24,10 +24,9 @@ def _get_or_create_context() -> dict[str, Any]:
         with _lock:
             # Double check if context was created by another thread
             try:
-                context = _context.get()
+                return _context.get()
             except LookupError:
                 return _new_context()[0]
-    return context
 
 
 def _new_context() -> tuple[dict[str, Any], Token]:

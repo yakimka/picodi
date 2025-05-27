@@ -50,6 +50,11 @@ Picodi provides helpers for Starlette applications, primarily for managing reque
 1.  **Define** your request-scoped dependency using ``@registry.set_scope(RequestScope)``.
 2.  **Add** the ``RequestScopeMiddleware`` to your Starlette application.
 
+.. warning::
+
+    The ``RequestScopeMiddleware`` must ve added first in the middleware stack,
+    before any other middlewares.
+
 .. testcode:: starlette_integration
 
     # dependencies.py
@@ -247,6 +252,11 @@ Request-Scoped Dependencies in FastAPI
 You can use the same :class:`~picodi.integrations.fastapi.RequestScopeMiddleware` and
 :class:`~picodi.integrations.fastapi.RequestScope`
 in FastAPI as you would in Starlette to manage request-scoped dependencies.
+
+.. warning::
+
+    The ``RequestScopeMiddleware`` must ve added first in the middleware stack,
+    before any other middlewares.
 
 .. testcode:: fastapi_request_scope
 

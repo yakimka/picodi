@@ -1,4 +1,6 @@
-from picodi import Provide, inject
+import pytest
+
+from picodi import Provide, SingletonScope, inject, registry
 
 
 def test_can_resolve_dependencies_without_inject():
@@ -18,3 +20,21 @@ def test_can_resolve_dependencies_without_inject():
         return a, b, c
 
     assert service() == ("a", "ab", "abc")
+
+
+@pytest.mark.skip("Maybe implement later")
+def test_can_init_dependencies_without_inject():
+    results = []
+
+    def dep_a():
+        return "a"
+
+    @registry.set_scope(SingletonScope, auto_init=True)
+    def dep_b(a: str = Provide(dep_a)):
+        result = a + "b"
+        results.append(result)
+        return result
+
+    registry.init()
+
+    assert results == ["ab"]
