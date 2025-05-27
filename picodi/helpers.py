@@ -153,10 +153,10 @@ class resolve(Generic[T]):  # noqa: N801
         return self.sync_cm.__enter__()
 
     def __exit__(self, *args: Any) -> None:
-        self.sync_cm.__exit__(*args)
+        return self.sync_cm.__exit__(*args)
 
     async def __aenter__(self) -> T:
         return await self.async_cm.__aenter__()
 
     async def __aexit__(self, *args: Any) -> None:
-        await self.async_cm.__aexit__(*args)
+        return await self.async_cm.__aexit__(*args)
