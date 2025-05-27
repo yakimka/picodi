@@ -50,6 +50,8 @@ class Storage:
     def get(self, dependency: DependencyCallable) -> Provider:
         dependency = self.get_dep_or_override(dependency)
         self.touched_dependencies.add(dependency)
+        if dependency not in self.deps:
+            self.add(dependency)
         return self.deps[dependency]
 
     def get_dep_or_override(self, dependency: DependencyCallable) -> DependencyCallable:
@@ -140,6 +142,11 @@ class Registry:
         async_deps: list[Awaitable] = []
         for dep in dependencies:
             provider = self._storage.get(dep)
+            if not isinstance(provider.scope, ManualScope):
+                raise ValueError(
+                    f"Dependency {dep} is not in ManualScope, "
+                    "you cannot initialize it manually."
+                )
             resolver = LazyResolver(provider, dependant=self.init)
             value = resolver(provider.is_async)
             if provider.is_async:
