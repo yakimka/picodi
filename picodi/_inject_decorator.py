@@ -4,7 +4,7 @@ import functools
 import inspect
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, cast, overload
 
-from picodi._internal import build_depend_tree, wrapper_helper
+from picodi._internal import build_depend_tree, resolve_async, resolve_sync
 from picodi._state import Registry
 from picodi._state import registry as default_registry
 from picodi._types import DependencyCallable, Depends
@@ -93,35 +93,14 @@ def inject(
 
             @functools.wraps(fn)
             async def fun_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-                gen = wrapper_helper(
+                async with resolve_async(
                     dependant,
                     signature,
-                    is_async=True,
-                    storage=storage,
+                    storage,
                     args=args,
                     kwargs=kwargs,
-                )
-                value, action = next(gen)
-                result = None
-                exceptions = []
-                while True:
-                    if inspect.iscoroutine(value):
-                        try:
-                            value = await value
-                        except Exception as e:  # noqa: PIE786
-                            exceptions.append(e)
-
-                    if action == "result":
-                        result = value
-                    try:
-                        value, action = gen.send(value)
-                    except StopIteration:
-                        break
-                if exceptions:
-                    # TODO use `ExceptionGroup` after dropping 3.10 support
-                    raise exceptions[0]
-                gen.close()
-                return cast("T", result)
+                ) as result:
+                    return cast("T", result)
 
             wrapper = fun_wrapper
 
@@ -147,25 +126,14 @@ def inject(
 
             @functools.wraps(fn)
             def fun_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-                gen = wrapper_helper(
+                with resolve_sync(
                     dependant,
                     signature,
-                    is_async=False,
-                    storage=storage,
+                    storage,
                     args=args,
                     kwargs=kwargs,
-                )
-                value, action = next(gen)
-                result = None
-                while True:
-                    if action == "result":
-                        result = value
-                    try:
-                        value, action = gen.send(value)
-                    except StopIteration:
-                        break
-                gen.close()
-                return cast("T", result)
+                ) as result:
+                    return cast("T", result)
 
             wrapper = fun_wrapper
 

@@ -11,15 +11,24 @@ from contextlib import (
     contextmanager,
 )
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, AsyncContextManager, ContextManager, TypeVar
+from typing import Any, AsyncContextManager, ContextManager, Literal, TypeVar, overload
 
-from picodi._internal import LazyResolver
+from picodi._internal import build_depend_tree, resolve_async, resolve_sync
 from picodi._scopes import AutoScope, ManualScope, NullScope, ScopeType
-from picodi.support import ExitStack, NullAwaitable, is_async_function
-
-if TYPE_CHECKING:
-    from picodi._types import DependencyCallable, InitDependencies, LifespanScopeClass
-
+from picodi._types import (
+    DependencyCallable,
+    DependNode,
+    Depends,
+    InitDependencies,
+    LifespanScopeClass,
+)
+from picodi.support import (
+    ExitStack,
+    NullAwaitable,
+    call_cm_async,
+    call_cm_sync,
+    is_async_function,
+)
 
 TC = TypeVar("TC", bound=Callable)
 
@@ -68,6 +77,46 @@ class Storage:
 
     def has_overrides(self) -> bool:
         return bool(self.overrides)
+
+    @overload
+    def resolve(
+        self, dependencies: list[DependencyCallable], is_async: Literal[False]
+    ) -> ContextManager: ...
+
+    @overload
+    def resolve(
+        self, dependencies: list[DependencyCallable], is_async: Literal[True]
+    ) -> AsyncContextManager: ...
+
+    def resolve(
+        self, dependencies: list[DependencyCallable], is_async: bool
+    ) -> AsyncContextManager | ContextManager:
+        signature = inspect.Signature(
+            parameters=[
+                inspect.Parameter(
+                    f"dep{i}",
+                    inspect.Parameter.POSITIONAL_ONLY,
+                    default=Depends(dep),
+                )
+                for i, dep in enumerate(dependencies, start=1)
+            ],
+        )
+        dependant = DependNode(
+            value=lambda *args: args,
+            name=None,
+            dependencies=[
+                build_depend_tree(dep, name=f"dep{i}", storage=self)
+                for i, dep in enumerate(dependencies, start=1)
+            ],
+        )
+        resolver = resolve_async if is_async else resolve_sync
+        return resolver(
+            dependant,
+            signature,
+            self,
+            args=(),
+            kwargs={},
+        )
 
 
 class Registry:
@@ -139,7 +188,8 @@ class Registry:
         elif callable(dependencies):
             dependencies = dependencies()
 
-        async_deps: list[Awaitable] = []
+        sync_deps: list[DependencyCallable] = []
+        async_deps: list[DependencyCallable] = []
         for dep in dependencies:
             provider = self._storage.get(dep)
             if not isinstance(provider.scope, ManualScope):
@@ -147,23 +197,15 @@ class Registry:
                     f"Dependency {dep} is not in ManualScope, "
                     "you cannot initialize it manually."
                 )
-            resolver = LazyResolver(provider, dependant=self.init)
-            value = resolver(provider.is_async)
             if provider.is_async:
-                async_deps.append(value)
+                async_deps.append(dep)
+            else:
+                sync_deps.append(dep)
 
+        if sync_deps:
+            call_cm_sync(self.resolve(sync_deps))
         if async_deps:
-            # asyncio.gather runs coros in different tasks with different context
-            #   we can run them in current context with contextvars.copy_context()
-            #   but in this case `ContextVarScope`
-            #   will save values in the wrong context.
-            #   So we fix it in dirty way by running all coros one by one until
-            #   come up with better solution.
-            async def init_all() -> None:
-                for dep in async_deps:
-                    await dep
-
-            return init_all()
+            return call_cm_async(self.aresolve(async_deps))
         return NullAwaitable()
 
     def _for_init_list(self) -> list[DependencyCallable]:
@@ -279,6 +321,25 @@ class Registry:
                 self.override(dependency, call_dependency)
 
         return manage_context()
+
+    def resolve(self, dependencies: list[DependencyCallable]) -> ContextManager:
+        """
+        Resolve dependencies synchronously. Return a context manager that will
+        return tuple of results of the dependencies in the order they were passed.
+        :param dependencies: dependencies to resolve.
+        :return: sync context manager.
+        """
+        return self._storage.resolve(dependencies, is_async=False)
+
+    def aresolve(self, dependencies: list[DependencyCallable]) -> AsyncContextManager:
+        """
+        Resolve dependencies asynchronously. Return a context manager that will
+        return tuple of results of the dependencies in the order they were passed.
+        Also can resolve sync dependencies in async context.
+        :param dependencies: dependencies to resolve.
+        :return: async context manager.
+        """
+        return self._storage.resolve(dependencies, is_async=True)
 
     def clear_overrides(self) -> None:
         """
