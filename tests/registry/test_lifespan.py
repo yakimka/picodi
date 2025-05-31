@@ -86,3 +86,15 @@ async def test_can_init_and_shutdown_async_as_context_manager(async_resource, re
 
     assert state["inited"] is True
     assert state["closed"] is True
+
+
+def test_raise_error_if_pass_auto_dependency_to_init(registry):
+    def get_dep():
+        return "dep"
+
+    registry.add_for_init([get_dep])
+
+    with pytest.raises(
+        ValueError, match="is not in ManualScope, you cannot initialize it manually"
+    ):
+        registry.init()

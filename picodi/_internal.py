@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import copy
 import functools
 import inspect
@@ -24,6 +25,70 @@ except ImportError:  # pragma: no cover
 
 
 StackItem = tuple[DependNode, Iterator[DependNode], dict[str, Any]]
+
+
+@contextlib.contextmanager
+def resolve_sync(
+    dependant: DependNode,
+    signature: inspect.Signature,
+    storage: Storage,
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+) -> Generator[Any]:
+    gen = wrapper_helper(
+        dependant,
+        signature,
+        is_async=False,
+        storage=storage,
+        args=args,
+        kwargs=kwargs,
+    )
+    value, action = next(gen)
+    while True:
+        if action == "result":
+            yield value
+        try:
+            value, action = gen.send(value)
+        except StopIteration:
+            break
+    gen.close()
+
+
+@contextlib.asynccontextmanager
+async def resolve_async(
+    dependant: DependNode,
+    signature: inspect.Signature,
+    storage: Storage,
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+) -> AsyncGenerator[Any]:
+    gen = wrapper_helper(
+        dependant,
+        signature,
+        is_async=True,
+        storage=storage,
+        args=args,
+        kwargs=kwargs,
+    )
+    value, action = next(gen)
+    exceptions = []
+    while True:
+        if inspect.iscoroutine(value):
+            try:
+                value = await value
+            except Exception as e:  # noqa: PIE786
+                exceptions.append(e)
+
+        if action == "result":
+            yield value
+        try:
+            value, action = gen.send(value)
+        except StopIteration:
+            break
+    if exceptions:
+        # TODO use `ExceptionGroup` after dropping 3.10 support
+        raise exceptions[0]
+    gen.close()
 
 
 def wrapper_helper(

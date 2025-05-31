@@ -118,3 +118,25 @@ def is_async_function(fn: Any) -> bool:
     if wrpd := getattr(fn, "__wrapped__", None):
         return is_async_function(wrpd)
     return False
+
+
+def call_cm_sync(cm: ContextManager) -> Any:
+    """
+    Call a sync context manager and return its result.
+
+    :param cm: context manager to call.
+    :return: Result of the context manager's ``__enter__`` method.
+    """
+    with cm as res:
+        return res
+
+
+async def call_cm_async(cm: AsyncContextManager) -> Any:
+    """
+    Call an async context manager and return its result.
+
+    :param cm: context manager to call.
+    :return: Result of the context manager's ``__aenter__`` method.
+    """
+    async with cm as res:
+        return res

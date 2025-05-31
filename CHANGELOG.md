@@ -4,6 +4,7 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
+- Rewrite resolving logic
 - You don’t have to use the @inject decorator for nested dependencies;
   it’s only required for top-level calls. Applying @inject to nested dependencies is entirely optional.
 - rewrite RequestScope for starlette and fastapi
