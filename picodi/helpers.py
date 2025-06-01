@@ -4,7 +4,6 @@ Helper functions and classes for picodi.
 
 from __future__ import annotations
 
-import contextlib
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -14,7 +13,8 @@ from typing import (
     TypeVar,
 )
 
-from picodi import Provide, inject
+from picodi import Registry
+from picodi import registry as default_registry
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable, Coroutine, Generator
@@ -126,37 +126,21 @@ class resolve(Generic[T]):  # noqa: N801
             [],
             Coroutine[T, None, None] | Generator[T] | AsyncGenerator[T] | T,
         ],
+        registry: Registry | None = None,
     ) -> None:
         self.dependency = dependency
-        self.sync_cm: ContextManager[T] = self._create_sync_cm()
-        self.async_cm: AsyncContextManager[T] = self._create_async_cm()
-
-    def _create_sync_cm(self) -> ContextManager[T]:
-        @contextlib.contextmanager
-        @inject
-        def sync_enter(dep: Any = Provide(self.dependency)) -> Generator[T]:
-            yield dep
-
-        return sync_enter()
-
-    def _create_async_cm(self) -> AsyncContextManager[T]:
-        @contextlib.asynccontextmanager
-        @inject
-        async def async_enter(
-            dep: Any = Provide(self.dependency),
-        ) -> AsyncGenerator[T]:
-            yield dep
-
-        return async_enter()
+        registry = registry or default_registry
+        self.sync_cm: ContextManager[tuple[T]] = registry.resolve([dependency])
+        self.async_cm: AsyncContextManager[tuple[T]] = registry.aresolve([dependency])
 
     def __enter__(self) -> T:
-        return self.sync_cm.__enter__()
+        return self.sync_cm.__enter__()[0]
 
-    def __exit__(self, *args: Any) -> None:
-        self.sync_cm.__exit__(*args)
+    def __exit__(self, *args: Any) -> bool | None:
+        return self.sync_cm.__exit__(*args)
 
     async def __aenter__(self) -> T:
-        return await self.async_cm.__aenter__()
+        return (await self.async_cm.__aenter__())[0]
 
-    async def __aexit__(self, *args: Any) -> None:
-        await self.async_cm.__aexit__(*args)
+    async def __aexit__(self, *args: Any) -> bool | None:
+        return await self.async_cm.__aexit__(*args)
