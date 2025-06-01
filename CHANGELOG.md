@@ -4,6 +4,14 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
+## Version 0.34.0
+
+- Breaking changes:
+  - `registry.resolve` and `registry.aresolve` now accept variadic arguments
+  - Context managers of `registry.resolve` and `registry.aresolve` will return
+    dependency value if only one dependency is requested, otherwise they will return
+    a tuple of values
+
 ## Version 0.33.0
 
 - Rewrite resolving logic

@@ -336,6 +336,7 @@ class Registry:
         """
         Resolve dependencies synchronously. Return a context manager that will
         return tuple of results of the dependencies in the order they were passed.
+        If you pass only one dependency, it will return the result of that dependency.
         :param dependencies: dependencies to resolve.
         :return: sync context manager.
         """
@@ -345,6 +346,7 @@ class Registry:
         """
         Resolve dependencies asynchronously. Return a context manager that will
         return tuple of results of the dependencies in the order they were passed.
+        If you pass only one dependency, it will return the result of that dependency.
         Also can resolve sync dependencies in async context.
         :param dependencies: dependencies to resolve.
         :return: async context manager.
