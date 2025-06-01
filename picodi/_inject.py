@@ -4,7 +4,11 @@ import functools
 import inspect
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, cast, overload
 
-from picodi._internal import build_depend_tree, resolve_async, resolve_sync
+from picodi._internal import (
+    async_injection_context,
+    build_depend_tree,
+    sync_injection_context,
+)
 from picodi._registry import Registry
 from picodi._registry import registry as default_registry
 from picodi._types import DependencyCallable, Depends
@@ -93,7 +97,7 @@ def inject(
 
             @functools.wraps(fn)
             async def fun_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-                async with resolve_async(
+                async with async_injection_context(
                     dependant,
                     signature,
                     storage,
@@ -126,7 +130,7 @@ def inject(
 
             @functools.wraps(fn)
             def fun_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-                with resolve_sync(
+                with sync_injection_context(
                     dependant,
                     signature,
                     storage,
