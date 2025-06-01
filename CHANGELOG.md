@@ -4,6 +4,8 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
+## Version 0.33.0
+
 - Rewrite resolving logic
 - You don’t have to use the @inject decorator for nested dependencies;
   it’s only required for top-level calls. Applying @inject to nested dependencies is entirely optional.
