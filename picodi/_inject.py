@@ -5,8 +5,8 @@ import inspect
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, cast, overload
 
 from picodi._internal import build_depend_tree, resolve_async, resolve_sync
-from picodi._state import Registry
-from picodi._state import registry as default_registry
+from picodi._registry import Registry
+from picodi._registry import registry as default_registry
 from picodi._types import DependencyCallable, Depends
 
 if TYPE_CHECKING:

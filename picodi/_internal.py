@@ -15,7 +15,7 @@ from picodi.support import ExitStack
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator
 
-    from picodi._state import Provider, Storage
+    from picodi._registry import Provider, Storage
 
 
 try:
