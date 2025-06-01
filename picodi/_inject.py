@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, cast, overload
 from picodi._internal import (
     async_injection_context,
     build_depend_tree,
-    sync_injection_context,
     get_storage_from_registry,
+    sync_injection_context,
 )
 from picodi._registry import Registry
 from picodi._registry import registry as default_registry

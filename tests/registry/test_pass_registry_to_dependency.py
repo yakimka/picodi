@@ -1,5 +1,7 @@
 from __future__ import annotations
-from picodi import Provide, Registry, inject, registry as picodi_registry
+
+from picodi import Provide, Registry, inject
+from picodi import registry as picodi_registry
 
 
 def test_can_pass_registry_to_dependency():
@@ -56,3 +58,16 @@ async def test_can_pass_custom_registry_to_dependency_async():
     result = await service()
 
     assert result is my_registry
+
+
+def test_dep_with_registry_name_and_default_resolved_like_other_deps():
+    def get_dep(registry=Provide(lambda: 42)):
+        return registry
+
+    @inject
+    def service(dep=Provide(get_dep)):
+        return dep
+
+    result = service()
+
+    assert result == 42

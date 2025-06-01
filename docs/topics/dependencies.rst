@@ -158,11 +158,65 @@ to depend on other dependencies. Picodi automatically resolves the entire depend
 Picodi ensures ``get_base_url`` is resolved first, its result is passed to ``get_api_config``,
 and then the result of ``get_api_config`` is available for injection elsewhere.
 
+****************************************
+Injecting the Registry into a Dependency
+****************************************
+
+In some advanced scenarios, a dependency provider might need access to the Picodi :attr:`~picodi.registry`
+object itself, for example, to dynamically resolve other dependencies or interact with scopes.
+
+Picodi supports this by automatically injecting the ``registry`` object if a dependency provider
+function declares a parameter named exactly ``registry`` without a default value.
+
+.. testcode:: inject_registry_into_dependency
+
+    from picodi import Provide, inject, registry as picodi_registry, Registry
+
+
+    def get_another_dependency() -> str:
+        return "another_value"
+
+
+    # This dependency provider needs the registry
+    def get_dynamic_dependency(registry: Registry) -> str:
+        # The 'registry' parameter will be automatically injected.
+        # Note: Type hint 'Registry' is for clarity; injection relies on the name.
+        print(f"Dynamic dependency received registry: {type(registry)}")
+        # Example: use the registry to resolve another dependency
+        # This is a simplified example; direct resolution like this inside a
+        # provider is rare but demonstrates access.
+        with registry.resolve(get_another_dependency) as resolved_value:
+            return f"dynamic_value_based_on_{resolved_value}"
+
+
+    @inject
+    def use_dynamic_dependency(dynamic_dep: str = Provide(get_dynamic_dependency)):
+        print(f"Service using: {dynamic_dep}")
+
+
+    use_dynamic_dependency()
+
+**Output:**
+
+.. testoutput:: inject_registry_into_dependency
+
+    Dynamic dependency received registry: <class 'picodi._registry.Registry'>
+    Service using: dynamic_value_based_on_another_value
+
+**Key points for injecting the registry:**
+
+*   The parameter must be named ``registry``.
+*   The parameter must *not* have a default value.
+*   Type hints are ignored for this specific injection; only the name and lack of a default matter.
+
+This feature provides flexibility for complex dependency creation logic but should be used judiciously.
+
 *************
 Key Takeaways
 *************
 
-*   A Picodi dependency provider is typically a zero-argument callable (often a function).
+*   A Picodi dependency provider is typically a zero-argument callable (often a function),
+    unless it's designed to receive the ``registry`` object.
 *   Use regular functions for simple value dependencies (sync or async).
 *   Use generator functions with a single ``yield`` for dependencies requiring setup/teardown (sync or async).
 *   Dependencies can depend on other dependencies using ``@inject`` and ``Provide``.

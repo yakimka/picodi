@@ -15,7 +15,7 @@ from picodi.support import ExitStack
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator
 
-    from picodi._registry import Provider, Storage, Registry
+    from picodi._registry import Provider, Registry, Storage
 
 
 try:
@@ -298,7 +298,10 @@ class LazyResolver:
                         )
                     except KeyError:
                         value = self.provider.resolve_value(
-                            self.exit_stack, registry=self.registry, dependant=self.dependant, **self.kwargs
+                            self.exit_stack,
+                            registry=self.registry,
+                            dependant=self.dependant,
+                            kwargs=self.kwargs,
                         )
                         scope.set(
                             self.provider.dependency, value, global_key=self.dependant
@@ -317,7 +320,10 @@ class LazyResolver:
                     )
                 except KeyError:
                     value = self.provider.resolve_value(
-                        self.exit_stack, registry=self.registry, dependant=self.dependant, **self.kwargs
+                        self.exit_stack,
+                        registry=self.registry,
+                        dependant=self.dependant,
+                        kwargs=self.kwargs,
                     )
                     if self.provider.is_async:
                         value = await value
