@@ -130,17 +130,17 @@ class resolve(Generic[T]):  # noqa: N801
     ) -> None:
         self.dependency = dependency
         registry = registry or default_registry
-        self.sync_cm: ContextManager[tuple[T]] = registry.resolve([dependency])
-        self.async_cm: AsyncContextManager[tuple[T]] = registry.aresolve([dependency])
+        self.sync_cm: ContextManager[T] = registry.resolve(dependency)
+        self.async_cm: AsyncContextManager[T] = registry.aresolve(dependency)
 
     def __enter__(self) -> T:
-        return self.sync_cm.__enter__()[0]
+        return self.sync_cm.__enter__()
 
     def __exit__(self, *args: Any) -> bool | None:
         return self.sync_cm.__exit__(*args)
 
     async def __aenter__(self) -> T:
-        return (await self.async_cm.__aenter__())[0]
+        return await self.async_cm.__aenter__()
 
     async def __aexit__(self, *args: Any) -> bool | None:
         return await self.async_cm.__aexit__(*args)

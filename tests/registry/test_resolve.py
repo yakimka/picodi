@@ -9,12 +9,12 @@ def test_resolve_dependencies():
         yield "foo"
         state.append("close foo")
 
-    result = registry.resolve([foo])
+    result = registry.resolve(foo)
 
     assert state == []
     with result as value:
         assert state == ["init foo"]
-        assert value == ("foo",)
+        assert value == "foo"
 
     assert state == ["init foo", "close foo"]
 
@@ -27,12 +27,12 @@ async def test_resolve_dependencies_async():
         yield "foo"
         state.append("close foo")
 
-    result = registry.aresolve([foo])
+    result = registry.aresolve(foo)
 
     assert state == []
     async with result as value:
         assert state == ["init foo"]
-        assert value == ("foo",)
+        assert value == "foo"
 
     assert state == ["init foo", "close foo"]
 
@@ -45,11 +45,11 @@ async def test_resolve_sync_dependencies_async():
         yield "foo"
         state.append("close foo")
 
-    result = registry.aresolve([foo])
+    result = registry.aresolve(foo)
 
     assert state == []
     async with result as value:
         assert state == ["init foo"]
-        assert value == ("foo",)
+        assert value == "foo"
 
     assert state == ["init foo", "close foo"]
