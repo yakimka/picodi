@@ -13,7 +13,11 @@ from contextlib import (
 from dataclasses import dataclass
 from typing import Any, AsyncContextManager, ContextManager, Literal, TypeVar, overload
 
-from picodi._internal import build_depend_tree, resolve_async, resolve_sync
+from picodi._internal import (
+    async_injection_context,
+    build_depend_tree,
+    sync_injection_context,
+)
 from picodi._scopes import AutoScope, ManualScope, NullScope, ScopeType
 from picodi._types import (
     DependencyCallable,
@@ -115,7 +119,7 @@ class Storage:
                 for i, dep in enumerate(dependencies, start=1)
             ],
         )
-        resolver = resolve_async if is_async else resolve_sync
+        resolver = async_injection_context if is_async else sync_injection_context
         return resolver(
             dependant,
             signature,

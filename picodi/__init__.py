@@ -1,4 +1,5 @@
-from picodi._inject_decorator import Provide, inject
+from picodi._inject import Provide, inject
+from picodi._registry import Registry, registry
 from picodi._scopes import (
     AutoScope,
     ContextVarScope,
@@ -8,7 +9,6 @@ from picodi._scopes import (
     ScopeType,
     SingletonScope,
 )
-from picodi._state import Registry, registry
 from picodi._types import InitDependencies
 
 __all__ = [

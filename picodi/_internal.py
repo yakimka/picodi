@@ -15,7 +15,7 @@ from picodi.support import ExitStack
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator
 
-    from picodi._state import Provider, Storage
+    from picodi._registry import Provider, Storage
 
 
 try:
@@ -28,7 +28,7 @@ StackItem = tuple[DependNode, Iterator[DependNode], dict[str, Any]]
 
 
 @contextlib.contextmanager
-def resolve_sync(
+def sync_injection_context(
     dependant: DependNode,
     signature: inspect.Signature,
     storage: Storage,
@@ -55,7 +55,7 @@ def resolve_sync(
 
 
 @contextlib.asynccontextmanager
-async def resolve_async(
+async def async_injection_context(
     dependant: DependNode,
     signature: inspect.Signature,
     storage: Storage,
