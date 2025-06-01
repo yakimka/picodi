@@ -22,8 +22,8 @@ class DependsAsyncCallable(Depends):
 
 class DependsAsyncStandaloneCallable(Depends):
     async def __call__(self) -> Any:
-        async with registry.aresolve([self.call]) as result:
-            yield result[0]
+        async with registry.aresolve(self.call) as result:
+            yield result
 
 
 def Provide(  # noqa: N802

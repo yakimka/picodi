@@ -112,7 +112,7 @@ class Storage:
             ],
         )
         dependant = DependNode(
-            value=lambda *args: args,
+            value=lambda *args: args if len(args) > 1 else args[0],
             name=None,
             dependencies=[
                 build_depend_tree(dep, name=f"dep{i}", storage=self)
@@ -213,9 +213,9 @@ class Registry:
                 sync_deps.append(dep)
 
         if sync_deps:
-            call_cm_sync(self.resolve(sync_deps))
+            call_cm_sync(self.resolve(*sync_deps))
         if async_deps:
-            return call_cm_async(self.aresolve(async_deps))
+            return call_cm_async(self.aresolve(*async_deps))
         return NullAwaitable()
 
     def _for_init_list(self) -> list[DependencyCallable]:
@@ -332,24 +332,26 @@ class Registry:
 
         return manage_context()
 
-    def resolve(self, dependencies: list[DependencyCallable]) -> ContextManager:
+    def resolve(self, *dependency: DependencyCallable) -> ContextManager:
         """
         Resolve dependencies synchronously. Return a context manager that will
         return tuple of results of the dependencies in the order they were passed.
+        If you pass only one dependency, it will return the result of that dependency.
         :param dependencies: dependencies to resolve.
         :return: sync context manager.
         """
-        return self._storage.resolve(dependencies, is_async=False)
+        return self._storage.resolve(list(dependency), is_async=False)
 
-    def aresolve(self, dependencies: list[DependencyCallable]) -> AsyncContextManager:
+    def aresolve(self, *dependency: DependencyCallable) -> AsyncContextManager:
         """
         Resolve dependencies asynchronously. Return a context manager that will
         return tuple of results of the dependencies in the order they were passed.
+        If you pass only one dependency, it will return the result of that dependency.
         Also can resolve sync dependencies in async context.
         :param dependencies: dependencies to resolve.
         :return: async context manager.
         """
-        return self._storage.resolve(dependencies, is_async=True)
+        return self._storage.resolve(list(dependency), is_async=True)
 
     def clear_overrides(self) -> None:
         """
