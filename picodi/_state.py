@@ -81,12 +81,18 @@ class Storage:
     @overload
     def resolve(
         self, dependencies: list[DependencyCallable], is_async: Literal[False]
-    ) -> ContextManager: ...
+    ) -> ContextManager:
+        """
+        Return sync context manager that will return tuple of results
+        """
 
     @overload
     def resolve(
         self, dependencies: list[DependencyCallable], is_async: Literal[True]
-    ) -> AsyncContextManager: ...
+    ) -> AsyncContextManager:
+        """
+        Return async context manager that will return tuple of results
+        """
 
     def resolve(
         self, dependencies: list[DependencyCallable], is_async: bool
