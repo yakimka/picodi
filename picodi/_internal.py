@@ -15,7 +15,7 @@ from picodi.support import ExitStack
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator
 
-    from picodi._registry import Provider, Storage
+    from picodi._registry import Provider, Storage, Registry
 
 
 try:
@@ -31,7 +31,7 @@ StackItem = tuple[DependNode, Iterator[DependNode], dict[str, Any]]
 def sync_injection_context(
     dependant: DependNode,
     signature: inspect.Signature,
-    storage: Storage,
+    registry: Registry,
     args: tuple[Any, ...],
     kwargs: dict[str, Any],
 ) -> Generator[Any]:
@@ -39,7 +39,7 @@ def sync_injection_context(
         dependant,
         signature,
         is_async=False,
-        storage=storage,
+        registry=registry,
         args=args,
         kwargs=kwargs,
     )
@@ -58,7 +58,7 @@ def sync_injection_context(
 async def async_injection_context(
     dependant: DependNode,
     signature: inspect.Signature,
-    storage: Storage,
+    registry: Registry,
     args: tuple[Any, ...],
     kwargs: dict[str, Any],
 ) -> AsyncGenerator[Any]:
@@ -66,7 +66,7 @@ async def async_injection_context(
         dependant,
         signature,
         is_async=True,
-        storage=storage,
+        registry=registry,
         args=args,
         kwargs=kwargs,
     )
@@ -95,11 +95,12 @@ def wrapper_helper(
     dependant: DependNode,
     signature: inspect.Signature,
     is_async: bool,
-    storage: Storage,
+    registry: Registry,
     args: tuple[Any, ...],
     kwargs: dict[str, Any],
 ) -> Generator[Any]:
     exit_stack = ExitStack()
+    storage = get_storage_from_registry(registry)
     if _need_patch(dependant, storage):
         dependant = copy.deepcopy(dependant)
         _patch_dependant(dependant, storage)
@@ -130,6 +131,7 @@ def wrapper_helper(
                     provider=provider,
                     kwargs=dep_kwargs,
                     exit_stack=exit_stack,
+                    registry=registry,
                     dependant=dependant.value,
                 )
                 res = yield lazy_call(is_async=is_async), "dependency"
@@ -268,11 +270,13 @@ class LazyResolver:
         kwargs: dict[str, Any] | None = None,
         exit_stack: ExitStack | None = None,
         *,
+        registry: Registry,
         dependant: Callable,
     ) -> None:
         self.provider = provider
         self.kwargs = kwargs or {}
         self.exit_stack = exit_stack
+        self.registry = registry
         self.dependant = dependant
 
     def __call__(self, is_async: bool) -> Any:
@@ -294,7 +298,7 @@ class LazyResolver:
                         )
                     except KeyError:
                         value = self.provider.resolve_value(
-                            self.exit_stack, dependant=self.dependant, **self.kwargs
+                            self.exit_stack, registry=self.registry, dependant=self.dependant, **self.kwargs
                         )
                         scope.set(
                             self.provider.dependency, value, global_key=self.dependant
@@ -313,7 +317,7 @@ class LazyResolver:
                     )
                 except KeyError:
                     value = self.provider.resolve_value(
-                        self.exit_stack, dependant=self.dependant, **self.kwargs
+                        self.exit_stack, registry=self.registry, dependant=self.dependant, **self.kwargs
                     )
                     if self.provider.is_async:
                         value = await value
@@ -324,3 +328,7 @@ class LazyResolver:
 
 
 lock = threading.RLock()
+
+
+def get_storage_from_registry(registry: Registry) -> Storage:
+    return registry._storage  # noqa: SF01

@@ -403,8 +403,13 @@ class Provider:
         return self.scope
 
     def resolve_value(
-        self, exit_stack: ExitStack | None, dependant: Callable, **kwargs: Any
+        self, exit_stack: ExitStack | None, registry: Registry, dependant: Callable, **kwargs: Any
     ) -> Any:
+        signature = inspect.signature(self.dependency)
+        registry_param = signature.parameters.get("registry")
+        if registry_param and registry_param.default is signature.empty:
+            kwargs["registry"] = registry
+
         scope = self.get_scope()
         value_or_gen = self.dependency(**kwargs)
         if self.is_async:

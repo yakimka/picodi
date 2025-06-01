@@ -4,6 +4,10 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
+## Version 0.35.0
+
+- Registry is available as `registry` arg in dependency functions
+
 ## Version 0.34.0
 
 - Breaking changes:
