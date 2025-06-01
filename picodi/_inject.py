@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, cast, overload
 from picodi._internal import (
     async_injection_context,
     build_depend_tree,
+    get_storage_from_registry,
     sync_injection_context,
 )
 from picodi._registry import Registry
@@ -90,7 +91,7 @@ def inject(
 
     def inject_decorator(fn: Callable[P, T]) -> Callable[P, T]:
         signature = inspect.signature(fn)
-        storage = registry._storage  # noqa: SF01
+        storage = get_storage_from_registry(registry)
         dependant = build_depend_tree(fn, storage=storage)
 
         if inspect.iscoroutinefunction(fn) or inspect.isasyncgenfunction(fn):
@@ -100,7 +101,7 @@ def inject(
                 async with async_injection_context(
                     dependant,
                     signature,
-                    storage,
+                    registry,
                     args=args,
                     kwargs=kwargs,
                 ) as result:
@@ -133,7 +134,7 @@ def inject(
                 with sync_injection_context(
                     dependant,
                     signature,
-                    storage,
+                    registry,
                     args=args,
                     kwargs=kwargs,
                 ) as result:

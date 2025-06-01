@@ -84,7 +84,10 @@ class Storage:
 
     @overload
     def resolve(
-        self, dependencies: list[DependencyCallable], is_async: Literal[False]
+        self,
+        dependencies: list[DependencyCallable],
+        registry: Registry,
+        is_async: Literal[False],
     ) -> ContextManager:
         """
         Return sync context manager that will return tuple of results
@@ -92,14 +95,17 @@ class Storage:
 
     @overload
     def resolve(
-        self, dependencies: list[DependencyCallable], is_async: Literal[True]
+        self,
+        dependencies: list[DependencyCallable],
+        registry: Registry,
+        is_async: Literal[True],
     ) -> AsyncContextManager:
         """
         Return async context manager that will return tuple of results
         """
 
     def resolve(
-        self, dependencies: list[DependencyCallable], is_async: bool
+        self, dependencies: list[DependencyCallable], registry: Registry, is_async: bool
     ) -> AsyncContextManager | ContextManager:
         signature = inspect.Signature(
             parameters=[
@@ -123,7 +129,7 @@ class Storage:
         return resolver(
             dependant,
             signature,
-            self,
+            registry,
             args=(),
             kwargs={},
         )
@@ -340,7 +346,7 @@ class Registry:
         :param dependencies: dependencies to resolve.
         :return: sync context manager.
         """
-        return self._storage.resolve(list(dependency), is_async=False)
+        return self._storage.resolve(list(dependency), self, is_async=False)
 
     def aresolve(self, *dependency: DependencyCallable) -> AsyncContextManager:
         """
@@ -351,7 +357,7 @@ class Registry:
         :param dependencies: dependencies to resolve.
         :return: async context manager.
         """
-        return self._storage.resolve(list(dependency), is_async=True)
+        return self._storage.resolve(list(dependency), self, is_async=True)
 
     def clear_overrides(self) -> None:
         """
@@ -403,8 +409,17 @@ class Provider:
         return self.scope
 
     def resolve_value(
-        self, exit_stack: ExitStack | None, dependant: Callable, **kwargs: Any
+        self,
+        exit_stack: ExitStack | None,
+        registry: Registry,
+        dependant: Callable,
+        kwargs: dict[str, Any],
     ) -> Any:
+        signature = inspect.signature(self.dependency)
+        registry_param = signature.parameters.get("registry")
+        if registry_param and registry_param.default is signature.empty:
+            kwargs["registry"] = registry
+
         scope = self.get_scope()
         value_or_gen = self.dependency(**kwargs)
         if self.is_async:
