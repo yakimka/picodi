@@ -352,14 +352,14 @@ test = ["pytest (>=6)"]
 
 [[package]]
 name = "fastapi-slim"
-version = "0.115.12"
+version = "0.116.0"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
 optional = false
 python-versions = ">=3.8"
 groups = ["dev"]
 files = [
-    {file = "fastapi_slim-0.115.12-py3-none-any.whl", hash = "sha256:2ebe049cfcd1d8313c781b5405dc84f921f13523269b27692e9bfa08e219bbf8"},
-    {file = "fastapi_slim-0.115.12.tar.gz", hash = "sha256:e53b12240bf6492be4deea1d819c4891be75c810f8cdb044b962a0286cbfc5b4"},
+    {file = "fastapi_slim-0.116.0-py3-none-any.whl", hash = "sha256:2d7e5fed5671152fce6ffce6403b7715875269744593b4bcf29a77ef3d2b3fca"},
+    {file = "fastapi_slim-0.116.0.tar.gz", hash = "sha256:3ad5b8051b0e13fb4591afb992f473a040c9d6bf4c2b0925e4f38b0416329e4d"},
 ]
 
 [package.dependencies]
@@ -368,8 +368,9 @@ starlette = ">=0.40.0,<0.47.0"
 typing-extensions = ">=4.8.0"
 
 [package.extras]
-all = ["email-validator (>=2.0.0)", "fastapi-cli[standard] (>=0.0.5)", "httpx (>=0.23.0)", "itsdangerous (>=1.1.0)", "jinja2 (>=3.1.5)", "orjson (>=3.2.1)", "pydantic-extra-types (>=2.0.0)", "pydantic-settings (>=2.0.0)", "python-multipart (>=0.0.18)", "pyyaml (>=5.3.1)", "ujson (>=4.0.1,!=4.0.2,!=4.1.0,!=4.2.0,!=4.3.0,!=5.0.0,!=5.1.0)", "uvicorn[standard] (>=0.12.0)"]
-standard = ["email-validator (>=2.0.0)", "fastapi-cli[standard] (>=0.0.5)", "httpx (>=0.23.0)", "jinja2 (>=3.1.5)", "python-multipart (>=0.0.18)", "uvicorn[standard] (>=0.12.0)"]
+all = ["email-validator (>=2.0.0)", "fastapi-cli[standard] (>=0.0.8)", "httpx (>=0.23.0)", "itsdangerous (>=1.1.0)", "jinja2 (>=3.1.5)", "orjson (>=3.2.1)", "pydantic-extra-types (>=2.0.0)", "pydantic-settings (>=2.0.0)", "python-multipart (>=0.0.18)", "pyyaml (>=5.3.1)", "ujson (>=4.0.1,!=4.0.2,!=4.1.0,!=4.2.0,!=4.3.0,!=5.0.0,!=5.1.0)", "uvicorn[standard] (>=0.12.0)"]
+standard = ["email-validator (>=2.0.0)", "fastapi-cli[standard] (>=0.0.8)", "httpx (>=0.23.0)", "jinja2 (>=3.1.5)", "python-multipart (>=0.0.18)", "uvicorn[standard] (>=0.12.0)"]
+standard-no-fastapi-cloud-cli = ["email-validator (>=2.0.0)", "fastapi-cli[standard-no-fastapi-cloud-cli] (>=0.0.8)", "httpx (>=0.23.0)", "jinja2 (>=3.1.5)", "python-multipart (>=0.0.18)", "uvicorn[standard] (>=0.12.0)"]
 
 [[package]]
 name = "filelock"
