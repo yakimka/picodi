@@ -1,6 +1,6 @@
 # https://github.com/python-poetry/poetry/discussions/1879#discussioncomment-216865
 # `python-base` sets up all our shared environment variables
-ARG PYTHON_VERSION=3.11
+ARG PYTHON_VERSION=3.14
 FROM python:${PYTHON_VERSION}-slim as python-base
 
 ENV PYTHONUNBUFFERED=1 \
@@ -24,7 +24,7 @@ ARG GROUP_ID=1000
 ARG USER_NAME=app
 
 RUN addgroup --gid $GROUP_ID --system $USER_NAME \
-    && adduser --uid $USER_ID --system --no-create-home --shell=/bin/false --disabled-password --group $USER_NAME \
+    && adduser --uid $USER_ID --system --shell=/bin/false --disabled-password --group $USER_NAME \
     && mkdir $CODE_PATH \
     && chown -R $USER_ID:$GROUP_ID $CODE_PATH
 
@@ -32,6 +32,7 @@ RUN apt-get update \
   && apt-get install --no-install-recommends -y  \
     make \
     git \
+    build-essential \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
@@ -41,6 +42,9 @@ RUN mkdir -p $XDG_CONFIG_HOME/git \
     && touch $XDG_CONFIG_HOME/git/config \
     && chown -R $USER_ID:$GROUP_ID $XDG_CONFIG_HOME \
     && git config --global safe.directory $CODE_PATH
+
+ENV RUSTUP_HOME="/tmp/.rustup" \
+    CARGO_HOME="/tmp/.cargo"
 
 
 FROM python-base as builder-base
