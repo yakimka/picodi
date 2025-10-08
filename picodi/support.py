@@ -86,7 +86,7 @@ class ExitStack:
             # This is a workaround for the issue for RuntimeWarning
             # "coroutine was never awaited". If we in sync function in async context -
             # don't need to await for async exit if there are no async context managers.
-            and self._async_stack._exit_callbacks  # type: ignore # noqa: SF01
+            and self._async_stack._exit_callbacks  # type: ignore # noqa: SLF001
         ):
             return self.__aexit__(exc_type, exc, None)
         return NullAwaitable()

@@ -466,7 +466,7 @@ class Provider:
 def _recreate_cm(
     gen: AsyncContextManager | ContextManager,
 ) -> AsyncContextManager | ContextManager:
-    return gen._recreate_cm()  # type: ignore[union-attr]  # noqa: SF01
+    return gen._recreate_cm()  # type: ignore[union-attr]  # noqa: SLF001
 
 
 lock = threading.RLock()

@@ -41,7 +41,7 @@ class Scope:
         """
         raise NotImplementedError
 
-    def enter_inject(self, global_key: Hashable) -> None:  # noqa: U100
+    def enter_inject(self, global_key: Hashable) -> None:  # noqa: ARG002
         """
         Called when entering an :func:`inject` decorator.
 
@@ -50,7 +50,7 @@ class Scope:
         return None
 
     def exit_inject(
-        self, exc: BaseException | None = None, *, global_key: Hashable  # noqa: U100
+        self, exc: BaseException | None = None, *, global_key: Hashable  # noqa: ARG002
     ) -> None:
         """
         Called before exiting a :func:`inject` decorator.
@@ -87,9 +87,9 @@ class ManualScope(Scope):
 
     def enter(
         self,
-        context_manager: AsyncContextManager | ContextManager,  # noqa: U100
+        context_manager: AsyncContextManager | ContextManager,  # noqa: ARG002
         *,
-        global_key: Hashable,  # noqa: U100
+        global_key: Hashable,  # noqa: ARG002
     ) -> Awaitable:
         """
         Hook for entering yielded dependencies context. Will be called automatically
@@ -101,7 +101,7 @@ class ManualScope(Scope):
         return NullAwaitable()
 
     def shutdown(
-        self, exc: BaseException | None = None, *, global_key: Hashable  # noqa: U100
+        self, exc: BaseException | None = None, *, global_key: Hashable  # noqa: ARG002
     ) -> Awaitable:
         """
         Hook for shutdown dependencies.
@@ -123,11 +123,11 @@ class NullScope(AutoScope):
     This is the default scope.
     """
 
-    def get(self, key: Hashable, *, global_key: Hashable) -> Any:  # noqa: U100
+    def get(self, key: Hashable, *, global_key: Hashable) -> Any:  # noqa: ARG002
         raise KeyError(key)
 
     def set(
-        self, key: Hashable, value: Any, *, global_key: Hashable  # noqa: U100
+        self, key: Hashable, value: Any, *, global_key: Hashable  # noqa: ARG002
     ) -> None:
         return None
 
@@ -142,7 +142,7 @@ class SingletonScope(ManualScope):
         self._exit_stack = ExitStack()
         self._store: dict[Hashable, Any] = {}
 
-    def get(self, key: Hashable, *, global_key: Hashable) -> Any:  # noqa: U100
+    def get(self, key: Hashable, *, global_key: Hashable) -> Any:  # noqa: ARG002
         return self._store[key]
 
     def set(
@@ -150,7 +150,7 @@ class SingletonScope(ManualScope):
         key: Hashable,
         value: Any,
         *,
-        global_key: Hashable,  # noqa: U100
+        global_key: Hashable,  # noqa: ARG002
     ) -> None:
         self._store[key] = value
 
@@ -158,12 +158,12 @@ class SingletonScope(ManualScope):
         self,
         context_manager: AsyncContextManager | ContextManager,
         *,
-        global_key: Hashable,  # noqa: U100
+        global_key: Hashable,  # noqa: ARG002
     ) -> Awaitable:
         return self._exit_stack.enter_context(context_manager)
 
     def shutdown(
-        self, exc: BaseException | None = None, *, global_key: Hashable  # noqa: U100
+        self, exc: BaseException | None = None, *, global_key: Hashable  # noqa: ARG002
     ) -> Awaitable:
         self._store.clear()
         return self._exit_stack.close(exc)
@@ -181,7 +181,7 @@ class ContextVarScope(ManualScope):
         )
         self._store: dict[Any, ContextVar[Any]] = {}
 
-    def get(self, key: Hashable, *, global_key: Hashable) -> Any:  # noqa: U100
+    def get(self, key: Hashable, *, global_key: Hashable) -> Any:  # noqa: ARG002
         try:
             value = self._store[key].get()
         except LookupError:
@@ -195,7 +195,7 @@ class ContextVarScope(ManualScope):
         key: Hashable,
         value: Any,
         *,
-        global_key: Hashable,  # noqa: U100
+        global_key: Hashable,  # noqa: ARG002
     ) -> None:
         try:
             var = self._store[key]
@@ -207,13 +207,13 @@ class ContextVarScope(ManualScope):
         self,
         context_manager: AsyncContextManager | ContextManager,
         *,
-        global_key: Hashable,  # noqa: U100
+        global_key: Hashable,  # noqa: ARG002
     ) -> Awaitable:
         exit_stack = self._get_exit_stack()
         return exit_stack.enter_context(context_manager)
 
     def shutdown(
-        self, exc: BaseException | None = None, *, global_key: Hashable  # noqa: U100
+        self, exc: BaseException | None = None, *, global_key: Hashable  # noqa: ARG002
     ) -> Any:
         for var in self._store.values():
             var.set(unset)

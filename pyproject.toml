@@ -158,3 +158,105 @@ disallow_incomplete_defs = false
 disallow_untyped_calls = false
 disallow_untyped_decorators = false
 disallow_untyped_defs = false
+
+[tool.ruff.lint]
+select = [
+  # pycodestyle
+  "E4",
+  "E7",
+  "E9",
+  # Pyflakes
+  "F",
+  # flake8-bugbear
+  "B",
+  # flake8-quotes
+  "Q",
+  # flake8-async
+  "ASYNC",
+  # flake8-bandit
+  "S",
+  # flake8-comprehensions
+  "C4",
+  # flake8-eradicate
+  "ERA",
+  # flake8-pie
+  "PIE",
+  # flake8-pytest-style
+  "PT",
+  # flake8-self
+  "SLF",
+  # flake8-simplify
+  "SIM",
+  # flake8-type-checking
+  "TC",
+  # flake8-unused-arguments
+  "ARG",
+  # pep8-naming
+  "N",
+  # unused noqa
+  "RUF100",
+]
+ignore = [
+  # default ignore list (conflicts with black)
+  "E226", "E24",
+  # pytest in tests and some checks for readability
+  "S101",
+  # https://github.com/psf/black/issues/565
+  "E203",
+  # complexity of functions
+  "C901",
+  # merging context managers
+  "SIM117",
+  # nested if statements
+  "SIM102",
+  # Unused lambda argument
+  "ARG005",
+]
+exclude = [
+  ".bzr",
+  ".direnv",
+  ".eggs",
+  ".git",
+  ".git-rewrite",
+  ".hg",
+  ".mypy_cache",
+  ".nox",
+  ".pants.d",
+  ".pytype",
+  ".ruff_cache",
+  ".svn",
+  ".tox",
+  ".venv",
+  "__pypackages__",
+  "_build",
+  "build",
+  "buck-out",
+  "dist",
+  "venv"
+]
+
+[tool.ruff.lint.per-file-ignores]
+# TC002 Move third-party import into a type-checking block
+# S* security problems
+"tests/*.py" = ["TC002", "S106", "S107", "ASYNC", "S311"]
+# Fastapi dependency injection
+"deps.py" = ["TC001", "TC002"]
+"docs/*.py" = ["ARG001", "ARG002"]
+"tests/core/test_resolving_rules.py" = ["ARG001", "ARG002", "B008"]
+
+[tool.ruff.lint.flake8-bugbear]
+# Allow default arguments like, e.g., `data: List[str] = fastapi.Query(None)`.
+extend-immutable-calls = [
+  "picodi.Provide",
+  "picodi.integrations.fastapi.Provide",
+  "fastapi.Depends",
+  "fastapi.Query",
+]
+
+[tool.ruff.lint.flake8-pytest-style]
+parametrize-names-type = "csv"
+fixture-parentheses = true
+mark-parentheses = false
+
+[tool.ruff.lint.flake8-type-checking]
+exempt-modules = ["typing", "typing_extensions", "collections.abc"]

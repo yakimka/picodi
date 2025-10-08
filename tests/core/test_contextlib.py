@@ -72,10 +72,10 @@ def test_resources_are_closed_even_if_exception_raised(closeable):
 
     @contextmanager
     @inject
-    def my_manager(dep=Provide(get_yield_dep)):  # noqa: U100
+    def my_manager(dep=Provide(get_yield_dep)):  # noqa: ARG001
         yield
 
-    with pytest.raises(ValueError, match="Something went wrong"):  # noqa: PT012, SIM117
+    with pytest.raises(ValueError, match="Something went wrong"):  # noqa: PT012
         with my_manager():
             assert closeable.is_closed is False
             raise ValueError("Something went wrong")
@@ -115,7 +115,7 @@ def test_resources_not_closed_without_finally_block(closeable):
         assert dep.is_closed is False
         yield "my_manager_result"
 
-    with pytest.raises(ValueError, match="Something went wrong"):  # noqa: PT012, SIM117
+    with pytest.raises(ValueError, match="Something went wrong"):  # noqa: PT012
         with my_manager():
             assert closeable.is_closed is False
             raise ValueError("Something went wrong")

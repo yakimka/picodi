@@ -89,6 +89,6 @@ async def test_can_use_override_resolve_dependency():
     async def dep():
         return 42  # pragma: no cover
 
-    with registry.override(dep, lambda: 43):  # noqa: SIM117
+    with registry.override(dep, lambda: 43):
         with resolve(dep) as val:
             assert val == 43

@@ -19,10 +19,10 @@ def make_app():
     ):
         if routes is None:
 
-            def sync_view(request: Request) -> PlainTextResponse:  # noqa: U100
+            def sync_view(request: Request) -> PlainTextResponse:  # noqa: ARG001
                 return PlainTextResponse("sync view")
 
-            async def async_view(request: Request) -> PlainTextResponse:  # noqa: U100
+            async def async_view(request: Request) -> PlainTextResponse:  # noqa: ARG001
                 return PlainTextResponse("async view")
 
             routes = [
@@ -93,7 +93,7 @@ async def test_can_use_request_scope_dependency_async(make_app, make_asgi_client
         closes.append(1)
 
     @inject
-    async def root(request: Request, dep: int = Provide(get_42)):  # noqa: U100
+    async def root(request: Request, dep: int = Provide(get_42)):  # noqa: ARG001
         return JSONResponse({"dep": dep})
 
     app = make_app(routes=[Route("/", root)])
@@ -123,7 +123,7 @@ async def test_can_use_request_scope_dependency_sync(make_app, make_asgi_client)
         closes.append(1)
 
     @inject
-    def root(request: Request, dep: int = Provide(get_42)):  # noqa: U100
+    def root(request: Request, dep: int = Provide(get_42)):  # noqa: ARG001
         return JSONResponse({"dep": dep})
 
     app = make_app(routes=[Route("/", root)])
