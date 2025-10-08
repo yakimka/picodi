@@ -17,7 +17,7 @@ def make_app():
         if dependencies_for_init:
             kwargs["dependencies_for_init"] = dependencies_for_init
         return FastAPI(
-            middleware=[Middleware(RequestScopeMiddleware, **kwargs)],
+            middleware=[Middleware(RequestScopeMiddleware, **kwargs)],  # type: ignore
         )
 
     return maker
