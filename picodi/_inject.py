@@ -119,7 +119,7 @@ def inject(
                     async for value in result:  # type: ignore[attr-defined]
                         try:
                             yield value
-                        except Exception as e:  # noqa: PIE786
+                        except Exception as e:
                             try:
                                 await result.athrow(e)  # type: ignore[attr-defined]
                             except StopAsyncIteration:

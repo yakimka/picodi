@@ -76,7 +76,7 @@ async def async_injection_context(
         if inspect.iscoroutine(value):
             try:
                 value = await value
-            except Exception as e:  # noqa: PIE786
+            except Exception as e:
                 exceptions.append(e)
 
         if action == "result":
