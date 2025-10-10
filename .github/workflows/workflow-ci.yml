@@ -141,7 +141,7 @@ jobs:
           && .venv/bin/pip install uv
           && .venv/bin/uv sync
           && .venv/bin/uv pip install --no-deps -e .
-          && .venv/bin/pytest
+          && .venv/bin/pytest --ignore=tests/integrations
           "
 
   free-threading-test:

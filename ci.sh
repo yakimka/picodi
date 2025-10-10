@@ -18,7 +18,7 @@ run_ci () {
   # Testing filesystem and permissions:
   touch .perm && rm -f .perm
 
-  uv sync
+  uv sync --group=integrations-test --group=docs
   uv run pre-commit run --all-files
   uv run mypy
   uv run pip check
