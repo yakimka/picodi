@@ -15,12 +15,12 @@ def test_traceback_should_show_actual_source_code():
     @inject
     def service(dep=Provide(get_resource)):
         assert dep
-        1 / 0
+        1 / 0  # noqa: B018
 
     with pytest.raises(ZeroDivisionError) as excinfo:
         service()
 
-    assert excinfo.traceback[-1].source.lines[-1].strip() == "1 / 0"
+    assert excinfo.traceback[-1].source.lines[-1].strip() == "1 / 0  # noqa: B018"
 
 
 async def test_traceback_should_show_actual_source_code_async():
@@ -30,9 +30,9 @@ async def test_traceback_should_show_actual_source_code_async():
     @inject
     async def service(dep=Provide(get_resource)):
         assert dep
-        1 / 0
+        1 / 0  # noqa: B018
 
     with pytest.raises(ZeroDivisionError) as excinfo:
         await service()
 
-    assert excinfo.traceback[-1].source.lines[-1].strip() == "1 / 0"
+    assert excinfo.traceback[-1].source.lines[-1].strip() == "1 / 0  # noqa: B018"

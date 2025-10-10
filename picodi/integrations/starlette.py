@@ -38,7 +38,7 @@ def _new_context() -> tuple[dict[str, Any], Token]:
 
 
 class RequestScope(picodi.ContextVarScope):
-    def get(self, key: Hashable, *, global_key: Hashable) -> Any:  # noqa: U100
+    def get(self, key: Hashable, *, global_key: Hashable) -> Any:  # noqa: ARG002
         context = _get_or_create_context()
 
         try:
@@ -52,7 +52,7 @@ class RequestScope(picodi.ContextVarScope):
         key: Hashable,
         value: Any,
         *,
-        global_key: Hashable,  # noqa: U100
+        global_key: Hashable,  # noqa: ARG002
     ) -> None:
         context = _get_or_create_context()
         context["store"][key] = value
@@ -61,14 +61,14 @@ class RequestScope(picodi.ContextVarScope):
         self,
         context_manager: AsyncContextManager | ContextManager,
         *,
-        global_key: Hashable,  # noqa: U100
+        global_key: Hashable,  # noqa: ARG002
     ) -> Awaitable:
         context = _get_or_create_context()
         exit_stack = context["exit_stack"]
         return exit_stack.enter_context(context_manager)
 
     def shutdown(
-        self, exc: BaseException | None = None, *, global_key: Hashable  # noqa: U100
+        self, exc: BaseException | None = None, *, global_key: Hashable  # noqa: ARG002
     ) -> Any:
         context = _get_or_create_context()
         context["store"].clear()

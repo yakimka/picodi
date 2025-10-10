@@ -32,13 +32,13 @@ async def test_closing_one_dependency_dont_affect_another(make_closeable):
         closeable.close()
 
     @inject
-    async def task1(dep: str = Provide(dummy_dep)):  # noqa: U100
+    async def task1(dep: str = Provide(dummy_dep)):  # noqa: ARG001
         first_dep_enter.set()
         await second_dep_enter.wait()
         return None
 
     @inject
-    async def task2(dep: str = Provide(dummy_dep)):  # noqa: U100
+    async def task2(dep: str = Provide(dummy_dep)):  # noqa: ARG001
         await first_dep_enter.wait()
         second_dep_enter.set()
         await first_dep_close.wait()

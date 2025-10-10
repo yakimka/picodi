@@ -76,7 +76,7 @@ async def async_injection_context(
         if inspect.iscoroutine(value):
             try:
                 value = await value
-            except Exception as e:  # noqa: PIE786
+            except Exception as e:
                 exceptions.append(e)
 
         if action == "result":
@@ -203,7 +203,7 @@ def _need_patch(dependant: DependNode, storage: Storage) -> bool:
     if dependant.name is None and not storage.has_overrides():
         return False
 
-    for dep in dependant.dependencies:  # noqa: SIM110
+    for dep in dependant.dependencies:
         if _need_patch(dep, storage):
             return True
 
@@ -337,4 +337,4 @@ lock = threading.RLock()
 
 
 def get_storage_from_registry(registry: Registry) -> Storage:
-    return registry._storage  # noqa: SF01
+    return registry._storage  # noqa: SLF001

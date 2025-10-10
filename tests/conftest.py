@@ -31,7 +31,7 @@ def pytest_collection_modifyitems(config, items):
 async def _cleanup():
     yield
     await registry.shutdown()
-    registry._clear()  # noqa: SF01
+    registry._clear()  # noqa: SLF001
 
 
 @pytest.fixture()

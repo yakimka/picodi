@@ -77,8 +77,8 @@ def test_resolve_dependency_multiple_times_return_different_results(
 )
 async def test_resolve_async_dependency_multiple_times_return_different_results(
     func_name,
-    get_redis_string_async_dep,  # noqa: U100
-    get_sync_dependency_in_async_context_dep,  # noqa: U100
+    get_redis_string_async_dep,
+    get_sync_dependency_in_async_context_dep,
 ):
     func = locals()[func_name]
     results = [await func() for _ in range(30)]

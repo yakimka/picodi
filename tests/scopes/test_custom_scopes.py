@@ -24,7 +24,7 @@ class IntMultiplierScope(AutoScope):
         super().__init__()
         self._store: dict[Hashable, Any] = {}
 
-    def get(self, key: Hashable, *, global_key: Hashable) -> Any:  # noqa: U100
+    def get(self, key: Hashable, *, global_key: Hashable) -> Any:  # noqa: ARG002
         result = self._store[key]
         return result * 2
 
@@ -33,7 +33,7 @@ class IntMultiplierScope(AutoScope):
         key: Hashable,
         value: Any,
         *,
-        global_key: Hashable,  # noqa: U100
+        global_key: Hashable,  # noqa: ARG002
     ) -> None:
         self._store[key] = value * 2
 

@@ -89,11 +89,11 @@ async def test_closing_dependencies_in_one_task_dont_affect_another(make_closeab
         closeable.close()
 
     @inject
-    async def task1(dep: str = Provide(dummy_dep)):  # noqa: U100
+    async def task1(dep: str = Provide(dummy_dep)):  # noqa: ARG001
         return None
 
     @inject
-    async def task2(dep: str = Provide(dummy_dep)):  # noqa: U100
+    async def task2(dep: str = Provide(dummy_dep)):  # noqa: ARG001
         return None
 
     async def manager1(closeable):
