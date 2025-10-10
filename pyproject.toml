@@ -1,22 +1,17 @@
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+build-backend = "setuptools.build_meta"
+requires = ["setuptools>=61.0", "wheel>=0.37.1"]
 
-[tool.poetry]
+[project]
 name = "picodi"
-description = "Simple Dependency Injection for Python"
 version = "0.35.0"
-license = "MIT"
-authors = [
-  "yakimka"
-]
-
+requires-python = ">=3.10"
+description = "Simple Dependency Injection for Python"
 readme = "README.md"
-
-repository = "https://github.com/yakimka/picodi"
-
-keywords = []
-
+license = {file = "LICENSE"}
+authors = [
+    {name = "yakimka"},
+]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Developers",
@@ -31,31 +26,45 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
   "Programming Language :: Python :: Implementation :: PyPy"
 ]
+dependencies = []
+[dependency-groups]
+dev = [
+    "fastapi-slim>=0.115.12,<1.0.0",
+    "furo>=2024.8.6,<2026.0.0",
+    "httpx>=0.28.1,<1.0.0",
+    "mypy>=1.15.0,<2.0.0",
+    "pre-commit>=3.7,<5.0",
+    "pytest>=8.3.5,<9.0.0",
+    "pytest-asyncio>=0.26.0,<2.0.0",
+    "pytest-benchmark>=5.1.0,<6.0.0",
+    "pytest-cov>=6.1.1,<8.0.0",
+    "pytest-deadfixtures>=2.2.1,<3.0.0",
+    "pytest-markdown-docs>=0.9.0,<1.0.0",
+    "pytest-race>=0.2.0,<1.0.0",
+    "pytest-randomly>=3.16.0,<5.0.0",
+    "pytest-repeat>=0.9.4,<1.0.0",
+    "sphinx>=7.3.7,<9.0.0",
+]
 
-[tool.poetry.dependencies]
-python = "^3.10"
+[project.urls]
+Source = "https://github.com/yakimka/picodi"
+Documentation = "https://picodi.readthedocs.io"
 
-[tool.poetry.group.dev.dependencies]
-mypy = ">=1.15.0,<2.0.0"
-pre-commit = ">=3.7,<5.0"
-pytest = ">=8.3.5,<9.0.0"
-pytest-asyncio = ">=0.26.0,<2.0.0"
-pytest-cov = ">=6.1.1,<8.0.0"
-pytest-deadfixtures = ">=2.2.1,<3.0.0"
-pytest-randomly = ">=3.16.0,<5.0.0"
-fastapi-slim = ">=0.115.12,<1.0.0"
-httpx = ">=0.28.1,<1.0.0"
-pytest-markdown-docs = ">=0.9.0,<1.0.0"
-pytest-race = ">=0.2.0,<1.0.0"
-pytest-repeat = ">=0.9.4,<1.0.0"
-pytest-benchmark = ">=5.1.0,<6.0.0"
+[tool.setuptools]
+# https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html
+platforms = ["Linux"]
+include-package-data = true
+zip-safe = true  # This just means it's safe to zip up the bdist
 
-[tool.poetry.group.docs]
-optional = true
+# Non-code data that should be included in the package source code
+# https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+[tool.setuptools.package-data]
+acme = ["*.xml"]
 
-[tool.poetry.group.docs.dependencies]
-sphinx = ">=7.3.7,<9.0.0"
-furo = ">=2024.8.6,<2026.0.0"
+# Python modules and packages that are included in the
+# distribution package (and therefore become importable)
+[tool.setuptools.packages.find]
+exclude = ["tests", "tests.*", "examples"]
 
 [tool.isort]
 # isort configuration:

@@ -18,16 +18,14 @@ run_ci () {
   # Testing filesystem and permissions:
   touch .perm && rm -f .perm
 
-  poetry install --with docs
-  poetry run pre-commit run --all-files
-  poetry run mypy
-  poetry check
-  poetry run pip check
-  poetry run pytest --cov=tests --cov=picodi --cov-report=xml --junitxml=jcoverage.xml
-  poetry run pytest --dead-fixtures
-  poetry run pytest --run-benchmarks --benchmark-autosave --benchmark-compare
-  poetry build
-  poetry export --format=requirements.txt --output=dist/requirements.txt
+  uv sync
+  uv run pre-commit run --all-files
+  uv run mypy
+  uv run pip check
+  uv run pytest --cov=tests --cov=picodi --cov-report=xml --junitxml=jcoverage.xml
+  uv run pytest --dead-fixtures
+  uv build
+  uv export --format=requirements-txt --output-file=dist/requirements --locked --no-dev --no-emit-project
   # print shasum of the built packages
   shasum dist/*
   # trying to build the docs
