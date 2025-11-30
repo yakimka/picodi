@@ -4,6 +4,10 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
+## Version 0.36.2
+
+- Add more overloads for `inject` decorator
+
 ## Version 0.36.1
 
 - Add more overloads for `registry.aresolve`
