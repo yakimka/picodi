@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import functools
 import inspect
+from collections.abc import Awaitable
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, cast, overload
 
 from picodi._internal import (
@@ -49,6 +50,21 @@ def Provide(dependency: DependencyCallable, /) -> Any:  # noqa: N802
             assert db == "db connection"
     """
     return Depends(dependency)
+
+
+@overload
+def inject(fn: Callable[P, Awaitable[T]]) -> Callable[P, Awaitable[T]]:
+    """Decorator to inject dependencies into an async function."""
+
+
+@overload
+def inject(fn: Callable[P, AsyncGenerator[T]]) -> Callable[P, AsyncGenerator[T]]:
+    """Decorator to inject dependencies into an async generator function."""
+
+
+@overload
+def inject(fn: Callable[P, Generator[T]]) -> Callable[P, Generator[T]]:
+    """Decorator to inject dependencies into a generator function."""
 
 
 @overload

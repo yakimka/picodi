@@ -165,4 +165,4 @@ def test_annotated_doesnt_work_without_default_value():
         return num  # pragma: no cover
 
     with pytest.raises(TypeError, match="missing a required argument: 'num'"):
-        get_number()  # type: ignore[call-arg]
+        get_number()
