@@ -377,6 +377,14 @@ class Registry:
         """
 
     @overload
+    def aresolve(
+        self, dependency: Callable[[], Awaitable[T]]
+    ) -> AsyncContextManager[T]:
+        """
+        Resolve a dependency that is an awaitable asynchronously.
+        """
+
+    @overload
     def aresolve(self, dependency: Callable[..., T]) -> AsyncContextManager[T]:
         """
         Resolve a dependency that is a regular function asynchronously.

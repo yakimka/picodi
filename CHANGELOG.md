@@ -4,6 +4,10 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
+## Version 0.36.1
+
+- Add more overloads for `registry.aresolve`
+
 ## Version 0.36.0
 
 - Breaking changes:
