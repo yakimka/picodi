@@ -4,6 +4,11 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
+## Version 0.36.0
+
+- Breaking changes:
+  - `registry.resolve` and `registry.aresolve` now accept only one argument
+
 ## Version 0.35.0
 
 - Registry is available as `registry` arg in dependency functions

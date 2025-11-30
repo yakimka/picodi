@@ -130,8 +130,12 @@ class resolve(Generic[T]):  # noqa: N801
     ) -> None:
         self.dependency = dependency
         registry = registry or default_registry
-        self.sync_cm: ContextManager[T] = registry.resolve(dependency)
-        self.async_cm: AsyncContextManager[T] = registry.aresolve(dependency)
+        self.sync_cm: ContextManager[T] = registry.resolve(
+            dependency,  # type: ignore[arg-type]
+        )
+        self.async_cm: AsyncContextManager[T] = registry.aresolve(
+            dependency,  # type: ignore[arg-type]
+        )
 
     def __enter__(self) -> T:
         return self.sync_cm.__enter__()

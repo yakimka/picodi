@@ -34,6 +34,7 @@ from picodi.support import (
     is_async_function,
 )
 
+T = TypeVar("T")
 TC = TypeVar("TC", bound=Callable)
 
 
@@ -219,9 +220,9 @@ class Registry:
                 sync_deps.append(dep)
 
         if sync_deps:
-            call_cm_sync(self.resolve(*sync_deps))
+            call_cm_sync(self._resolve_many(*sync_deps))
         if async_deps:
-            return call_cm_async(self.aresolve(*async_deps))
+            return call_cm_async(self._aresolve_many(*async_deps))
         return NullAwaitable()
 
     def _for_init_list(self) -> list[DependencyCallable]:
@@ -338,26 +339,72 @@ class Registry:
 
         return manage_context()
 
-    def resolve(self, *dependency: DependencyCallable) -> ContextManager:
+    @overload
+    def resolve(self, dependency: Callable[[], Generator[T]]) -> ContextManager[T]:
         """
-        Resolve dependencies synchronously. Return a context manager that will
-        return tuple of results of the dependencies in the order they were passed.
-        If you pass only one dependency, it will return the result of that dependency.
-        :param dependencies: dependencies to resolve.
+        Resolve a dependency that is a generator function synchronously.
+        """
+
+    @overload
+    def resolve(self, dependency: Callable[..., T]) -> ContextManager[T]:
+        """
+        Resolve a dependency that is a regular function synchronously.
+        """
+
+    def resolve(self, dependency: DependencyCallable) -> ContextManager[Any]:
+        """
+        Resolve a dependency synchronously. Returns a context manager that will
+        return the result of the dependency.
+        :param dependency: dependency to resolve.
         :return: sync context manager.
         """
-        return self._storage.resolve(list(dependency), self, is_async=False)
+        return self._storage.resolve([dependency], self, is_async=False)
 
-    def aresolve(self, *dependency: DependencyCallable) -> AsyncContextManager:
+    @overload
+    def aresolve(
+        self, dependency: Callable[[], Generator[T]]
+    ) -> AsyncContextManager[T]:
         """
-        Resolve dependencies asynchronously. Return a context manager that will
-        return tuple of results of the dependencies in the order they were passed.
-        If you pass only one dependency, it will return the result of that dependency.
+        Resolve a dependency that is a generator function asynchronously.
+        """
+
+    @overload
+    def aresolve(
+        self, dependency: Callable[[], AsyncGenerator[T]]
+    ) -> AsyncContextManager[T]:
+        """
+        Resolve a dependency that is an async generator function asynchronously.
+        """
+
+    @overload
+    def aresolve(self, dependency: Callable[..., T]) -> AsyncContextManager[T]:
+        """
+        Resolve a dependency that is a regular function asynchronously.
+        """
+
+    def aresolve(self, dependency: DependencyCallable) -> AsyncContextManager[Any]:
+        """
+        Resolve a dependency asynchronously. Returns a context manager that will
+        return the result of the dependency.
         Also can resolve sync dependencies in async context.
-        :param dependencies: dependencies to resolve.
+        :param dependency: dependency to resolve.
         :return: async context manager.
         """
-        return self._storage.resolve(list(dependency), self, is_async=True)
+        return self._storage.resolve([dependency], self, is_async=True)
+
+    def _resolve_many(self, *dependencies: DependencyCallable) -> ContextManager[Any]:
+        """
+        Internal method to resolve multiple dependencies synchronously.
+        """
+        return self._storage.resolve(list(dependencies), self, is_async=False)
+
+    def _aresolve_many(
+        self, *dependencies: DependencyCallable
+    ) -> AsyncContextManager[Any]:
+        """
+        Internal method to resolve multiple dependencies asynchronously.
+        """
+        return self._storage.resolve(list(dependencies), self, is_async=True)
 
     def clear_overrides(self) -> None:
         """
