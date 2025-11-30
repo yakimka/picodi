@@ -631,7 +631,7 @@ wheels = [
 
 [[package]]
 name = "picodi"
-version = "0.36.2"
+version = "0.36.3"
 source = { editable = "." }
 
 [package.dev-dependencies]

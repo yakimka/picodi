@@ -340,7 +340,7 @@ class Registry:
         return manage_context()
 
     @overload
-    def resolve(self, dependency: Callable[[], Generator[T]]) -> ContextManager[T]:
+    def resolve(self, dependency: Callable[..., Generator[T]]) -> ContextManager[T]:
         """
         Resolve a dependency that is a generator function synchronously.
         """
@@ -362,7 +362,7 @@ class Registry:
 
     @overload
     def aresolve(
-        self, dependency: Callable[[], Generator[T]]
+        self, dependency: Callable[..., Generator[T]]
     ) -> AsyncContextManager[T]:
         """
         Resolve a dependency that is a generator function asynchronously.
@@ -370,7 +370,7 @@ class Registry:
 
     @overload
     def aresolve(
-        self, dependency: Callable[[], AsyncGenerator[T]]
+        self, dependency: Callable[..., AsyncGenerator[T]]
     ) -> AsyncContextManager[T]:
         """
         Resolve a dependency that is an async generator function asynchronously.
@@ -378,7 +378,7 @@ class Registry:
 
     @overload
     def aresolve(
-        self, dependency: Callable[[], Awaitable[T]]
+        self, dependency: Callable[..., Awaitable[T]]
     ) -> AsyncContextManager[T]:
         """
         Resolve a dependency that is an awaitable asynchronously.
