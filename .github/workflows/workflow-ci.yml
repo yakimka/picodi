@@ -45,7 +45,7 @@ jobs:
         python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - run: echo "DEV_IMAGE_FULL_NAME=$(echo ${CACHE_REGISTRY}/${CACHE_REGISTRY_USERNAME}/${PROJECT_NAME})" >> $GITHUB_ENV
       - run: echo "DEV_VERSION=`(cat Dockerfile-dev; cat .github/workflows/workflow-ci.yml)|sha1sum |cut -c 1-8`" >> $GITHUB_ENV
@@ -110,7 +110,7 @@ jobs:
           - '3.11'
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Prepare Docker
         run: |
@@ -154,7 +154,7 @@ jobs:
         image-name: ['quay.io/pypa/manylinux_2_28_x86_64']
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Prepare Docker
         run: |
@@ -193,7 +193,7 @@ jobs:
     needs: [check-code, pypy-test, free-threading-test]
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/download-artifact@v6
         with:
           name: built-package-py${{ env.MAIN_PY_VERSION }}
