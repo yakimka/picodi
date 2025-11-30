@@ -219,5 +219,4 @@ jobs:
           PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
         if: startsWith(github.ref, 'refs/tags/')
         run: |
-          docker run -v $(pwd):/code -w /code --rm -d ${UV_DOCKER_IMAGE}
-          publish dist/*.* --token=$PYPI_TOKEN
+          docker run -v $(pwd):/code -w /code --rm ${UV_DOCKER_IMAGE} publish dist/*.* --token=$PYPI_TOKEN
