@@ -27,31 +27,107 @@ except ImportError:  # pragma: no cover
 StackItem = tuple[DependNode, Iterator[DependNode], dict[str, Any]]
 
 
-@contextlib.contextmanager
+class _SyncInjectionContext:
+    """Context manager for sync dependency injection that handles StopIteration properly."""
+
+    def __init__(
+        self,
+        dependant: DependNode,
+        signature: inspect.Signature,
+        registry: Registry,
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
+    ) -> None:
+        self.gen = wrapper_helper(
+            dependant,
+            signature,
+            is_async=False,
+            registry=registry,
+            args=args,
+            kwargs=kwargs,
+        )
+        self.user_stop_iteration: StopIteration | None = None
+
+    def __enter__(self) -> Any:
+        try:
+            value, action = next(self.gen)
+            while True:
+                if action == "result":
+                    return value
+                elif action == "user_stop_iteration":
+                    # StopIteration from user code - save it to raise in __exit__
+                    self.user_stop_iteration = value
+                    return None
+                try:
+                    value, action = self.gen.send(value)
+                except StopIteration:
+                    return None
+                except RuntimeError as e:
+                    # PEP 479: StopIteration raised in generator is converted to RuntimeError
+                    if e.__cause__ is not None and isinstance(
+                        e.__cause__, StopIteration
+                    ):
+                        self.user_stop_iteration = e.__cause__
+                        return None
+                    raise
+        except BaseException:
+            self.gen.close()
+            raise
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: Any,
+    ) -> None:
+        # Continue executing generator for cleanup
+        try:
+            if (
+                exc_val is not None
+                and exc_type is not None
+                and self.user_stop_iteration is None
+            ):
+                # If there was an exception in user code, pass it to generator
+                self.gen.throw(exc_type, exc_val, exc_tb)
+            else:
+                # Continue normal execution for cleanup
+                try:
+                    value, action = self.gen.send(None)
+                    # Process remaining yields (cleanup actions)
+                    while True:
+                        if action == "close_scope":
+                            pass  # Scope cleanup
+                        try:
+                            value, action = self.gen.send(value)
+                        except StopIteration:
+                            break
+                        except RuntimeError as e:
+                            # Handle nested StopIteration from cleanup code
+                            if e.__cause__ is not None and isinstance(
+                                e.__cause__, StopIteration
+                            ):
+                                break
+                            raise
+                except StopIteration:
+                    pass
+        except BaseException:
+            self.gen.close()
+            raise
+        else:
+            self.gen.close()
+
+        if self.user_stop_iteration is not None:
+            raise self.user_stop_iteration
+
+
 def sync_injection_context(
     dependant: DependNode,
     signature: inspect.Signature,
     registry: Registry,
     args: tuple[Any, ...],
     kwargs: dict[str, Any],
-) -> Generator[Any]:
-    gen = wrapper_helper(
-        dependant,
-        signature,
-        is_async=False,
-        registry=registry,
-        args=args,
-        kwargs=kwargs,
-    )
-    value, action = next(gen)
-    while True:
-        if action == "result":
-            yield value
-        try:
-            value, action = gen.send(value)
-        except StopIteration:
-            break
-    gen.close()
+) -> _SyncInjectionContext:
+    return _SyncInjectionContext(dependant, signature, registry, args, kwargs)
 
 
 @contextlib.asynccontextmanager
@@ -72,6 +148,7 @@ async def async_injection_context(
     )
     value, action = next(gen)
     exceptions = []
+    user_stop_iteration = None
     while True:
         if inspect.iscoroutine(value):
             try:
@@ -81,14 +158,26 @@ async def async_injection_context(
 
         if action == "result":
             yield value
+        elif action == "user_stop_iteration":
+            # StopIteration from user code - save it to raise later
+            user_stop_iteration = value
+            break
         try:
             value, action = gen.send(value)
         except StopIteration:
             break
+        except RuntimeError as e:
+            # PEP 479: StopIteration raised in generator is converted to RuntimeError
+            if e.__cause__ is not None and isinstance(e.__cause__, StopIteration):
+                user_stop_iteration = e.__cause__
+                break
+            raise
     if exceptions:
         # TODO use `ExceptionGroup` after dropping 3.10 support
         raise exceptions[0]
     gen.close()
+    if user_stop_iteration is not None:
+        raise user_stop_iteration
 
 
 def wrapper_helper(
@@ -144,6 +233,15 @@ def wrapper_helper(
 
     try:
         result = dependant.value(*bound.args, **bound.kwargs)
+    except StopIteration as e:
+        # Don't raise StopIteration directly as it causes PEP 479 RuntimeError
+        # Instead, pass it through yield to be raised outside the generator
+        for scope in scopes:
+            scope.exit_inject(e, global_key=dependant.value)
+            if isinstance(scope, AutoScope):
+                yield exit_stack.close(e), "close_scope"
+        yield e, "user_stop_iteration"
+        return
     except Exception as e:
         for scope in scopes:
             scope.exit_inject(e, global_key=dependant.value)
