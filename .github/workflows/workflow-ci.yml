@@ -61,7 +61,7 @@ jobs:
 
       - name: Load cached venv and cache
         id: cached-venv-and-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             .venv
@@ -120,7 +120,7 @@ jobs:
 
       - name: Load cached venv
         id: cached-venv
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             .venv
@@ -164,7 +164,7 @@ jobs:
 
       - name: Load cached venv
         id: cached-venv
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             .venv
