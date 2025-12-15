@@ -194,7 +194,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         with:
           name: built-package-py${{ env.MAIN_PY_VERSION }}
           path: dist/
