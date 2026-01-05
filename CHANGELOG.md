@@ -4,6 +4,10 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
+## Version 0.36.4
+
+- Update `inject` annotations for better type checking
+
 ## Version 0.36.2
 
 - Add more overloads for `inject` decorator

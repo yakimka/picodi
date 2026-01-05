@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import functools
 import inspect
-from collections.abc import Awaitable
+from collections.abc import Coroutine
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, cast, overload
 
 from picodi._internal import (
@@ -53,7 +53,9 @@ def Provide(dependency: DependencyCallable, /) -> Any:  # noqa: N802
 
 
 @overload
-def inject(fn: Callable[P, Awaitable[T]]) -> Callable[P, Awaitable[T]]:
+def inject(
+    fn: Callable[P, Coroutine[T, Any, None]],
+) -> Callable[P, Coroutine[T, Any, None]]:
     """Decorator to inject dependencies into an async function."""
 
 
