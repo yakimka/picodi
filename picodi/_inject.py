@@ -54,8 +54,8 @@ def Provide(dependency: DependencyCallable, /) -> Any:  # noqa: N802
 
 @overload
 def inject(
-    fn: Callable[P, Coroutine[T, Any, None]],
-) -> Callable[P, Coroutine[T, Any, None]]:
+    fn: Callable[P, Coroutine[Any, Any, T]],
+) -> Callable[P, Coroutine[Any, Any, T]]:
     """Decorator to inject dependencies into an async function."""
 
 
