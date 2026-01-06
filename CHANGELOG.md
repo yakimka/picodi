@@ -4,6 +4,14 @@ We follow [Semantic Versions](https://semver.org/).
 
 ## Version next
 
+## Version 0.36.6
+
+- Fix behaviour with error propagation in generators that affects FastAPI integration
+
+## Version 0.36.5
+
+- Type annotations improvements
+
 ## Version 0.36.4
 
 - Update `inject` annotations for better type checking

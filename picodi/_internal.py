@@ -79,7 +79,8 @@ async def async_injection_context(
             except Exception as e:
                 exceptions.append(e)
 
-        if action == "result":
+        # Only yield result if no exceptions occurred
+        if action == "result" and not exceptions:
             yield value
         try:
             value, action = gen.send(value)

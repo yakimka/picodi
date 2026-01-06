@@ -445,3 +445,34 @@ async def test_can_use_request_scope_dependency_sync_and_inject_decorator(
     assert resp.json() == {"dep": 42}
     assert init_counter == 5
     assert closing_counter == 5
+
+
+async def test_exception_in_nested_async_generator_dependency_propagates_correctly(
+    make_app, make_asgi_client
+):
+    """
+    Test that exceptions in nested async generator dependencies are properly
+    propagated to the client without leaving unawaited coroutines.
+
+    This is a regression test for a bug where exceptions during dependency
+    resolution would cause unawaited coroutines to be returned as results,
+    leading to AttributeError when accessing dependency attributes.
+    """
+    app = make_app()
+
+    async def generator_with_error():
+        1 / 0  # noqa: B018
+        yield 1
+
+    @inject
+    async def get_42(error=Provide(generator_with_error)) -> MyNumber:
+        assert error == 1
+        return MyNumber(42)
+
+    @app.get("/")
+    async def root(number: MyNumber = Provide(get_42, wrap=True)):
+        return {"number": number.value}
+
+    async with make_asgi_client(app) as asgi_client:
+        with pytest.raises(ZeroDivisionError):
+            await asgi_client.get("/")
