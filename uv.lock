@@ -931,15 +931,15 @@ wheels = [
 
 [[package]]
 name = "pytest-markdown-docs"
-version = "0.9.0"
+version = "0.9.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "markdown-it-py" },
     { name = "pytest" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2d/25/779886e8d78ce3eadc598a08cf5ca9eddc679ecd5d52e3b913fd9ff643b0/pytest_markdown_docs-0.9.0.tar.gz", hash = "sha256:ba7aebe1d289e70d5ab346dd95d798d129547fd1bf13610cf723dffdd1225397", size = 31834, upload-time = "2025-04-09T10:11:46.539Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0d/4f/de34f3bf279d3b0673f921ac76538b51c4848186e35a337c0fd5c07e4cda/pytest_markdown_docs-0.9.1.tar.gz", hash = "sha256:ce5f8a58a901060599b7d54bbe8308f5a1bc63ef0142747c204eff6cd8bef34e", size = 15643, upload-time = "2026-01-28T11:01:38.475Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/44/45/576c55f4d6424b6ac822417a9d6c77b9f56df0771c11921d74bddea3dbcc/pytest_markdown_docs-0.9.0-py3-none-any.whl", hash = "sha256:24d5665147199c2155b5763ea69be8dac6b4c4bc3ad136203981214af783c4b5", size = 11441, upload-time = "2025-04-09T10:11:45.268Z" },
+    { url = "https://files.pythonhosted.org/packages/9e/08/5d2b22fd400723e45e0b55985592ad5b4cebac292bb0c9f31c9b262a45bd/pytest_markdown_docs-0.9.1-py3-none-any.whl", hash = "sha256:ec487b77e6ca2724ced2096bba9a00b192d040a7debd3e1131901df2ef7ffdbe", size = 12206, upload-time = "2026-01-28T11:01:39.264Z" },
 ]
 
 [[package]]
