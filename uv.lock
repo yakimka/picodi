@@ -317,18 +317,31 @@ wheels = [
 ]
 
 [[package]]
-name = "fastapi-slim"
-version = "0.122.0"
+name = "fastapi"
+version = "0.129.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "annotated-doc" },
     { name = "pydantic" },
     { name = "starlette" },
     { name = "typing-extensions" },
+    { name = "typing-inspection" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/99/93/2f8d411d51bd4f2a2dd0c5a5c7343efd0f6655bee2b11a1f81cd6a1b504f/fastapi_slim-0.122.0.tar.gz", hash = "sha256:2b9fddccd745e11d6803dc2bdbaccae43b175da33aedb45569d3cfa5d3af4c3d", size = 346406, upload-time = "2025-11-24T19:17:46.61Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/48/47/75f6bea02e797abff1bca968d5997793898032d9923c1935ae2efdece642/fastapi-0.129.0.tar.gz", hash = "sha256:61315cebd2e65df5f97ec298c888f9de30430dd0612d59d6480beafbc10655af", size = 375450, upload-time = "2026-02-12T13:54:52.541Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f3/58/97eac51582ecb4394b429f83af993772af92f4269fc49e7e003ab91405b7/fastapi_slim-0.122.0-py3-none-any.whl", hash = "sha256:6f124f80b98905a283b53df0f2edd147cbbe8fba896356f6abee75c74790182a", size = 110724, upload-time = "2025-11-24T19:17:45.298Z" },
+    { url = "https://files.pythonhosted.org/packages/9e/dd/d0ee25348ac58245ee9f90b6f3cbb666bf01f69be7e0911f9851bddbda16/fastapi-0.129.0-py3-none-any.whl", hash = "sha256:b4946880e48f462692b31c083be0432275cbfb6e2274566b1be91479cc1a84ec", size = 102950, upload-time = "2026-02-12T13:54:54.528Z" },
+]
+
+[[package]]
+name = "fastapi-slim"
+version = "0.129.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "fastapi" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/21/97/391c68c930c564b18452af527496affa5e80edd0592c18eec34a27bab4c8/fastapi_slim-0.129.0.tar.gz", hash = "sha256:fb07de2463bea4a4855a7897177e6c717614d21b8068c0227d5105875532e3b4", size = 5949, upload-time = "2026-02-12T13:54:52.258Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9c/38/6b647e01e9e3576d0d1a1771fafeaca0859491fdc2928d5d3a52e90c0171/fastapi_slim-0.129.0-py3-none-any.whl", hash = "sha256:f525ba9713087b1736ebb25fcfd6961ece9a1450c30229027cde1235c90393cf", size = 3231, upload-time = "2026-02-12T13:54:53.439Z" },
 ]
 
 [[package]]
